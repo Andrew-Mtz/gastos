@@ -561,6 +561,9 @@ Do not initialize multiple unrelated Supabase clients throughout components.
 
 There should be a clear client creation/configuration strategy.
 
+FIN-004 establishes a typed, non-persistent client module. Application integration
+and secure session persistence are deferred until their use cases enter scope.
+
 ---
 
 # 19. Direct Client-to-Supabase Access
@@ -932,6 +935,11 @@ Migrations include:
 * triggers where justified.
 
 Manual production schema changes that are not represented in the repository are forbidden.
+
+ADR-063 defines local-first development using a pinned project-local Supabase CLI
+and a Docker-compatible runtime. Local migrations and synthetic seeds reproduce
+the database; types are generated from its `public` schema and committed under
+`src/infrastructure/supabase/database.types.ts`. Hosted provisioning is deferred.
 
 ---
 
@@ -1983,7 +1991,6 @@ The following decisions are intentionally unresolved and must not be guessed:
 
 1. Exact session storage implementation for Supabase Auth.
 3. Exact E2E testing framework.
-4. Exact local Supabase development workflow.
 5. Exact transaction/RPC implementation for shared expenses.
 6. Exact design-system implementation.
 7. Exact state strategy for unsaved multi-step forms.

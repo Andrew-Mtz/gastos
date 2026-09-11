@@ -29,8 +29,56 @@ npm.cmd ci
 npm.cmd start
 ```
 
-No environment variables are required. `.env.example` documents the boundary;
-private credentials must never be bundled into the app.
+The bootstrap screen does not require environment variables. The Supabase client
+requires the public values documented in `.env.example` when imported; private
+credentials must never be bundled into the app.
+
+## Local Supabase development
+
+ADR-063 defines local-first development. Install a Docker-compatible runtime
+(Docker Desktop with Linux containers on Windows), start it, and verify that
+`docker version` reports both Client and Server. The CLI is pinned in this project
+and installed by `npm ci`; no global CLI or hosted project is required.
+
+The repository already contains the CLI-generated `supabase/config.toml` and
+`.gitignore`. Do not rerun `supabase init` or enable its optional IDE configuration.
+
+```powershell
+npm.cmd run supabase:cli -- --version
+npm.cmd run supabase:start
+npm.cmd run supabase:status
+npm.cmd run db:reset
+npm.cmd run supabase:cli -- migration list --local
+npm.cmd run db:types
+```
+
+The first startup downloads Docker images. `db:reset` destroys and rebuilds only
+the local development database from migrations and seeds. FIN-004 has no product
+migrations and a comment-only seed file. Add real schema changes through migrations
+when their roadmap tasks begin, then regenerate types.
+
+Copy `.env.example` to ignored `.env.local` and set only the local API URL and
+publishable key from status output. Both are public client configuration. Never
+copy secret/service-role keys, database passwords, access tokens, or signing keys
+into the app or Git. Status output includes privileged local credentials; do not
+paste its full output into reports. Keep the local stack on a trusted network.
+
+`db:types` generates the local `public` schema into
+`src/infrastructure/supabase/database.types.ts`, formats it with Prettier, and
+preserves the existing file on generation failure. Commit types with schema
+changes. Type regeneration needs Docker; ordinary static checks use committed types.
+
+Stop the stack when finished, preserving its local data:
+
+```powershell
+npm.cmd run supabase:stop
+```
+
+The client module validates configuration and disables session persistence,
+automatic token refresh, and URL session detection. It is intentionally not imported
+by the root UI. Auth integration and secure storage belong to FIN-006. No URL
+polyfill is needed with Expo SDK 57. Once device data access is introduced, a
+physical iPhone must use the computer's reachable LAN address instead of localhost.
 
 ## Open on an iPhone from Windows
 
@@ -92,4 +140,5 @@ tests will live alongside their modules in `__tests__/*.test.ts`. Tests stay und
 FIN-011 will configure EAS and the
 development-build workflow. Native projects are not generated in FIN-001.
 
-There is no authentication, backend connection, or financial functionality.
+FIN-004 adds local Supabase infrastructure and a typed client module. There is no
+application authentication, product query, or financial functionality.

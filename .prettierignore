@@ -8,3 +8,5 @@ package-lock.json
 docs/
 AGENTS.md
 README.md
+supabase/.temp/
+supabase/.branches/
