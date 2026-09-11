@@ -191,7 +191,7 @@ Avoid unnecessary lint plugins or style complexity.
 
 ## FIN-003 — Testing Foundation
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-001
 
@@ -1636,7 +1636,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-003 — Testing Foundation
+FIN-004 — Supabase Project Foundation
 ```
 
 No financial business logic should be implemented before the foundation work begins.

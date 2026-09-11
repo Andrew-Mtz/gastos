@@ -61,7 +61,7 @@ Client state and data
 - Zod
 
 Testing
-- Vitest or Jest according to Expo compatibility
+- Jest 29 with jest-expo for Expo SDK 57 (ADR-062)
 - React Native Testing Library
 - domain-level unit tests
 - database/RLS integration tests
@@ -1982,7 +1982,6 @@ The following rules are foundational.
 The following decisions are intentionally unresolved and must not be guessed:
 
 1. Exact session storage implementation for Supabase Auth.
-2. Exact test runner based on current Expo compatibility.
 3. Exact E2E testing framework.
 4. Exact local Supabase development workflow.
 5. Exact transaction/RPC implementation for shared expenses.

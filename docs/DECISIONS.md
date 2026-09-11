@@ -1809,6 +1809,37 @@ Use the latest compatible stable patch release within SDK 57.
 
 ---
 
+# ADR-062 — Use Jest with jest-expo for Unit and Component Tests
+
+**Status:** Accepted
+
+## Context
+
+FIN-003 requires one repeatable runner for React Native component tests and future
+domain unit tests. Expo SDK 57's Jest preset uses the Jest 29 toolchain.
+
+## Decision
+
+Use Jest 29 with the SDK-compatible `jest-expo` preset and the React Native Jest
+preset matching the installed React Native version. Use React Native Testing
+Library 14 for component tests, with `test-renderer` compatible with React 19.2.
+Use `@types/jest` for TypeScript test globals and keep type checking separate.
+
+Colocate tests under `src/` in `__tests__` directories, using `.test.ts` for unit
+tests and `.test.tsx` for component tests. Colocate future domain unit tests with
+their domain modules when those modules exist; do not create empty domain folders.
+Keep domain tests independent of React and infrastructure.
+
+## Consequences
+
+- `npm test` runs once; `npm run test:watch` supports local iteration.
+- Component tests use asynchronous RNTL 14 APIs and accessible queries where practical.
+- Tests do not replace native/device verification.
+- Future Jest upgrades must remain aligned with Expo and React Native compatibility.
+- FIN-003 does not introduce E2E, database/RLS testing, coverage configuration, or CI.
+
+---
+
 # Superseding Decisions
 
 When replacing an accepted ADR:
