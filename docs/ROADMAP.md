@@ -157,7 +157,7 @@ Create the initial React Native application using Expo and TypeScript.
 
 ## FIN-002 — Code Quality Tooling
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-001
 
@@ -1636,7 +1636,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-001 — Project Bootstrap
+FIN-003 — Testing Foundation
 ```
 
 No financial business logic should be implemented before the foundation work begins.

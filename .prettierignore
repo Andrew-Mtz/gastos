@@ -1,0 +1,10 @@
+.expo/
+dist/
+web-build/
+/ios/
+/android/
+expo-env.d.ts
+package-lock.json
+docs/
+AGENTS.md
+README.md

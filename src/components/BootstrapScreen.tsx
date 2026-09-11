@@ -7,7 +7,9 @@ export function BootstrapScreen() {
       <Text accessibilityRole="header" style={styles.title}>
         Gastos
       </Text>
-      <Text style={styles.message}>La aplicación está lista para comenzar.</Text>
+      <Text style={styles.message}>
+        La aplicación está lista para comenzar.
+      </Text>
     </SafeAreaView>
   );
 }

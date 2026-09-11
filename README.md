@@ -53,6 +53,16 @@ Starting Metro or exporting an iOS bundle does not verify physical-device launch
 - `npm run start:clear`: start Metro with a cleared cache.
 - `npm run android`: open on an available Android device/emulator.
 - `npm run ios`: open the iOS Simulator on a Mac; unavailable on Windows.
+- `npm run typecheck`: check TypeScript without emitting files.
+- `npm run lint`: lint source and configuration using Expo's flat ESLint config; warnings fail the check.
+- `npm run format`: format supported project files with standalone Prettier.
+- `npm run format:check`: check formatting without modifying files.
+
+Prettier preserves single-quoted TypeScript strings and uses LF line endings.
+Documentation, the lockfile, and generated files are excluded from bulk formatting.
+ESLint and Prettier run separately; `eslint-config-prettier` prevents conflicting
+formatting rules. VS Code users can use the ESLint and Prettier extensions with
+the repository configuration. Run the named checks before submitting changes.
 
 ```powershell
 npx.cmd expo install --check
@@ -72,7 +82,7 @@ upgrade is approved.
 `app/_layout.tsx` supplies the routing layout. `app/index.tsx` renders the single
 bootstrap screen from `src/components/BootstrapScreen.tsx`.
 
-FIN-002 will introduce lint/format tooling and named static-check scripts.
+FIN-002 adds lint/format tooling and named static-check scripts.
 FIN-003 will introduce automated testing. FIN-011 will configure EAS and the
 development-build workflow. Native projects are not generated in FIN-001.
 
