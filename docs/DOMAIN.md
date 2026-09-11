@@ -87,7 +87,6 @@ Conceptual fields:
 ```text
 Profile
 - id
-- authUserId
 - displayName
 - baseCurrency
 - locale
@@ -99,6 +98,9 @@ Profile
 ### Rules
 
 * One authenticated user has one application profile.
+* Profile ID equals the Supabase Auth user UUID; there is no separate `authUserId`.
+* Future application entities reference `public.profiles(id)`, not `auth.users` directly.
+* A Profile may temporarily be absent after Auth identity creation. FIN-006 explicitly completes Profile setup before profile-dependent application access.
 * A profile is private by default.
 * A profile may participate in one or more households in the future.
 * Financial data must reference the authenticated user's profile or a household scope.
