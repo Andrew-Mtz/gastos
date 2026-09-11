@@ -13,7 +13,13 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "jest",
-    "test:watch": "jest --watchAll"
+    "test:watch": "jest --watchAll",
+    "supabase:cli": "supabase",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:status": "supabase status",
+    "db:reset": "supabase db reset --local",
+    "db:types": "node scripts/generate-database-types.mjs"
   },
   "jest": {
     "preset": "jest-expo",
@@ -23,6 +29,7 @@
     ]
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.116.0",
     "expo": "~57.0.21",
     "expo-constants": "~57.0.17",
     "expo-linking": "~57.0.9",
@@ -48,6 +55,7 @@
     "jest": "29.7.0",
     "jest-expo": "~57.0.5",
     "prettier": "3.9.6",
+    "supabase": "2.117.0",
     "test-renderer": "1.2.0",
     "typescript": "~6.0.3"
   }

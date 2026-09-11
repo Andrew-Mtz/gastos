@@ -10,6 +10,8 @@ module.exports = defineConfig([
     'ios/**',
     'android/**',
     'expo-env.d.ts',
+    'supabase/.temp/**',
+    'supabase/.branches/**',
   ]),
   expoConfig,
   prettierConfig,

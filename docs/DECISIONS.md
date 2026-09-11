@@ -1840,6 +1840,42 @@ Keep domain tests independent of React and infrastructure.
 
 ---
 
+# ADR-063 — Use Supabase CLI for Local Development
+
+**Status:** Accepted
+
+## Context
+
+FIN-004 needs reproducible database configuration and generated types before
+product schemas exist. The local Supabase development workflow was unresolved.
+
+## Decision
+
+Use local-first Supabase development with a Docker-compatible runtime and an
+exactly pinned Supabase CLI dev dependency in the project. Run the CLI through
+npm scripts so collaborators use the same version.
+
+Commit local configuration, migrations, and synthetic seed files. Rebuild the
+local database from migrations and seeds. Generate TypeScript types from the
+local `public` schema into `src/infrastructure/supabase/database.types.ts` and
+commit them according to ADR-042. Keep generation repeatable and preserve the
+existing file when generation fails.
+
+Defer hosted project provisioning. Public client configuration uses
+`EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; actual
+development values stay in ignored `.env.local`.
+
+## Consequences
+
+- Local startup and type regeneration require a running Docker-compatible engine.
+- Local database reset is destructive to local data; seeds must remain synthetic.
+- CLI caches, local credentials, and signing material stay out of Git.
+- FIN-004 uses a non-persistent client without importing it into the root UI.
+- Secure session persistence remains a FIN-006 decision.
+- Hosted environments and deployment workflows require later scoped work.
+
+---
+
 # Superseding Decisions
 
 When replacing an accepted ADR:

@@ -1,0 +1,1 @@
+-- FIN-004 has no product tables or seed data. Future seeds must use synthetic data.
