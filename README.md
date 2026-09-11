@@ -57,6 +57,8 @@ Starting Metro or exporting an iOS bundle does not verify physical-device launch
 - `npm run lint`: lint source and configuration using Expo's flat ESLint config; warnings fail the check.
 - `npm run format`: format supported project files with standalone Prettier.
 - `npm run format:check`: check formatting without modifying files.
+- `npm test`: run all unit and component tests once.
+- `npm run test:watch`: rerun tests in watch mode during development.
 
 Prettier preserves single-quoted TypeScript strings and uses LF line endings.
 Documentation, the lockfile, and generated files are excluded from bulk formatting.
@@ -83,7 +85,11 @@ upgrade is approved.
 bootstrap screen from `src/components/BootstrapScreen.tsx`.
 
 FIN-002 adds lint/format tooling and named static-check scripts.
-FIN-003 will introduce automated testing. FIN-011 will configure EAS and the
+FIN-003 adds Jest 29 with `jest-expo` and React Native Testing Library 14 (ADR-062).
+Component tests live alongside components in `__tests__/*.test.tsx`; future domain
+tests will live alongside their modules in `__tests__/*.test.ts`. Tests stay under
+`src/`, outside Router's `app/` directory. They do not replace native/device verification.
+FIN-011 will configure EAS and the
 development-build workflow. Native projects are not generated in FIN-001.
 
 There is no authentication, backend connection, or financial functionality.

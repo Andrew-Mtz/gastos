@@ -963,6 +963,10 @@ Framework upgrades require dedicated work.
 
 # 46. Testing Expectations
 
+Before writing or modifying React Native Testing Library tests, read the installed
+package guidance in `node_modules/@testing-library/react-native/docs/guides/llm-guidelines.md`
+to use the current APIs. Repository scope and explicit user instructions still apply.
+
 For every business-rule implementation, write tests for behavior rather than implementation details.
 
 Prefer:
