@@ -81,7 +81,7 @@ The application's `Profile` references this identity.
 Example:
 
 ```text
-Profile.authUserId = auth.uid()
+Profile.id = auth.users.id = auth.uid()
 ```
 
 ---
@@ -184,7 +184,7 @@ Conceptually:
 
 ```text
 record.ownerProfileId
-→ Profile.authUserId
+→ Profile.id
 → auth.uid()
 ```
 
@@ -224,7 +224,7 @@ Conceptually:
 exists HouseholdMember
 where:
 householdId = record.householdId
-and profile.authUserId = auth.uid()
+and profile.id = auth.uid()
 and membership is active
 ```
 
@@ -293,6 +293,12 @@ ownerProfileId = profile123
 ---
 
 # 13. Profile Visibility
+
+For FIN-005, `profiles` is private: authenticated users may select, insert, and
+update only their own Profile. Anonymous access and direct client Profile deletion
+are unavailable. Column privileges restrict client inserts to identity and initial
+preferences, and updates to display name, base currency, and timezone. Clients
+cannot update identity or server-maintained timestamps.
 
 A profile should expose the minimum information necessary to other authorized users.
 
@@ -996,6 +1002,12 @@ Privilege escalation through direct database writes must be impossible.
 ---
 
 # 53. Data Deletion
+
+The current Profile foreign key uses `ON DELETE RESTRICT`: an Auth identity with
+an existing Profile cannot be deleted implicitly. This is an interim safeguard
+against unintended Profile or future financial-history cascades, not the final
+account-deletion design. Account deletion, anonymization, retention, and downstream
+deletion behavior remain explicitly unresolved.
 
 Soft deletion does not replace privacy deletion requirements.
 

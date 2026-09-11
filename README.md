@@ -68,6 +68,19 @@ paste its full output into reports. Keep the local stack on a trusted network.
 preserves the existing file on generation failure. Commit types with schema
 changes. Type regeneration needs Docker; ordinary static checks use committed types.
 
+FIN-005 verifies the Profile schema, grants, RLS, constraints, and timestamps with
+one transactional pgTAP test. With the local stack running, apply migrations and run:
+
+```powershell
+npm.cmd run db:reset
+npm.cmd run supabase:cli -- test db --local supabase/tests/profiles.test.sql
+npm.cmd run db:types
+```
+
+The test creates synthetic Auth fixtures inside a rolled-back transaction; no
+persistent test users or signup flow are required. Profile creation in the
+application remains deferred to FIN-006.
+
 Stop the stack when finished, preserving its local data:
 
 ```powershell
