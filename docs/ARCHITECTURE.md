@@ -1515,6 +1515,13 @@ Do not finalize this based on assumptions.
 
 # 67. Auth Routing
 
+FIN-007 implements standard Expo Router bottom tabs directly in `app/(app)/`:
+Inicio (index), Transacciones, Presupuesto, Hogar, and Ajustes. No nested tabs
+group is needed yet. AuthNavigator retains centralized Auth/Profile protection;
+only authenticated-ready users enter the shell. Ajustes invokes the existing
+AuthProvider signOut operation. Session lifecycle and cache cleanup remain
+owned by FIN-006. The new areas are placeholders without financial queries.
+
 Expo Router should separate unauthenticated and authenticated flows.
 
 Conceptually:

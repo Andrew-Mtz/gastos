@@ -97,7 +97,7 @@ localhost in `EXPO_PUBLIC_SUPABASE_URL` (port 54321).
 Email/password signup leads to Profile Setup when the local Auth session exists.
 Local email confirmation is currently disabled. Environments requiring email
 confirmation show pending feedback; no callback flow is implemented. Sign in
-resumes missing Profile Setup or opens the Gastos placeholder. Profile Setup
+resumes missing Profile Setup or opens Inicio in the authenticated shell. Profile Setup
 collects display name, uppercase three-letter currency, and a named timezone.
 PostgreSQL remains authoritative for validation and authorization.
 
@@ -181,7 +181,10 @@ upgrade is approved.
 
 `app/_layout.tsx` owns the QueryClient and Auth lifecycle. Protected groups route
 to `(auth)`, `profile-setup`, or `(app)`. `app/(app)/index.tsx` reuses
-`src/components/BootstrapScreen.tsx` with a sign-out action. Auth forms and Profile
+`src/components/BootstrapScreen.tsx`. FIN-007 adds standard bottom tabs directly in
+`(app)`: Inicio, Transacciones, Presupuesto, Hogar, and Ajustes. The latter four
+are placeholders; Ajustes provides the shell sign-out action through the existing
+AuthProvider. Centralized Auth/Profile protection is unchanged. Auth forms and Profile
 resolution live under `src/features/auth/`; secure persistence stays in infrastructure.
 
 FIN-002 adds lint/format tooling and named static-check scripts.
@@ -195,3 +198,11 @@ development-build workflow. Native projects are not generated in FIN-001.
 FIN-004 adds local Supabase infrastructure, FIN-005 adds private Profiles, and
 FIN-006 implements authentication and Profile Setup. Financial functionality is
 not implemented.
+
+## Navigation shell verification (FIN-007)
+
+Automated navigation tests use real Expo Router layouts with a controlled Auth
+boundary. The user verified the shell on a physical iPhone: Auth routing without
+private-shell flash, all five tabs, repeated switching, background/foreground,
+Ajustes sign-out, and private-route exclusion after logout. Tab labels, icons,
+and sign-out were usable. No financial functionality is implemented by these placeholders.

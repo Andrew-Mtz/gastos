@@ -332,7 +332,7 @@ Two independent test users can authenticate and remain isolated.
 
 ## FIN-007 — Navigation Shell
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-006
 
@@ -1636,7 +1636,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-007 — Navigation Shell
+FIN-008 — Initial Design System
 ```
 
 No financial business logic should be implemented before the foundation work begins.
