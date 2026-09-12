@@ -1837,14 +1837,21 @@ Major framework upgrades require dedicated work, not incidental feature changes.
 
 # 83. CI
 
-GitHub Actions should eventually verify at minimum:
+FIN-009 uses `.github/workflows/ci.yml` for pull requests targeting `main`.
+One Ubuntu `Quality checks` job reads the Node version from `.nvmrc`, caches npm
+downloads (not `node_modules`), and runs these gates in order:
 
 ```text
 install
 typecheck
 lint
+format check
 tests
 ```
+
+Installation uses `npm ci`; Jest runs serially through `npm test -- --runInBand`.
+The workflow has only `contents: read` permission and does not persist checkout
+credentials. It requires no Supabase configuration or secrets.
 
 Database-specific workflows may later include:
 
