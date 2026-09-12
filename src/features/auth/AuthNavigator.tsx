@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
-import { ActivityIndicator, Button, Text, View } from 'react-native';
+import { Button } from '../../components/ui/Button';
+import { ErrorState, LoadingState } from '../../components/ui/StatusState';
 import { useAuth } from './AuthProvider';
 
 export function AuthNavigator() {
@@ -9,42 +10,39 @@ export function AuthNavigator() {
     state.status === 'AUTHENTICATED_PROFILE_LOADING' ||
     (state.status === 'SIGNING_OUT' && !state.message)
   )
-    return (
-      <View style={{ flex: 1, justifyContent: 'center' }}>
-        <ActivityIndicator accessibilityLabel="Cargando sesión" />
-      </View>
-    );
+    return <LoadingState label="Cargando sesión" />;
   if (
     state.status === 'INITIALIZATION_ERROR' ||
     state.status === 'AUTHENTICATED_PROFILE_ERROR' ||
     state.status === 'SIGNING_OUT'
   )
     return (
-      <View style={{ flex: 1, justifyContent: 'center', padding: 24, gap: 16 }}>
-        <Text role="alert">
-          {'message' in state
+      <ErrorState
+        message={
+          'message' in state && state.message
             ? state.message
-            : 'No se pudo cargar tu perfil. Intenta nuevamente.'}
-        </Text>
-        <Button
-          title="Reintentar"
-          onPress={
-            state.status === 'SIGNING_OUT'
-              ? () => {
-                  void signOut();
-                }
-              : retry
-          }
-        />
-        {state.status !== 'SIGNING_OUT' && (
-          <Button
-            title="Cerrar sesión"
-            onPress={() => {
-              void signOut();
-            }}
-          />
-        )}
-      </View>
+            : 'No se pudo cargar tu perfil. Intenta nuevamente.'
+        }
+        onRetry={
+          state.status === 'SIGNING_OUT'
+            ? () => {
+                void signOut();
+              }
+            : retry
+        }
+        secondaryAction={
+          state.status !== 'SIGNING_OUT' && (
+            <Button
+              variant="secondary"
+              onPress={() => {
+                void signOut();
+              }}
+            >
+              Cerrar sesión
+            </Button>
+          )
+        }
+      />
     );
   return (
     <Stack screenOptions={{ headerShown: false }}>
