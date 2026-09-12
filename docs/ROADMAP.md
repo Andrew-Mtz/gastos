@@ -255,7 +255,7 @@ The application can initialize the Supabase client correctly in development.
 
 ## FIN-005 — Profile Schema
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-004
 
@@ -269,7 +269,6 @@ Initial profile fields only:
 
 ```text
 id
-auth_user_id
 display_name
 base_currency
 timezone
@@ -277,7 +276,8 @@ created_at
 updated_at
 ```
 
-Exact database representation may be refined during implementation.
+`id` is the shared Profile/Auth UUID referencing `auth.users(id)`; there is no
+separate Auth identifier.
 
 ### Requirements
 
@@ -295,7 +295,7 @@ An authenticated user can access their own profile and cannot access another use
 
 ## FIN-006 — Authentication
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-004, FIN-005
 
@@ -314,7 +314,7 @@ Implement basic authentication.
 
 ### Open Decision Resolved Here
 
-Exact secure session-storage implementation.
+Secure session storage and the root Auth lifecycle are accepted in ADR-064.
 
 Initial auth provider should remain minimal.
 
@@ -1636,7 +1636,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-005 — Profile Schema
+FIN-007 — Navigation Shell
 ```
 
 No financial business logic should be implemented before the foundation work begins.

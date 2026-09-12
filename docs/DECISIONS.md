@@ -1871,8 +1871,92 @@ development values stay in ignored `.env.local`.
 - Local database reset is destructive to local data; seeds must remain synthetic.
 - CLI caches, local credentials, and signing material stay out of Git.
 - FIN-004 uses a non-persistent client without importing it into the root UI.
-- Secure session persistence remains a FIN-006 decision.
+- Secure session persistence is defined for FIN-006 by ADR-064.
 - Hosted environments and deployment workflows require later scoped work.
+
+---
+
+# ADR-064 — Secure Supabase Session Persistence and Auth Lifecycle
+
+**Status:** Accepted
+
+## Context
+
+FIN-006 needs secure persistence for Supabase values that can exceed the small
+values appropriate for direct SecureStore storage, plus a single lifecycle that
+prevents stale identity, Profile cache, and refresh work from exposing private UI.
+
+## Decision
+
+Supabase Auth is authoritative for sessions. A small root Auth Context owns only
+reactive identity and lifecycle status. TanStack Query owns Profile server state
+under `['profile', authUserId]`; React Hook Form with Zod owns form state.
+Do not duplicate sessions/tokens into Query, Zustand, or another persistent store.
+
+Implement only the Supabase `getItem`/`setItem`/`removeItem` contract using:
+
+- Expo SecureStore for a native-generated 256-bit AES key, stored as small hex text;
+- AsyncStorage for a versioned AES-256-GCM ciphertext envelope;
+- native Expo Crypto APIs, with UTF-8 input, a fresh 96-bit nonce for every write,
+  and a 128-bit authentication tag. AAD binds format version, the Gastos/project
+  namespace, and the logical Supabase storage key.
+
+Use `WHEN_UNLOCKED_THIS_DEVICE_ONLY` and `requireAuthentication: false`.
+No biometric prompt, plaintext fallback, truncation, custom AES primitives,
+encryption wrapper, or long-lived decrypted-key cache is introduced.
+
+Serialize operations per logical key. A rejected operation must not poison later
+work. For a new entry, persist the native-generated key before encrypting and
+storing the complete envelope. Refresh writes reuse the existing key and replace
+the AsyncStorage value with newly encrypted content. Do not rotate keys on every
+refresh. These two stores do not provide a cross-store transaction; serialization
+applies within the single application client/runtime.
+
+Read behavior:
+
+- no key and no payload: return null;
+- orphan key or orphan payload: remove unusable material and return null;
+- valid pair: decrypt and return the complete value;
+- unknown/corrupt envelope, invalid tag, or wrong key: remove unusable material,
+  fail closed, and require sign-in after retry acknowledges the cleared state;
+- temporary storage access failure: show a retryable initialization error,
+  never silently reinterpret it as unauthenticated.
+
+Removal waits behind pending entry operations, deletes SecureStore first, then
+AsyncStorage, attempts both removals, and reports unconfirmed cleanup. Keychain
+items may survive reinstall while app-container AsyncStorage typically does not;
+orphan combinations never establish authentication. Expo Go is not evidence of
+standalone reinstall semantics.
+
+The one root lifecycle uses `getSession` and a short synchronous
+`onAuthStateChange` callback. Newer Auth events win over stale initialization.
+One AppState listener reconciles initial/foreground/background refresh and cleans
+up on unmount/Fast Refresh. No custom Supabase lock is introduced. Client settings
+are `persistSession: true`, `autoRefreshToken: true`, and
+`detectSessionInUrl: false`.
+
+Explicit states cover initializing, initialization error, unauthenticated,
+Profile loading/missing/error/ready, and signing out. Profile queries start only
+after authenticated initialization; query errors never mean missing Profile.
+Protected routes are UX; existing RLS/grants enforce security. Profile Setup uses
+the authenticated UUID and ordinary INSERT, re-reading after duplicate/lost
+responses. Late work cannot repopulate a different user's state.
+
+Logout immediately locks private UI, cancels and clears private Query state,
+stops refresh, and uses `signOut({ scope: 'local' })`. Confirm local storage and
+session removal and clear private state again. If remote revocation fails but
+local removal is confirmed, remain logged out with a concise warning. Unconfirmed
+local cleanup stays locked and retryable. Do not claim global logout or immediate
+invalidation of already-issued access JWTs.
+
+## Consequences
+
+Native SecureStore/Crypto/AsyncStorage behavior requires physical-device testing,
+including actual session size, restart persistence, logout, and user switching.
+Mocked unit tests and local API integration do not replace that evidence.
+FIN-006 supports basic email/password only. Provider expansion, biometrics,
+account deletion/anonymization, EAS, and persistent financial caches remain out
+of scope. No Profile migration, grant, or RLS change is required.
 
 ---
 
@@ -1903,7 +1987,6 @@ They should be addressed only when needed by the roadmap.
 ## Authentication
 
 * authentication providers beyond basic email/password;
-* exact Supabase session secure-storage implementation.
 
 ## Household
 

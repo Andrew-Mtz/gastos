@@ -845,7 +845,28 @@ Tokens must be handled through platform-appropriate secure storage mechanisms.
 
 Do not persist authentication credentials in plain AsyncStorage if the authentication library provides a more appropriate secure mechanism.
 
-Exact Expo/Supabase session-storage configuration must be reviewed during project bootstrap.
+ADR-064 defines FIN-006 persistence: Expo SecureStore holds a native-generated
+256-bit encryption key; AsyncStorage holds only a versioned AES-256-GCM
+ciphertext envelope. Each write uses a fresh 96-bit nonce and a 128-bit tag.
+Authenticated context binds the version, application/project namespace, and
+logical storage key. UTF-8 sessions are not truncated or persisted as plaintext.
+
+SecureStore uses `WHEN_UNLOCKED_THIS_DEVICE_ONLY` with
+`requireAuthentication: false`. Keys are reused across refresh writes and are
+not retained in a long-lived application cache. Operations serialize per logical
+entry; failed operations do not poison the queue. Orphan keys/payloads never
+authenticate. Corruption fails closed and removes unusable material; temporary
+storage access failures produce retryable initialization errors.
+
+Logout locks private UI, stops refresh work, cancels/clears private queries, and
+uses `signOut({ scope: 'local' })`. Cleanup deletes the key before the ciphertext,
+attempts both stores, and remains retryable/locked if removal cannot be confirmed.
+Confirmed local removal permits local logout even if remote revocation fails.
+This does not promise global logout or immediate invalidation of issued JWTs.
+
+iOS Keychain entries may survive reinstall while app-container AsyncStorage
+typically does not. Orphan cleanup applies; Expo Go cannot establish standalone
+reinstall behavior. No session JSON, tokens, or passwords belong in logs.
 
 ---
 
@@ -1426,7 +1447,6 @@ The following invariants are mandatory.
 The following security decisions are intentionally not finalized and must not be guessed during implementation:
 
 1. Authentication providers supported in the MVP.
-2. Exact local secure-storage mechanism for Supabase sessions.
 3. Household invitation token design.
 4. Whether former household members retain any historical read access.
 5. Exact household role permissions.
