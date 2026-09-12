@@ -412,12 +412,17 @@ GitHub Actions for:
 install
 typecheck
 lint
+format check
 tests
 ```
 
 ### Acceptance Criteria
 
 A deliberately failing check prevents CI success.
+
+The PR workflow must pass clean installation, TypeScript, lint, formatting, and
+serial Jest tests on GitHub. Prove failure propagation on a disposable draft PR
+without merging its intentional lint violation into the implementation or main.
 
 ---
 

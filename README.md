@@ -177,6 +177,15 @@ Run Expo-managed dependency installations through `npx.cmd expo install` and
 keep `package-lock.json` with the project. Stay within SDK 57 until a dedicated
 upgrade is approved.
 
+## Continuous integration (FIN-009)
+
+GitHub Actions runs `.github/workflows/ci.yml` automatically for pull requests
+targeting `main`. The Node version comes from `.nvmrc`; npm is bundled with Node.
+The single `Quality checks` job runs `npm ci`, `npm run typecheck`, `npm run lint`,
+`npm run format:check`, and `npm test -- --runInBand`.
+No Supabase credentials are required. Supabase/database integration tests and
+deployment are outside this workflow.
+
 ## Structure and scope
 
 `app/_layout.tsx` owns the QueryClient and Auth lifecycle. Protected groups route
