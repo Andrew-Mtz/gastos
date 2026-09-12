@@ -1,6 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
 import type { Database } from './database.types';
+import {
+  createSessionStorage,
+  type SessionStorageError,
+} from './session-storage';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -29,10 +33,35 @@ if (!supabaseKey?.startsWith('sb_publishable_')) {
   );
 }
 
+let storageError: SessionStorageError | null = null;
+const storageListeners = new Set<() => void>();
+export const sessionStorageStatus = {
+  getError: () => storageError,
+  clear: () => {
+    storageError = null;
+  },
+  subscribe: (listener: () => void) => {
+    storageListeners.add(listener);
+    return () => {
+      storageListeners.delete(listener);
+    };
+  },
+};
+export const authStorageKey = 'gastos-auth';
+export const sessionStorage = createSessionStorage(
+  new URL(supabaseUrl).origin,
+  (error) => {
+    storageError = error;
+    storageListeners.forEach((listener) => listener());
+  },
+);
+
 export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   auth: {
-    persistSession: false,
-    autoRefreshToken: false,
+    storageKey: authStorageKey,
+    storage: sessionStorage,
+    persistSession: true,
+    autoRefreshToken: true,
     detectSessionInUrl: false,
   },
 });

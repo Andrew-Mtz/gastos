@@ -561,8 +561,25 @@ Do not initialize multiple unrelated Supabase clients throughout components.
 
 There should be a clear client creation/configuration strategy.
 
-FIN-004 establishes a typed, non-persistent client module. Application integration
-and secure session persistence are deferred until their use cases enter scope.
+FIN-006 integrates the typed client with the root application (ADR-064).
+Supabase Auth owns sessions and token persistence. One root Auth Context owns
+only reactive identity and lifecycle status; it never duplicates session objects.
+One root QueryClient owns Profile server state under `['profile', authUserId]`,
+with no persistent query cache. React Hook Form owns authentication/setup inputs.
+
+The Supabase storage adapter keeps only a small AES-256 key in Expo SecureStore
+and an authenticated AES-GCM ciphertext envelope in AsyncStorage. Native
+`expo-crypto` provides encryption, fresh nonces, and authentication; see ADR-064
+for persistence, corruption, serialization, and removal requirements.
+
+One root lifecycle subscribes to Auth events, restores the session, and manages
+foreground/background token refresh. Stale initialization cannot replace a newer
+identity. Profile queries begin after initialization and distinguish missing rows
+from errors. Identity changes and logout cancel queries and clear private cache.
+Protected route groups expose auth, Profile Setup, or the application according
+to explicit lifecycle states. Loading/storage errors never expose private UI.
+RLS remains the authorization boundary. Profile Setup uses owner INSERT with
+re-read recovery after duplicate/lost responses, not an unconditional upsert.
 
 ---
 
@@ -1987,9 +2004,10 @@ The following rules are foundational.
 
 # 93. Open Architecture Decisions
 
+Session persistence and the root Auth lifecycle are resolved by ADR-064.
+
 The following decisions are intentionally unresolved and must not be guessed:
 
-1. Exact session storage implementation for Supabase Auth.
 3. Exact E2E testing framework.
 5. Exact transaction/RPC implementation for shared expenses.
 6. Exact design-system implementation.

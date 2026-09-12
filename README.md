@@ -29,9 +29,8 @@ npm.cmd ci
 npm.cmd start
 ```
 
-The bootstrap screen does not require environment variables. The Supabase client
-requires the public values documented in `.env.example` when imported; private
-credentials must never be bundled into the app.
+The application now requires the public values documented in `.env.example` in
+ignored `.env.local`. Private credentials must never be bundled into the app.
 
 ## Local Supabase development
 
@@ -78,8 +77,8 @@ npm.cmd run db:types
 ```
 
 The test creates synthetic Auth fixtures inside a rolled-back transaction; no
-persistent test users or signup flow are required. Profile creation in the
-application remains deferred to FIN-006.
+persistent test users or signup flow are required by that test. FIN-006 adds
+application Profile Setup after authentication.
 
 Stop the stack when finished, preserving its local data:
 
@@ -87,11 +86,37 @@ Stop the stack when finished, preserving its local data:
 npm.cmd run supabase:stop
 ```
 
-The client module validates configuration and disables session persistence,
-automatic token refresh, and URL session detection. It is intentionally not imported
-by the root UI. Auth integration and secure storage belong to FIN-006. No URL
-polyfill is needed with Expo SDK 57. Once device data access is introduced, a
-physical iPhone must use the computer's reachable LAN address instead of localhost.
+The root client validates public configuration, persists sessions through the
+ADR-064 encrypted adapter, and manages refresh through one root AppState lifecycle.
+URL session detection is disabled; no URL polyfill is needed with Expo SDK 57.
+A physical iPhone must use the computer's reachable LAN address instead of
+localhost in `EXPO_PUBLIC_SUPABASE_URL` (port 54321).
+
+## Authentication development (FIN-006)
+
+Email/password signup leads to Profile Setup when the local Auth session exists.
+Local email confirmation is currently disabled. Environments requiring email
+confirmation show pending feedback; no callback flow is implemented. Sign in
+resumes missing Profile Setup or opens the Gastos placeholder. Profile Setup
+collects display name, uppercase three-letter currency, and a named timezone.
+PostgreSQL remains authoritative for validation and authorization.
+
+Supabase owns the session. SecureStore holds only a small AES-256 key;
+AsyncStorage holds authenticated AES-GCM ciphertext with fresh nonces. Storage
+failure locks private UI and is retryable. Logout clears local session/cache;
+it does not promise global revocation of already-issued access tokens.
+
+With the local stack running and a loopback URL in `.env.local`:
+
+```powershell
+node --env-file=.env.local scripts/verify-auth-local.mjs
+npm.cmd run db:reset
+```
+
+The script uses public credentials and synthetic users to verify normal Auth,
+Profile isolation, restoration with an in-memory serialized test adapter, refresh,
+and logout. It refuses hosted URLs. Reset removes those synthetic fixtures and
+all other local development data. It does not test native encrypted persistence.
 
 ## Open on an iPhone from Windows
 
@@ -101,8 +126,20 @@ physical iPhone must use the computer's reachable LAN address instead of localho
 3. Connect the computer and iPhone to the same network.
 4. Run `npm.cmd run start:clear -- --go`.
 5. Scan the terminal QR code with the iPhone camera and open it in Expo Go.
-6. Confirm that the Gastos placeholder screen appears without an error and
-   still appears after reloading through the Expo Go developer menu.
+6. Confirm no sign-in flash during restoration. Sign up with a synthetic account,
+   complete Profile Setup, and verify the Gastos screen. Sign out and sign in again.
+7. Terminate and reopen Expo Go: confirm the session and Profile restore. Exercise
+   background/foreground, then log out and restart: sign-in must remain visible.
+8. Sign in as a second user: no first-user Profile/UI may remain. Confirm the
+   actual native session persists, with no storage-size error or plaintext fallback.
+
+FIN-006 was verified manually by the user on a physical iPhone through Expo Go:
+startup without an incorrect sign-in flash, signup, Profile Setup, the authenticated
+Gastos screen, session restoration after reopening, background/foreground lifecycle,
+logout, unauthenticated restart after logout, and isolation when switching users all
+passed. Nonblocking UI polish remains outside FIN-006. Expo Go cannot verify standalone
+reinstall semantics; iOS Keychain items may survive reinstall while app-container
+AsyncStorage typically does not. Orphan entries are cleaned up and never authenticate.
 
 If the phone cannot connect, check that Windows Firewall permits Node.js on
 the private network and that the network permits communication between devices.
@@ -142,8 +179,10 @@ upgrade is approved.
 
 ## Structure and scope
 
-`app/_layout.tsx` supplies the routing layout. `app/index.tsx` renders the single
-bootstrap screen from `src/components/BootstrapScreen.tsx`.
+`app/_layout.tsx` owns the QueryClient and Auth lifecycle. Protected groups route
+to `(auth)`, `profile-setup`, or `(app)`. `app/(app)/index.tsx` reuses
+`src/components/BootstrapScreen.tsx` with a sign-out action. Auth forms and Profile
+resolution live under `src/features/auth/`; secure persistence stays in infrastructure.
 
 FIN-002 adds lint/format tooling and named static-check scripts.
 FIN-003 adds Jest 29 with `jest-expo` and React Native Testing Library 14 (ADR-062).
@@ -153,5 +192,6 @@ tests will live alongside their modules in `__tests__/*.test.ts`. Tests stay und
 FIN-011 will configure EAS and the
 development-build workflow. Native projects are not generated in FIN-001.
 
-FIN-004 adds local Supabase infrastructure and a typed client module. There is no
-application authentication, product query, or financial functionality.
+FIN-004 adds local Supabase infrastructure, FIN-005 adds private Profiles, and
+FIN-006 implements authentication and Profile Setup. Financial functionality is
+not implemented.
