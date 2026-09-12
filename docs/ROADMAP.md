@@ -364,7 +364,7 @@ Authentication correctly switches between auth and application navigation.
 
 ## FIN-008 — Initial Design System
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-001
 
@@ -1636,7 +1636,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-008 — Initial Design System
+FIN-009 — CI Foundation
 ```
 
 No financial business logic should be implemented before the foundation work begins.

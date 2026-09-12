@@ -1,12 +1,8 @@
 import { useState } from 'react';
-import {
-  Button,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-  StyleSheet,
-} from 'react-native';
+import { AppText } from '../../components/ui/AppText';
+import { Button } from '../../components/ui/Button';
+import { TextField } from '../../components/ui/TextField';
+import { FormScreen } from '../../components/ui/Screen';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link } from 'expo-router';
@@ -24,19 +20,6 @@ import {
   type ProfileInput,
 } from './auth-data';
 
-const styles = StyleSheet.create({
-  screen: { flexGrow: 1, justifyContent: 'center', padding: 24, gap: 16 },
-  heading: { fontSize: 26, fontWeight: '600' },
-  input: {
-    borderWidth: 1,
-    borderColor: '#666',
-    borderRadius: 6,
-    padding: 12,
-    minHeight: 48,
-  },
-  field: { gap: 6 },
-  error: { color: '#a01515' },
-});
 export function SignInScreen() {
   const auth = useAuth();
   const [error, setError] = useState<string | null>(null);
@@ -50,24 +33,20 @@ export function SignInScreen() {
     defaultValues: { email: '', password: '' },
   });
   return (
-    <ScrollView
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={styles.screen}
-    >
-      <Text role="heading" style={styles.heading}>
-        Iniciar sesión
-      </Text>
+    <FormScreen>
+      <AppText variant="title">Iniciar sesión</AppText>
       <Controller
         control={control}
         name="email"
         render={({ field }) => (
-          <TextInput
-            accessibilityLabel="Correo"
+          <TextField
+            error={errors.email?.message}
+            label="Correo"
             placeholder="Correo"
-            style={styles.input}
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
+            ref={field.ref}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"
@@ -76,22 +55,18 @@ export function SignInScreen() {
           />
         )}
       />
-      {errors.email && (
-        <Text role="alert" style={styles.error}>
-          {errors.email.message}
-        </Text>
-      )}
       <Controller
         control={control}
         name="password"
         render={({ field }) => (
-          <TextInput
-            accessibilityLabel="Contraseña"
+          <TextField
+            error={errors.password?.message}
+            label="Contraseña"
             placeholder="Contraseña"
-            style={styles.input}
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
+            ref={field.ref}
             secureTextEntry
             autoCapitalize="none"
             autoCorrect={false}
@@ -100,16 +75,18 @@ export function SignInScreen() {
           />
         )}
       />
-      {errors.password && (
-        <Text role="alert" style={styles.error}>
-          {errors.password.message}
-        </Text>
+      {error && (
+        <AppText role="alert" tone="danger">
+          {error}
+        </AppText>
       )}
-      {error && <Text role="alert">{error}</Text>}
-      {auth.warning && <Text role="alert">{auth.warning}</Text>}
+      {auth.warning && (
+        <AppText role="alert" tone="warning">
+          {auth.warning}
+        </AppText>
+      )}
       <Button
-        title="Iniciar sesión"
-        disabled={isSubmitting}
+        loading={isSubmitting}
         onPress={handleSubmit(async (input) => {
           setError(null);
           try {
@@ -119,9 +96,13 @@ export function SignInScreen() {
             setError(authErrorMessage(err));
           }
         })}
-      />
-      <Link href="/(auth)/sign-up">Crear cuenta</Link>
-    </ScrollView>
+      >
+        Iniciar sesión
+      </Button>
+      <Link href="/(auth)/sign-up" asChild>
+        <Button variant="text">Crear cuenta</Button>
+      </Link>
+    </FormScreen>
   );
 }
 export function SignUpScreen() {
@@ -137,13 +118,8 @@ export function SignUpScreen() {
     defaultValues: { email: '', password: '', confirmPassword: '' },
   });
   return (
-    <ScrollView
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={styles.screen}
-    >
-      <Text role="heading" style={styles.heading}>
-        Crear cuenta
-      </Text>
+    <FormScreen>
+      <AppText variant="title">Crear cuenta</AppText>
       {(['email', 'password', 'confirmPassword'] as const).map((name) => {
         const label =
           name === 'email'
@@ -152,39 +128,33 @@ export function SignUpScreen() {
               ? 'Contraseña'
               : 'Confirmar contraseña';
         return (
-          <View key={name} style={styles.field}>
-            <Controller
-              control={control}
-              name={name}
-              render={({ field }) => (
-                <TextInput
-                  accessibilityLabel={label}
-                  placeholder={label}
-                  style={styles.input}
-                  value={field.value}
-                  onChangeText={field.onChange}
-                  onBlur={field.onBlur}
-                  secureTextEntry={name !== 'email'}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType={name === 'email' ? 'email-address' : 'default'}
-                  autoComplete={name === 'email' ? 'email' : 'new-password'}
-                  editable={!isSubmitting}
-                />
-              )}
-            />
-            {errors[name] && (
-              <Text role="alert" style={styles.error}>
-                {errors[name].message}
-              </Text>
+          <Controller
+            key={name}
+            control={control}
+            name={name}
+            render={({ field }) => (
+              <TextField
+                error={errors[name]?.message}
+                label={label}
+                placeholder={label}
+                value={field.value}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+                ref={field.ref}
+                secureTextEntry={name !== 'email'}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType={name === 'email' ? 'email-address' : 'default'}
+                autoComplete={name === 'email' ? 'email' : 'new-password'}
+                editable={!isSubmitting}
+              />
             )}
-          </View>
+          />
         );
       })}
-      {message && <Text role="alert">{message}</Text>}
+      {message && <AppText role="alert">{message}</AppText>}
       <Button
-        title="Crear cuenta"
-        disabled={isSubmitting}
+        loading={isSubmitting}
         onPress={handleSubmit(async ({ email, password }) => {
           setMessage(null);
           try {
@@ -199,9 +169,13 @@ export function SignUpScreen() {
             setMessage(authErrorMessage(err));
           }
         })}
-      />
-      <Link href="/(auth)/sign-in">Volver a iniciar sesión</Link>
-    </ScrollView>
+      >
+        Crear cuenta
+      </Button>
+      <Link href="/(auth)/sign-in" asChild>
+        <Button variant="text">Volver a iniciar sesión</Button>
+      </Link>
+    </FormScreen>
   );
 }
 function deviceTimezone() {
@@ -230,13 +204,8 @@ export function ProfileSetupScreen() {
   });
   const userId = 'userId' in auth.state ? auth.state.userId : '';
   return (
-    <ScrollView
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={styles.screen}
-    >
-      <Text role="heading" style={styles.heading}>
-        Completar perfil
-      </Text>
+    <FormScreen>
+      <AppText variant="title">Completar perfil</AppText>
       {(['display_name', 'base_currency', 'timezone'] as const).map((name) => {
         const label =
           name === 'display_name'
@@ -245,38 +214,36 @@ export function ProfileSetupScreen() {
               ? 'Moneda (UYU, USD, EUR...)'
               : 'Zona horaria';
         return (
-          <View key={name} style={styles.field}>
-            <Controller
-              control={control}
-              name={name}
-              render={({ field }) => (
-                <TextInput
-                  accessibilityLabel={label}
-                  placeholder={label}
-                  style={styles.input}
-                  value={field.value}
-                  onChangeText={field.onChange}
-                  onBlur={field.onBlur}
-                  autoCapitalize={
-                    name === 'base_currency' ? 'characters' : 'none'
-                  }
-                  autoCorrect={false}
-                  editable={!isSubmitting}
-                />
-              )}
-            />
-            {errors[name] && (
-              <Text role="alert" style={styles.error}>
-                {errors[name].message}
-              </Text>
+          <Controller
+            key={name}
+            control={control}
+            name={name}
+            render={({ field }) => (
+              <TextField
+                error={errors[name]?.message}
+                label={label}
+                placeholder={label}
+                value={field.value}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+                ref={field.ref}
+                autoCapitalize={
+                  name === 'base_currency' ? 'characters' : 'none'
+                }
+                autoCorrect={false}
+                editable={!isSubmitting}
+              />
             )}
-          </View>
+          />
         );
       })}
-      {error && <Text role="alert">{error}</Text>}
+      {error && (
+        <AppText role="alert" tone="danger">
+          {error}
+        </AppText>
+      )}
       <Button
-        title={error ? 'Reintentar guardar perfil' : 'Guardar perfil'}
-        disabled={isSubmitting}
+        loading={isSubmitting}
         onPress={handleSubmit(async (input) => {
           if (!auth.isCurrentUser(userId)) return;
           setError(null);
@@ -288,13 +255,17 @@ export function ProfileSetupScreen() {
             if (auth.isCurrentUser(userId)) setError(authErrorMessage(err));
           }
         })}
-      />
+      >
+        {error ? 'Reintentar guardar perfil' : 'Guardar perfil'}
+      </Button>
       <Button
-        title="Cerrar sesión"
+        variant="secondary"
         onPress={() => {
           void auth.signOut();
         }}
-      />
-    </ScrollView>
+      >
+        Cerrar sesión
+      </Button>
+    </FormScreen>
   );
 }

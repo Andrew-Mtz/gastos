@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
+import { colors } from '../../src/theme/tokens';
 
 const tabs: { name: string; title: string; icon: SymbolViewProps['name'] }[] = [
   { name: 'index', title: 'Inicio', icon: { ios: 'house', android: 'home' } },
@@ -26,7 +27,16 @@ const tabs: { name: string; title: string; icon: SymbolViewProps['name'] }[] = [
 ];
 export default function AppLayout() {
   return (
-    <Tabs initialRouteName="index" screenOptions={{ headerShown: false }}>
+    <Tabs
+      initialRouteName="index"
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: { backgroundColor: colors.surface },
+        tabBarActiveTintColor: colors.action,
+        tabBarInactiveTintColor: colors.textSecondary,
+        sceneStyle: { backgroundColor: colors.background },
+      }}
+    >
       {tabs.map(({ name, title, icon }) => (
         <Tabs.Screen
           key={name}

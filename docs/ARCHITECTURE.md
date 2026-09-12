@@ -1430,6 +1430,14 @@ At minimum define:
 
 Avoid building a large component library before core flows exist.
 
+FIN-008 implements ADR-051 with React Native `StyleSheet` and semantic color,
+spacing, typography, radius, and control-size tokens in `src/theme/tokens.ts`.
+Shared presentation components live in `src/components/ui/`: `AppText`, `Button`,
+`TextField`, `Screen`/`FormScreen`, and `LoadingState`/`ErrorState`.
+Forms use native keyboard avoidance and scrolling; validation, Auth decisions,
+and navigation remain in their features. System fonts and native accessibility
+props remain available. No ThemeProvider or dark-mode implementation is included.
+
 ---
 
 # 62. Accessibility
@@ -2017,7 +2025,6 @@ The following decisions are intentionally unresolved and must not be guessed:
 
 3. Exact E2E testing framework.
 5. Exact transaction/RPC implementation for shared expenses.
-6. Exact design-system implementation.
 7. Exact state strategy for unsaved multi-step forms.
 8. Exact AI provider.
 9. Exact speech-to-text provider.

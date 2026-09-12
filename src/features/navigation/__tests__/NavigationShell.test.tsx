@@ -96,14 +96,14 @@ afterEach(() => {
 test('ready opens Inicio and all five tabs navigate with coherent selection', async () => {
   await openShell();
   const user = userEvent.setup();
-  expect(screen.getByRole('header', { name: 'Gastos' })).toBeVisible();
+  expect(screen.getByRole('heading', { name: 'Gastos' })).toBeVisible();
   for (const label of labels)
     expect(screen.getByRole('button', { name: label })).toBeOnTheScreen();
   for (const label of [...labels.slice(1), 'Inicio', 'Hogar', 'Inicio']) {
     await user.press(screen.getByRole('button', { name: label }));
     expect(screen.getByRole('button', { name: label })).toBeSelected();
     expect(
-      screen.getByRole(label === 'Inicio' ? 'header' : 'heading', {
+      screen.getByRole('heading', {
         name: label === 'Inicio' ? 'Gastos' : label,
       }),
     ).toBeVisible();

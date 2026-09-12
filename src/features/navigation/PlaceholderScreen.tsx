@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from 'react';
-import { StyleSheet, Text } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppText } from '../../components/ui/AppText';
+import { Screen } from '../../components/ui/Screen';
 
 export function PlaceholderScreen({
   title,
@@ -8,16 +8,10 @@ export function PlaceholderScreen({
   children,
 }: PropsWithChildren<{ title: string; message: string }>) {
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
-      <Text role="heading" style={styles.heading}>
-        {title}
-      </Text>
-      <Text>{message}</Text>
+    <Screen edges={['top', 'left', 'right']} scroll>
+      <AppText variant="title">{title}</AppText>
+      <AppText tone="secondary">{message}</AppText>
       {children}
-    </SafeAreaView>
+    </Screen>
   );
 }
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, gap: 16, backgroundColor: '#ffffff' },
-  heading: { fontSize: 28, fontWeight: '600' },
-});

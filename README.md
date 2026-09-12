@@ -206,3 +206,16 @@ boundary. The user verified the shell on a physical iPhone: Auth routing without
 private-shell flash, all five tabs, repeated switching, background/foreground,
 Ajustes sign-out, and private-route exclusion after logout. Tab labels, icons,
 and sign-out were usable. No financial functionality is implemented by these placeholders.
+
+## Initial design system (FIN-008)
+
+`src/theme/tokens.ts` defines semantic colors, spacing, typography, radius, and
+control sizing. Shared React Native presentation primitives live in
+`src/components/ui/`; use these tokens and components for current screens while
+keeping validation, Auth, and navigation logic in their features. No UI framework,
+custom fonts, ThemeProvider, or dark mode is introduced.
+
+FIN-008 was verified manually by the user on a physical iPhone: Sign In, Sign Up,
+Profile Setup, authenticated navigation, logout, and all five tabs remained usable.
+Larger iOS text sizes increased typography without breaking essential layouts or
+actions. Existing functionality remained intact.
