@@ -1522,11 +1522,11 @@ Do not use Profile ID as an authentication credential.
 
 # 66. Session Storage
 
-Session persistence must use an Expo/React Native-compatible secure strategy.
-
-The exact library/configuration must be verified during bootstrap and recorded in `DECISIONS.md`.
-
-Do not finalize this based on assumptions.
+ADR-064 defines the implemented session strategy. Supabase owns session state;
+session values are encrypted with AES-GCM and stored in AsyncStorage, with key
+material in SecureStore. The root Auth lifecycle owns restoration, refresh, and
+logout cleanup. No plaintext fallback is permitted. See ADR-064 for the complete
+storage and lifecycle invariants.
 
 ---
 

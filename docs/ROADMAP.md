@@ -504,7 +504,7 @@ A development build can be installed and launched on the primary iPhone when nee
 
 ## FIN-012 — Foundation Review
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-001 through FIN-010; FIN-011 is explicitly deferred by ADR-065.
 
@@ -1663,7 +1663,8 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-012 — Foundation Review
+FIN-101 — Money Domain Type
 ```
 
-No financial business logic should be implemented before the foundation work begins.
+Phase 0 foundation review has passed; Phase 1 financial implementation may begin.
+FIN-011 remains explicitly deferred by ADR-065.

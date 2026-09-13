@@ -1459,7 +1459,7 @@ The following invariants are mandatory.
 
 The following security decisions are intentionally not finalized and must not be guessed during implementation:
 
-1. Authentication providers supported in the MVP.
+1. Additional authentication providers/capabilities (OAuth/social providers, magic links, MFA, or other future options). Basic MVP email/password authentication is already decided and implemented by FIN-006/ADR-064.
 3. Household invitation token design.
 4. Whether former household members retain any historical read access.
 5. Exact household role permissions.
