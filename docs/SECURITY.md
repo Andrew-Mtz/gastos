@@ -1275,6 +1275,19 @@ Each migration involving authorization must be reviewed.
 
 # 68. Policy Testing
 
+FIN-010 runs transactional pgTAP authorization tests with `npm run db:test`.
+Synthetic Auth fixtures and JWT support live in a test-only `.sql.inc` include;
+role switches remain explicit and assertions use actual `auth.uid()` and RLS.
+Fixtures and helpers must disappear after rollback. No real credentials are needed.
+
+SQL privilege denial and RLS denial are different guarantees. A cross-user SELECT
+under a role with SELECT permission should succeed with no foreign rows: this
+exercises RLS filtering. A forbidden INSERT using otherwise granted columns should
+fail its `WITH CHECK`. DELETE without a DELETE grant should fail with permission
+denied: this tests SQL privileges. SQLSTATE `42501` alone does not distinguish
+these cases. Use valid fixtures and inputs so constraints cannot mask the intended
+authorization failure, and pair privilege metadata with actual client-role queries.
+
 RLS behavior must have automated tests where practical.
 
 At minimum, tests should verify scenarios such as:

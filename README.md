@@ -68,17 +68,27 @@ preserves the existing file on generation failure. Commit types with schema
 changes. Type regeneration needs Docker; ordinary static checks use committed types.
 
 FIN-005 verifies the Profile schema, grants, RLS, constraints, and timestamps with
-one transactional pgTAP test. With the local stack running, apply migrations and run:
+one transactional pgTAP test. FIN-010 shares synthetic Auth fixtures and JWT context
+support through `supabase/tests/helpers/auth.sql.inc`. With Docker and the local
+stack running, apply migrations and run all tests or a focused file:
 
 ```powershell
 npm.cmd run db:reset
-npm.cmd run supabase:cli -- test db --local supabase/tests/profiles.test.sql
-npm.cmd run db:types
+npm.cmd run db:test
+npm.cmd run db:test -- supabase/tests/profiles.test.sql
 ```
 
 The test creates synthetic Auth fixtures inside a rolled-back transaction; no
 persistent test users or signup flow are required by that test. FIN-006 adds
 application Profile Setup after authentication.
+
+Each database test owns `begin`/`finish()`/`rollback` and enables `ON_ERROR_STOP`.
+Include shared support with `\ir helpers/auth.sql.inc`; `.inc` files are not
+discovered as tests. Keep role switches explicit and assert `current_user` and
+real `auth.uid()`. Expected SQL errors use pgTAP assertions. RLS filtering under
+a granted operation is distinct from SQL permission denial; test both where relevant.
+Run files independently and repeat the full suite to check isolation. No test
+helper belongs in a production migration, and these SQL tests do not verify login.
 
 Stop the stack when finished, preserving its local data:
 
@@ -177,14 +187,18 @@ Run Expo-managed dependency installations through `npx.cmd expo install` and
 keep `package-lock.json` with the project. Stay within SDK 57 until a dedicated
 upgrade is approved.
 
-## Continuous integration (FIN-009)
+## Continuous integration (FIN-009 / FIN-010)
 
 GitHub Actions runs `.github/workflows/ci.yml` automatically for pull requests
 targeting `main`. The Node version comes from `.nvmrc`; npm is bundled with Node.
-The single `Quality checks` job runs `npm ci`, `npm run typecheck`, `npm run lint`,
+The `Quality checks` job runs `npm ci`, `npm run typecheck`, `npm run lint`,
 `npm run format:check`, and `npm test -- --runInBand`.
-No Supabase credentials are required. Supabase/database integration tests and
-deployment are outside this workflow.
+The separate `Database authorization` job installs dependencies, verifies Docker,
+starts local Supabase, resets from migrations, and runs `npm run db:test`. Cleanup
+stops Supabase even after failure. Startup output is suppressed because it can
+contain privileged local credentials; do not print raw status or debug output.
+No repository secrets or hosted Supabase credentials are required. Both jobs must
+pass before merge. Deployment and mobile builds remain outside this workflow.
 
 ## Structure and scope
 

@@ -19,6 +19,7 @@
     "supabase:stop": "supabase stop",
     "supabase:status": "supabase status",
     "db:reset": "supabase db reset --local",
+    "db:test": "supabase test db --local",
     "db:types": "node scripts/generate-database-types.mjs"
   },
   "jest": {

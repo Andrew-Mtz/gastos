@@ -1,7 +1,9 @@
+\set ON_ERROR_STOP on
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_catalog;
-select no_plan();
+\ir helpers/auth.sql.inc
+select plan(73);
 
 select has_table('public', 'profiles', 'Profile table exists');
 select columns_are('public', 'profiles', array[
@@ -34,14 +36,10 @@ select ok(not has_table_privilege('authenticated', 'public.profiles', 'UPDATE'),
 select ok(not has_table_privilege('authenticated', 'public.profiles', 'DELETE'), 'No client DELETE grant');
 select ok(not has_table_privilege('authenticated', 'public.profiles', 'TRUNCATE'), 'No client TRUNCATE grant');
 
--- Synthetic database fixtures only: no passwords, login flow, or persistent seed users.
-insert into auth.users (id, email) values
-  ('f0050000-0000-4000-8000-000000000001', 'fin005-a@example.invalid'),
-  ('f0050000-0000-4000-8000-000000000002', 'fin005-b@example.invalid'),
-  ('f0050000-0000-4000-8000-000000000003', 'fin005-c@example.invalid');
+select ok(has_table_privilege('authenticated', 'public.profiles', 'SELECT'), 'SELECT is granted: cross-user invisibility exercises RLS');
 
 set local role authenticated;
-set local request.jwt.claim.sub = 'f0050000-0000-4000-8000-000000000001';
+select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000001');
 select is(current_user::text, 'authenticated', 'Assertions run as the client role');
 select is(auth.uid(), 'f0050000-0000-4000-8000-000000000001'::uuid, 'Auth context is User A');
 select lives_ok($$
@@ -66,7 +64,10 @@ select throws_ok($$
   values ('f0050000-0000-4000-8000-000000000001', 'Duplicate', 'UYU', 'UTC')
 $$, '23505', null, 'Only one Profile per identity');
 
-set local request.jwt.claim.sub = 'f0050000-0000-4000-8000-000000000002';
+set local role authenticated;
+select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000002');
+select is(current_user::text, 'authenticated', 'B assertions run as the client role');
+select is(auth.uid(), 'f0050000-0000-4000-8000-000000000002'::uuid, 'Auth context is User B');
 select lives_ok($$
   insert into public.profiles (id, display_name, base_currency, timezone)
   values ('f0050000-0000-4000-8000-000000000002', 'Partner Test', 'USD', 'UTC')
@@ -74,7 +75,10 @@ $$, 'B can create B Profile');
 select results_eq('select id from public.profiles', array['f0050000-0000-4000-8000-000000000002'::uuid], 'B sees only B');
 select is((select count(*) from public.profiles where id = 'f0050000-0000-4000-8000-000000000001'), 0::bigint, 'B cannot read A');
 
-set local request.jwt.claim.sub = 'f0050000-0000-4000-8000-000000000001';
+set local role authenticated;
+select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000001');
+select is(current_user::text, 'authenticated', 'Returning A assertions run as the client role');
+select is(auth.uid(), 'f0050000-0000-4000-8000-000000000001'::uuid, 'Auth context returns to User A');
 select results_eq('select id from public.profiles', array['f0050000-0000-4000-8000-000000000001'::uuid], 'A sees only A');
 select is((select count(*) from public.profiles where id = 'f0050000-0000-4000-8000-000000000002'), 0::bigint, 'A cannot read B');
 select results_eq($$
@@ -107,14 +111,21 @@ select results_eq($$select display_name || ':' || base_currency || ':' || timezo
 select is((select created_at from public.profiles), current_setting('test.profile_created_at')::timestamptz, 'created_at stays unchanged');
 select ok((select updated_at > current_setting('test.profile_updated_at')::timestamptz and updated_at <= statement_timestamp() from public.profiles), 'Database advances updated_at');
 
-set local request.jwt.claim.sub = 'f0050000-0000-4000-8000-000000000003';
+set local role authenticated;
+select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000003');
+select is(current_user::text, 'authenticated', 'C assertions run as the client role');
+select is(auth.uid(), 'f0050000-0000-4000-8000-000000000003'::uuid, 'Auth context is Stranger C');
 select is((select count(*) from public.profiles), 0::bigint, 'Unrelated C sees neither Profile');
 set local role anon;
-set local request.jwt.claim.sub = '';
-set local request.jwt.claims = '{}';
+select pg_temp.set_jwt_subject(null);
+select is(current_user::text, 'anon', 'Anonymous assertions run as anon');
+select is(auth.uid(), null::uuid, 'Anonymous context has no stale identity');
 select throws_ok($$select * from public.profiles$$, '42501', null, 'Anonymous Profile reads denied');
 
 reset role;
+select pg_temp.set_jwt_subject(null);
+select is(current_user::text, session_user::text, 'Integrity checks restore the session role');
+select is(auth.uid(), null::uuid, 'Integrity checks have no stale identity');
 -- Privileged setup checks integrity, never substitutes for client-role RLS assertions.
 select is((select count(*) from public.profiles where id in (
   'f0050000-0000-4000-8000-000000000001', 'f0050000-0000-4000-8000-000000000002'

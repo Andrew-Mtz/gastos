@@ -10,3 +10,5 @@ AGENTS.md
 README.md
 supabase/.temp/
 supabase/.branches/
+# SQL includes are test support, not HTML (Prettier infers HTML for .inc).
+supabase/tests/**/*.sql.inc

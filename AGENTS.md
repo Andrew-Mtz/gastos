@@ -274,6 +274,16 @@ New privacy-sensitive tables require RLS tests.
 
 # 11. Negative Security Testing Is Mandatory
 
+For every privacy-sensitive database feature, add positive authorization tests,
+unrelated-user negative tests, forged-write tests, and relevant SQL-grant tests.
+Exercise actual PostgreSQL RLS using `npm run db:test`; do not infer authorization
+from UI behavior. Focus a file with `npm run db:test -- supabase/tests/<file>.sql`.
+Each SQL test owns a transaction and rolls back fixtures, enables `ON_ERROR_STOP`,
+and loads test-only support with `\ir helpers/auth.sql.inc`. Keep `SET LOCAL ROLE`
+and `RESET ROLE` explicit, and verify `current_user` and real `auth.uid()` after
+context changes. Helpers must not become production migrations or definer functions.
+Distinguish SQL privilege denial from RLS filtering or `WITH CHECK` rejection.
+
 Do not only test that authorized access works.
 
 Also prove that unauthorized access fails.

@@ -1294,6 +1294,15 @@ Required domain test areas include:
 
 # 54. RLS Tests
 
+FIN-010 uses local Supabase/PostgreSQL pgTAP tests under `supabase/tests/`, run by
+`npm run db:test`. Each file enables `ON_ERROR_STOP`, owns its transaction and
+fixtures, and ends with `finish()` and rollback. Shared Auth fixture/JWT support
+is included with `\ir helpers/auth.sql.inc`; the `.inc` suffix excludes it from
+standalone discovery. Helper functions live only in the session's temporary schema,
+use invoker security, and are rolled back; they never enter product migrations.
+Role changes stay explicit in test files, with real `current_user`/`auth.uid()`
+assertions. Tests must distinguish SQL grants from RLS behavior and run independently.
+
 RLS tests are required for privacy-sensitive features.
 
 Test identities should include at least:
@@ -1838,7 +1847,7 @@ Major framework upgrades require dedicated work, not incidental feature changes.
 # 83. CI
 
 FIN-009 uses `.github/workflows/ci.yml` for pull requests targeting `main`.
-One Ubuntu `Quality checks` job reads the Node version from `.nvmrc`, caches npm
+The Ubuntu `Quality checks` job reads the Node version from `.nvmrc`, caches npm
 downloads (not `node_modules`), and runs these gates in order:
 
 ```text
@@ -1851,16 +1860,22 @@ tests
 
 Installation uses `npm ci`; Jest runs serially through `npm test -- --runInBand`.
 The workflow has only `contents: read` permission and does not persist checkout
-credentials. It requires no Supabase configuration or secrets.
+credentials. Quality checks require no Supabase configuration or secrets.
 
-Database-specific workflows may later include:
+FIN-010 adds a separate Ubuntu `Database authorization` job:
 
 ```text
-migration validation
-RLS tests
+CI
+├── Quality checks
+└── Database authorization
 ```
 
-PRs should not merge with failing required checks.
+The database job uses the same pinned Node and project-local CLI, installs with
+`npm ci`, verifies the runner's Docker, starts local Supabase, resets migrations,
+and runs `npm run db:test`. Cleanup always attempts to stop the stack. Startup
+output is suppressed to keep privileged local credentials out of logs. No hosted
+project, repository secrets, custom Docker cache, or deployment is involved.
+PRs should not merge unless both jobs pass.
 
 ---
 

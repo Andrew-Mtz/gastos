@@ -396,7 +396,7 @@ Complete product visual design.
 
 ## FIN-009 — CI Foundation
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-002, FIN-003
 
@@ -451,9 +451,18 @@ Stranger Test
 * negative RLS test;
 * documented execution command.
 
+FIN-010 adds `npm run db:test` and a separate `Database authorization` PR job
+alongside `Quality checks`. Tests use transactional synthetic Auth fixtures and
+test-only shared SQL includes; product migrations and policies remain unchanged.
+
 ### Acceptance Criteria
 
 Automated test proves that User A cannot read User B's private profile data.
+
+Full and focused database test runs must preserve the existing Profile coverage,
+leave no fixtures behind, and pass repeatedly. Both PR jobs must pass. A disposable,
+never-merged validation PR must demonstrate that transaction-local broadening of
+Profile SELECT makes the unchanged cross-user assertion and database job fail.
 
 ---
 
@@ -1641,7 +1650,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-009 — CI Foundation
+FIN-010 — Supabase Authorization Test Foundation
 ```
 
 No financial business logic should be implemented before the foundation work begins.
