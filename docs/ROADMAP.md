@@ -539,7 +539,7 @@ Allow one user to plan income, record personal spending, protect savings, and un
 
 ## FIN-101 — Money Domain Type
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** Phase 0
 
@@ -1663,7 +1663,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-101 — Money Domain Type
+FIN-102 — Percentage and Allocation Domain
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.

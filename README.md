@@ -216,15 +216,20 @@ resolution live under `src/features/auth/`; secure persistence stays in infrastr
 
 FIN-002 adds lint/format tooling and named static-check scripts.
 FIN-003 adds Jest 29 with `jest-expo` and React Native Testing Library 14 (ADR-062).
-Component tests live alongside components in `__tests__/*.test.tsx`; future domain
-tests will live alongside their modules in `__tests__/*.test.ts`. Tests stay under
+Component tests live alongside components in `__tests__/*.test.tsx`; domain
+tests live alongside their modules in `__tests__/*.test.ts`. Tests stay under
 `src/`, outside Router's `app/` directory. They do not replace native/device verification.
 FIN-011's EAS development-build workflow is intentionally deferred by ADR-065.
 Generated native projects remain absent from the repository.
 
 FIN-004 adds local Supabase infrastructure, FIN-005 adds private Profiles, and
-FIN-006 implements authentication and Profile Setup. Financial functionality is
-not implemented.
+FIN-006 implements authentication and Profile Setup. Financial product flows are
+not implemented. The pure Money primitive lives in `src/domain/money/money.ts`.
+Run its focused tests with:
+
+```powershell
+npm.cmd test -- --runTestsByPath src/domain/money/__tests__/money.test.ts --runInBand --verbose
+```
 
 ## Navigation shell verification (FIN-007)
 
