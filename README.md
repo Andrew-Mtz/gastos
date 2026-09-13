@@ -52,9 +52,9 @@ npm.cmd run db:types
 ```
 
 The first startup downloads Docker images. `db:reset` destroys and rebuilds only
-the local development database from migrations and seeds. FIN-004 has no product
-migrations and a comment-only seed file. Add real schema changes through migrations
-when their roadmap tasks begin, then regenerate types.
+the local development database from migrations and seeds. The current schema
+includes the Profile migration; the seed file remains comment-only. Add schema
+changes through migrations when their roadmap tasks begin, then regenerate types.
 
 Copy `.env.example` to ignored `.env.local` and set only the local API URL and
 publishable key from status output. Both are public client configuration. Never
