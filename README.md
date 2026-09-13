@@ -130,6 +130,10 @@ all other local development data. It does not test native encrypted persistence.
 
 ## Open on an iPhone from Windows
 
+Current iOS development uses Expo Go. Apple Developer membership and EAS Development
+Build setup are intentionally deferred. Consult ADR-065 before introducing a feature
+requiring native iOS code, a signed development build, or TestFlight distribution.
+
 1. Install an SDK 57-compatible Expo Go on an iPhone running iOS 16.4 or newer.
 2. Sign into the same Expo account in Expo Go and the CLI. If needed, run
    `npx.cmd expo login` in the project directory.
@@ -215,8 +219,8 @@ FIN-003 adds Jest 29 with `jest-expo` and React Native Testing Library 14 (ADR-0
 Component tests live alongside components in `__tests__/*.test.tsx`; future domain
 tests will live alongside their modules in `__tests__/*.test.ts`. Tests stay under
 `src/`, outside Router's `app/` directory. They do not replace native/device verification.
-FIN-011 will configure EAS and the
-development-build workflow. Native projects are not generated in FIN-001.
+FIN-011's EAS development-build workflow is intentionally deferred by ADR-065.
+Generated native projects remain absent from the repository.
 
 FIN-004 adds local Supabase infrastructure, FIN-005 adds private Profiles, and
 FIN-006 implements authentication and Profile Setup. Financial functionality is

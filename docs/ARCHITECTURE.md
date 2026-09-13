@@ -1881,19 +1881,27 @@ PRs should not merge unless both jobs pass.
 
 # 84. Build Strategy
 
-Development:
+Current development:
 
 ```text
-local Expo development
-+
-physical iPhone
+Windows
+→ Expo Go
+→ physical iPhone
 ```
 
-When native dependencies are required:
+Future native development:
 
 ```text
-EAS Development Build
+Windows
+→ EAS Development Build
+→ physical iPhone
 ```
+
+ADR-065 intentionally defers FIN-011 and Apple Developer/EAS setup until an actual
+native or distribution requirement appears. Resume FIN-011 before implementing
+such a requirement. Expo Go is not a permanent architectural limitation; ADR-049
+and ADR-050 remain the intended future strategy. Signed-binary and bundle-specific
+Keychain behavior remain unverified.
 
 Release testing:
 
