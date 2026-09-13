@@ -41,3 +41,41 @@ jobs:
 
       - name: Tests
         run: npm test -- --runInBand
+
+  database:
+    name: Database authorization
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify Docker
+        run: docker version
+
+      - name: Start local Supabase
+        # Startup can print privileged local credentials. Preserve its exit status.
+        run: npm run supabase:start > /dev/null 2>&1
+
+      - name: Reset local database
+        run: npm run db:reset
+
+      - name: Test database authorization
+        run: npm run db:test
+
+      - name: Stop local Supabase
+        if: always()
+        run: npm run supabase:stop
