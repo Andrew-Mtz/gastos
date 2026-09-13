@@ -79,8 +79,16 @@ set local role authenticated;
 select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000001');
 select is(current_user::text, 'authenticated', 'Returning A assertions run as the client role');
 select is(auth.uid(), 'f0050000-0000-4000-8000-000000000001'::uuid, 'Auth context returns to User A');
+-- VALIDATION ONLY: deliberately expose B to A inside this rolled-back transaction.
+reset role;
+alter policy profiles_select_own on public.profiles using (true);
+set local role authenticated;
 select results_eq('select id from public.profiles', array['f0050000-0000-4000-8000-000000000001'::uuid], 'A sees only A');
 select is((select count(*) from public.profiles where id = 'f0050000-0000-4000-8000-000000000002'), 0::bigint, 'A cannot read B');
+-- Restore the policy for remaining assertions; never merge this validation branch.
+reset role;
+alter policy profiles_select_own on public.profiles using (id = (select auth.uid()));
+set local role authenticated;
 select results_eq($$
   update public.profiles set display_name = 'Forged' where id = 'f0050000-0000-4000-8000-000000000002' returning id
 $$, array[]::uuid[], 'A cannot update B');
