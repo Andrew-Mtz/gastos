@@ -428,7 +428,7 @@ without merging its intentional lint violation into the implementation or main.
 
 ## FIN-010 — Supabase Authorization Test Foundation
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-004, FIN-005
 
@@ -1650,7 +1650,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-010 — Supabase Authorization Test Foundation
+FIN-011 — iOS Development Workflow
 ```
 
 No financial business logic should be implemented before the foundation work begins.
