@@ -368,9 +368,12 @@ That decision can be deferred.
 
 # 11. Money Representation
 
-Financial arithmetic must never depend on JavaScript floating-point values.
+Authoritative Money uses JavaScript `number` values for integer minor units,
+as accepted in ADR-010 and ADR-011. Every amount must satisfy
+`Number.isSafeInteger(amountMinor)`. No floating-point authority means no
+fractional-money approximation; exact safe-integer arithmetic is permitted.
 
-Preferred representation:
+Required representation:
 
 ```text
 amountMinor: integer
@@ -389,7 +392,11 @@ For currencies whose practical display does not commonly use decimals, the inter
 
 ### Rules
 
-* Arithmetic uses integer minor units where possible.
+* Money supports positive, zero, and negative safe integers. Negative zero is normalized to zero.
+* Positivity is enforced by higher-level domain operations such as Expense, Income, and Settlement, not by Money itself.
+* CurrencyCode validates exactly three ASCII uppercase letters without trimming or case conversion. Shape-valid codes such as `ZZZ` are accepted; this does not prove ISO registry membership or product support.
+* Addition, subtraction, and ordering require the same currency. Equality across currencies is false; conversion is a separate operation.
+* Arithmetic validates operands and rejects unsafe results rather than rounding, truncating, or clamping them.
 * Percent calculations must define explicit rounding behavior.
 * Database numeric types must not introduce silent floating-point approximation.
 

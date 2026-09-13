@@ -836,6 +836,11 @@ type Money = {
 
 As accepted in ADR-011, monetary minor units use JavaScript `number` and must be safe integers.
 
+FIN-101 implements Money in `src/domain/money/money.ts` as factory-created,
+frozen readonly plain objects with compile-time brands and pure functions.
+The module has no React, Expo, Supabase, or other infrastructure dependencies.
+Parsing, formatting, and percentage allocation remain separate from this primitive.
+
 Requirements:
 
 * no floating-point fractional money in authoritative financial arithmetic;
