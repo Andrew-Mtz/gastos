@@ -1960,6 +1960,61 @@ of scope. No Profile migration, grant, or RLS change is required.
 
 ---
 
+# ADR-065 — Defer iOS Development Build Until Required
+
+**Status:** Accepted
+
+## Context
+
+The project runs successfully on a physical iPhone using Expo Go from Windows.
+Local Supabase connectivity, authentication, navigation, and current React Native
+dependencies work in Expo Go. FIN-011's original acceptance requires a signed
+physical-device development build. The Windows + EAS physical-device workflow
+requires active Apple Developer Program membership. The user can pay for that
+membership, but no current product capability requires activating it.
+
+## Decision
+
+Continue using Expo Go as the primary iOS development workflow for the current
+product phases. Defer:
+
+* Apple Developer Program activation for this project;
+* `expo-dev-client`;
+* EAS project initialization/linking;
+* EAS development build profiles;
+* iPhone device registration;
+* signing/provisioning setup;
+* TestFlight setup;
+* native ATS/networking configuration specific to a standalone build.
+
+Resume FIN-011 or a successor native-build task before a requirement such as
+Siri/App Intents, an unsupported native dependency, TestFlight distribution,
+signed development-client testing, or App Store preparation. Do not introduce
+this infrastructure solely to satisfy a roadmap checkbox.
+
+## Consequences
+
+Benefits:
+
+* avoids premature native/build infrastructure;
+* avoids paying for membership before it provides development value;
+* keeps Phase 0 focused on the architecture currently required;
+* preserves the fast Expo Go development workflow.
+
+Trade-offs:
+
+* Expo Go does not prove behavior inside the final signed application binary;
+* Keychain/bundle-specific behavior of the final app remains unverified;
+* custom native features cannot be implemented/tested until this decision is revisited;
+* TestFlight distribution remains unavailable.
+
+ADR-049 and ADR-050 remain Accepted and are not canceled or superseded. They
+remain the intended physical-device/EAS strategy once activated. Expo Go is not
+a permanent architectural limitation. FIN-012 may review the current foundation
+with FIN-011 explicitly deferred, without claiming signed-build verification.
+
+---
+
 # Superseding Decisions
 
 When replacing an accepted ADR:

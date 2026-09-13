@@ -468,9 +468,22 @@ Profile SELECT makes the unchanged cross-user assertion and database job fail.
 
 ## FIN-011 — iOS Development Workflow
 
-**Status:** Not Started
+**Status:** Deferred
 
 **Depends on:** FIN-001
+
+### Deferral — ADR-065
+
+The current Windows, Expo Go, physical iPhone, and local Supabase LAN workflow
+is sufficient. The original acceptance criteria require Apple Developer Program
+membership and signed iOS development-build infrastructure. The user can pay for
+membership but intentionally defers activation until a real native or distribution
+requirement appears. This task is not completed.
+
+Resume FIN-011 before work requiring custom native iOS capabilities or distributable
+iOS builds, including unsupported native dependencies, Siri/App Intents, TestFlight,
+signed development-client testing, or App Store preparation. FIN-012 may proceed
+with this explicit deferral and must retain the unverified signed-build limitations.
 
 ### Goal
 
@@ -493,7 +506,7 @@ A development build can be installed and launched on the primary iPhone when nee
 
 **Status:** Not Started
 
-**Depends on:** FIN-001 through FIN-011
+**Depends on:** FIN-001 through FIN-010; FIN-011 is explicitly deferred by ADR-065.
 
 ### Goal
 
@@ -1650,7 +1663,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-011 — iOS Development Workflow
+FIN-012 — Foundation Review
 ```
 
 No financial business logic should be implemented before the foundation work begins.
