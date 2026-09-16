@@ -231,6 +231,13 @@ Run its focused tests with:
 npm.cmd test -- --runTestsByPath src/domain/money/__tests__/money.test.ts --runInBand --verbose
 ```
 
+Deterministic basis-point allocation lives in
+`src/domain/allocation/allocation.ts`. Run its focused tests with:
+
+```powershell
+npm.cmd test -- --runTestsByPath src/domain/allocation/__tests__/allocation.test.ts --runInBand --verbose
+```
+
 ## Navigation shell verification (FIN-007)
 
 Automated navigation tests use real Expo Router layouts with a controlled Auth

@@ -570,7 +570,7 @@ Include:
 
 ## FIN-102 — Percentage and Allocation Domain
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-101
 
@@ -1663,7 +1663,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-102 — Percentage and Allocation Domain
+FIN-103 — Budget Period Schema
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.

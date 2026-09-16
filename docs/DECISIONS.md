@@ -437,11 +437,18 @@ The split amounts must exactly equal the original amount.
 
 Use deterministic largest-remainder allocation:
 
-1. calculate exact proportional results;
+1. calculate exact proportional results for the source magnitude;
 2. floor each result to integer minor units;
 3. determine remaining minor units;
 4. allocate remaining units to the largest fractional remainders;
-5. break ties using stable deterministic ordering.
+5. break ties using original input order.
+
+For signed Money, apply largest remainder to the absolute magnitude and reapply
+the source sign to every allocation afterward. Allocation is sign-symmetric:
+
+```text
+allocate(-T, shares) = negate each result of allocate(T, shares)
+```
 
 ## Consequences
 
