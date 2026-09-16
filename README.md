@@ -53,8 +53,9 @@ npm.cmd run db:types
 
 The first startup downloads Docker images. `db:reset` destroys and rebuilds only
 the local development database from migrations and seeds. The current schema
-includes the Profile migration; the seed file remains comment-only. Add schema
-changes through migrations when their roadmap tasks begin, then regenerate types.
+includes private Profiles and personal calendar-month Budget Periods; the seed
+file remains comment-only. Add schema changes through migrations when their
+roadmap tasks begin, then regenerate types.
 
 Copy `.env.example` to ignored `.env.local` and set only the local API URL and
 publishable key from status output. Both are public client configuration. Never
@@ -67,15 +68,17 @@ paste its full output into reports. Keep the local stack on a trusted network.
 preserves the existing file on generation failure. Commit types with schema
 changes. Type regeneration needs Docker; ordinary static checks use committed types.
 
-FIN-005 verifies the Profile schema, grants, RLS, constraints, and timestamps with
-one transactional pgTAP test. FIN-010 shares synthetic Auth fixtures and JWT context
-support through `supabase/tests/helpers/auth.sql.inc`. With Docker and the local
-stack running, apply migrations and run all tests or a focused file:
+FIN-005 verifies the Profile schema, and FIN-103 verifies the Budget Period schema,
+grants, RLS, constraints, and timestamps with focused transactional pgTAP tests.
+FIN-010 shares synthetic Auth fixtures and JWT context support through
+`supabase/tests/helpers/auth.sql.inc`. With Docker and the local stack running,
+apply migrations and run all tests or a focused file:
 
 ```powershell
 npm.cmd run db:reset
 npm.cmd run db:test
 npm.cmd run db:test -- supabase/tests/profiles.test.sql
+npm.cmd run db:test -- supabase/tests/budget_periods.test.sql
 ```
 
 The test creates synthetic Auth fixtures inside a rolled-back transaction; no

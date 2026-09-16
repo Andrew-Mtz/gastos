@@ -593,7 +593,7 @@ Include difficult rounding scenarios.
 
 ## FIN-103 — Budget Period Schema
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-004, FIN-005
 
@@ -1663,7 +1663,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-103 — Budget Period Schema
+FIN-104 — Budget Bucket Schema
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.

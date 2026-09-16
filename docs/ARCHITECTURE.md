@@ -974,6 +974,17 @@ and a Docker-compatible runtime. Local migrations and synthetic seeds reproduce
 the database; types are generated from its `public` schema and committed under
 `src/infrastructure/supabase/database.types.ts`. Hosted provisioning is deferred.
 
+FIN-103 adds `public.budget_periods`. Each row is owned by `profile_id`, uses
+inclusive `date` boundaries constrained to one canonical calendar month, and
+snapshots the period currency. Optional expected income uses PostgreSQL `bigint`
+with a database bound of `0..9007199254740991`, preserving the JavaScript safe
+integer contract. Actual income and allocation rows are separate later concerns.
+Owner-only RLS combines with column grants: authenticated clients may insert the
+approved creation fields and update only expected income on `OPEN` rows. Identity,
+dates, currency, lifecycle state, and timestamps are not client-updateable;
+ordinary updates cannot mutate `CLOSED` rows. Generated database types include
+the table shape and its Profile relationship but do not replace SQL authorization.
+
 ---
 
 # 38. Migration Philosophy
@@ -1074,7 +1085,7 @@ Likely examples:
 transactions(owner_profile_id, transaction_date)
 transactions(household_id, transaction_date)
 household_members(household_id, profile_id)
-budget_periods(profile_id, start_date)
+budget_periods(profile_id, starts_on)
 shared_expense_splits(shared_expense_id)
 ```
 

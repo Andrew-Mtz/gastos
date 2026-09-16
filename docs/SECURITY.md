@@ -463,6 +463,15 @@ Household members must not see:
 
 A shared expense may expose only the household data necessary to understand that expense.
 
+FIN-103 budget periods are private personal records. Authenticated users may
+select and insert only rows whose `profile_id` equals `auth.uid()`. They may update
+only `expected_income_minor` on their own `OPEN` rows; ordinary updates to
+`CLOSED` rows are excluded by RLS. Household membership grants no access.
+
+SQL column grants separately prevent clients from changing ownership, calendar
+boundaries, the historical currency snapshot, lifecycle state, or server-managed
+timestamps. No anonymous access, client DELETE grant, or DELETE policy exists.
+
 ---
 
 # 22. Avoiding Indirect Privacy Leaks
