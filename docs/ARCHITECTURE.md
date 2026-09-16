@@ -838,8 +838,10 @@ As accepted in ADR-011, monetary minor units use JavaScript `number` and must be
 
 FIN-101 implements Money in `src/domain/money/money.ts` as factory-created,
 frozen readonly plain objects with compile-time brands and pure functions.
-The module has no React, Expo, Supabase, or other infrastructure dependencies.
-Parsing, formatting, and percentage allocation remain separate from this primitive.
+FIN-102 implements basis points and deterministic Money allocation in
+`src/domain/allocation/allocation.ts`. Both modules are pure TypeScript and have
+no React, Expo, Supabase, or other infrastructure dependencies. Parsing and
+formatting remain separate from these primitives.
 
 Requirements:
 
@@ -867,7 +869,9 @@ ADR-011 establishes JavaScript `number` for monetary minor units. Every monetary
 
 # 32. Percentage Type
 
-Percentages should use integer basis points.
+Authoritative allocation percentages use safe-integer basis points from `0`
+through `10000` inclusive. Full allocations contain at least one share and total
+exactly `10000`; the domain does not normalize incomplete or excessive shares.
 
 Example:
 
@@ -885,6 +889,13 @@ Avoid storing:
 ```
 
 as authoritative financial split values.
+
+Money allocation uses deterministic largest remainder. Equal remainders use
+original input order, and signed Money is allocated by magnitude before its sign
+is reapplied. To avoid unsafe `amountMinor * basisPoints` numerators near the
+JavaScript safe-integer boundary, the implementation decomposes the magnitude
+into quotient and remainder at the `10000` divisor. It does not use floating-point
+percentage multiplication or `bigint`.
 
 ---
 

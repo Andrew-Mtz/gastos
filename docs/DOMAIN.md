@@ -421,26 +421,21 @@ The domain must guarantee:
 sum(split amounts) = original amount
 ```
 
-Rounding must be deterministic.
+Authoritative percentages use safe-integer `BasisPoints` values from `0` through
+`10000` inclusive. A full allocation must contain at least one share and total
+exactly `10000`; shares are never silently normalized.
 
-Recommended algorithm:
+Largest-remainder allocation is mandatory:
 
-1. Calculate exact proportional values.
+1. Calculate exact proportional values for the source magnitude.
 2. Floor each result to integer minor units.
 3. Calculate remaining minor units.
-4. Distribute the remainder deterministically.
+4. Distribute units to the largest fractional remainders first.
+5. Break equal-remainder ties by original input order.
 
-Suggested remainder distribution order:
-
-```text
-largest fractional remainder first
-```
-
-If equal:
-
-```text
-stable member ordering
-```
+Signed Money is allocated by absolute magnitude and then has the original sign
+reapplied to every result. Allocation is therefore sign-symmetric. Callers with
+keyed participants must establish a stable input order before allocation.
 
 This rule must be covered by tests.
 
