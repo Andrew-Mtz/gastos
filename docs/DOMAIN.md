@@ -222,6 +222,17 @@ BudgetPeriod
 - closedAt
 ```
 
+FIN-103 persists the initial personal-period subset as one canonical calendar
+month with inclusive start and end dates. The row snapshots its base currency,
+stores an optional expected-income amount in safe integer minor units, and records
+its lifecycle state and technical timestamps. `expectedIncomeMinor = null` means
+no estimate has been supplied; `0` is an explicit zero estimate. The currency,
+ownership, and month boundaries do not change through ordinary editing.
+
+Actual income is not stored on the Budget Period row. It remains derived from
+received-income transactions. Allocation rows and their percentage history are
+introduced by FIN-105 rather than embedded in this entity.
+
 Possible statuses:
 
 ```text
@@ -236,6 +247,8 @@ CLOSED
 * Historical budget periods preserve their own configuration.
 * Updating a current budget strategy must not change prior periods.
 * A closed period must not be silently mutated.
+* Ordinary authenticated edits are available only while lifecycle state is `OPEN`.
+* Calendar age alone does not close or freeze a period.
 
 ---
 
