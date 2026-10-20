@@ -91,7 +91,8 @@ function PersonalSavings({ profile }: { profile: Profile }) {
         }}
       />
     );
-  const { period, availability, configured } = query.data;
+  const { period, availability, configured, goalReserved, unassignedSavings } =
+    query.data;
   const targetPeriod = pending?.period ?? period;
   if (editing && targetPeriod)
     return (
@@ -154,6 +155,18 @@ function PersonalSavings({ profile }: { profile: Profile }) {
             Ahorro protegido acumulado hasta este mes:{' '}
             {formatMoney(availability.protectedSavings)}
           </AppText>
+          {goalReserved && unassignedSavings && (
+            <>
+              <AppText>
+                Reservado para metas (incluido en el total):{' '}
+                {formatMoney(goalReserved)}
+              </AppText>
+              <AppText>
+                Ahorro general disponible para retiro:{' '}
+                {formatMoney(unassignedSavings)}
+              </AppText>
+            </>
+          )}
           <AppText>
             Resto ordinario del mes antes de compromisos:{' '}
             {formatMoney(availability.ordinaryRemainderBeforeCommitments)}
@@ -215,6 +228,9 @@ function PersonalSavings({ profile }: { profile: Profile }) {
           </>
         )
       )}
+      <Button variant="secondary" onPress={() => router.push('/savings-goals')}>
+        Metas personales
+      </Button>
       <Button variant="secondary" onPress={() => router.push('/history')}>
         Historial personal
       </Button>
@@ -236,6 +252,7 @@ export function SavingsEditor({
   period,
   date,
   pending,
+  goal,
   onSave,
   onCancel,
 }: {
@@ -244,6 +261,7 @@ export function SavingsEditor({
   period: BudgetPeriod;
   date: string;
   pending: SavingsRequest | null;
+  goal?: { id: string; name: string };
   onSave: (request: SavingsRequest) => Promise<void>;
   onCancel: () => void;
 }) {
@@ -279,6 +297,9 @@ export function SavingsEditor({
     return (
       <FormScreen>
         <AppText variant="title">Confirmar retiro</AppText>
+        {goal && (
+          <AppText>Meta: {goal.name}. Este retiro reduce su progreso.</AppText>
+        )}
         <AppText>
           Retirar{' '}
           {formatMoney(
@@ -328,6 +349,12 @@ export function SavingsEditor({
           ? 'Retirar de ahorro'
           : 'Aportar a ahorro'}
       </AppText>
+      {goal && (
+        <AppText>
+          Meta: {goal.name}. El aporte es adicional, no reasigna ahorro
+          existente.
+        </AppText>
+      )}
       <AppText>
         Movimiento conceptual de ahorro · {period.base_currency}
       </AppText>
@@ -402,6 +429,7 @@ export function SavingsEditor({
               form,
               type,
               withdrawalConfirmed: type === 'SAVINGS_WITHDRAWAL',
+              ...(goal ? { savingsGoalId: goal.id } : {}),
             };
             if (type === 'SAVINGS_WITHDRAWAL') setConfirmation(request);
             else await submit(request);

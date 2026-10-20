@@ -1618,3 +1618,15 @@ financial conflicts versus allowed ordinary overspending. Cross-session fixtures
 must be committed to be visible; unlike single-session pgTAP fixtures, this harness
 uses fresh UUIDs and removes only those synthetic rows in a finally block. It can
 only target the named local Supabase Docker container, never a supplied hosted URL.
+
+
+## FIN-116 personal goal enforcement
+
+Goals are owner-only with SELECT and INSERT RLS and no client UPDATE/DELETE grant.
+There is no household scope to forge. The optional transaction goal reference is
+insert-only, composite-owner constrained, same-currency and valid only for savings
+movements. Goal creation and goal-scoped savings RPCs are authenticated invoker
+functions with empty search paths; stable replay checks include all immutable input.
+General and goal sub-reserves are validated at every historical month under the same
+owner lock and deferred correction guards as FIN-115. All goal queries live under the
+owner savings cache namespace so every financial correction invalidates their totals.

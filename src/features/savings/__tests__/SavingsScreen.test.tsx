@@ -14,6 +14,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { period, profile } from '../../income/__tests__/fixtures';
 import { currentMonth } from '../../budget/budget-setup';
 import { financialDate } from '../../income/income-form';
+import { createMoney } from '../../../domain/money/money';
 import { calculateSavingsAvailability } from '../../../domain/savings/savings-availability';
 jest.mock('../savings-data', () => ({
   ...jest.requireActual('../savings-data'),
@@ -41,6 +42,8 @@ const isCurrentUser = jest.fn(() => true);
 const data = {
   period,
   configured: true,
+  goalReserved: createMoney(0, 'USD'),
+  unassignedSavings: createMoney(40000, 'USD'),
   availability: calculateSavingsAvailability('USD', {
     openingProtectedMinor: 10000,
     allocatedSavingsMinor: 30000,

@@ -29,6 +29,7 @@ const row = {
   deleted_at: null,
   withdrawal_confirmed: true,
   savings_validated: true,
+  savings_goal_id: null,
 };
 const summary = {
   budget_period_id: period.id,
@@ -40,6 +41,8 @@ const summary = {
   spendable_allocated_minor: 120000,
   spent_minor: 40000,
   configured: true,
+  goal_reserved_minor: 0,
+  unassigned_savings_minor: 235000,
 };
 beforeEach(() => {
   jest.clearAllMocks();

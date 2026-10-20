@@ -2107,6 +2107,45 @@ separate tasks. Runtime/device verification is not supplied by component tests.
 
 ---
 
+# ADR-069 — Personal Goals Are Explicitly Funded Sub-Reserves
+
+**Status:** Accepted under delegated implementation authority (2026-10-20),
+pending owner review of `OVERNIGHT_DECISIONS.md`.
+
+A personal goal is an owner-only objective with a name, positive safe-integer target,
+immutable currency and optional calendar target date. Creation does not reserve or
+move money. Reaching the target is derived from net progress, not an irreversible
+status; contributing beyond the target is allowed. Editing/archiving goals is deferred.
+
+A goal contribution is **additional funding from ordinary monthly remainder**, not
+assignment of the percentage allocation or existing savings. It is one existing
+`SAVINGS_CONTRIBUTION` transaction with an immutable goal reference. Therefore it
+reduces ordinary availability once and increases both total protected savings and
+that goal's sub-reserve once. Goals are subsets of total savings, never added to it.
+
+An explicit goal-scoped withdrawal reduces that goal and total protected savings,
+and returns money only to the withdrawal month's ordinary availability. It requires
+the same affirmative confirmation as general savings withdrawals. General withdrawals
+can consume only the unassigned reserve (total protected minus all goal sub-reserves).
+Neither flow is a bank transfer, income or expense. No automatic assignment, release,
+withdrawal, redistribution or cross-currency conversion is introduced.
+
+Every currency/month prefix must preserve nonnegative net progress for each goal
+and a nonnegative unassigned reserve. Income/allocation corrections and soft deletion
+or restoration retain these guards under FIN-115's owner-level write serialization.
+A target date is a planning label, not an automatic action or closed-period bypass.
+Snapshots and contribution/withdrawal history explicitly state their through-month.
+Stable UUIDs and exact replay comparison include goal identity. Owners cannot relink
+an existing movement, forge another owner's goal or change its denomination.
+
+Goal withdrawals are the minimum FIN-115 integration prerequisite required to avoid
+silently consuming a goal or making funded goals permanently inaccessible. FIN-122
+may later provide corrections while preserving all these constraints. Existing
+unassigned savings are unchanged; assigning them without new funding needs a future
+explicit, independently documented operation.
+
+---
+
 # Superseding Decisions
 
 When replacing an accepted ADR:

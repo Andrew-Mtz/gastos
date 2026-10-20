@@ -39,6 +39,7 @@ export default function AppLayout() {
     >
       <Tabs.Screen name="expenses" options={{ href: null }} />
       <Tabs.Screen name="savings" options={{ href: null }} />
+      <Tabs.Screen name="savings-goals" options={{ href: null }} />
       <Tabs.Screen name="history" options={{ href: null }} />
       {tabs.map(({ name, title, icon }) => (
         <Tabs.Screen

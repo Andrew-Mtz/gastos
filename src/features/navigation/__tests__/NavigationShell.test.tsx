@@ -48,6 +48,7 @@ const routes = {
   '(app)/expenses': () => <Text>Gastos personales</Text>,
   '(app)/history': () => <Text>Historial personal</Text>,
   '(app)/savings': () => <Text>Ahorro personal</Text>,
+  '(app)/savings-goals': () => <Text>Metas personales</Text>,
   '(app)/budget': Budget,
   '(app)/household': Household,
   '(app)/settings': Settings,
@@ -167,3 +168,28 @@ test.each([
     screen.queryByRole('button', { name: 'Cerrar sesión' }),
   ).not.toBeOnTheScreen();
 });
+
+test('private savings goal deep link remains outside the five tabs and is removed on logout', async () => {
+  await openShell('AUTHENTICATED_READY', '/savings-goals');
+  expect(await screen.findByText('Metas personales')).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: 'savings-goals' }),
+  ).not.toBeOnTheScreen();
+  await act(async () => {
+    changeStatus('UNAUTHENTICATED');
+  });
+  expect(await screen.findByText('Auth destination')).toBeVisible();
+  expect(router.canGoBack()).toBe(false);
+  expect(screen.queryByText('Metas personales')).not.toBeOnTheScreen();
+});
+test.each([
+  ['UNAUTHENTICATED', 'Auth destination'],
+  ['AUTHENTICATED_PROFILE_MISSING', 'Profile Setup destination'],
+] as const)(
+  '%s cannot open private goal deep link',
+  async (status, destination) => {
+    await openShell(status, '/savings-goals');
+    expect(await screen.findByText(destination)).toBeVisible();
+    expect(screen.queryByText('Metas personales')).not.toBeOnTheScreen();
+  },
+);
