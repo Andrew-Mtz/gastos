@@ -2318,3 +2318,16 @@ which existing income/expense/savings/goal/allocation and recurring mutations al
 invalidate. Focus and manual budget refresh also invalidate it. Auth cache clearing
 and owner/period query keys prevent private stale snapshots crossing accounts/months.
 No dashboard, persisted aggregate, realtime, dependency or privileged capability added.
+
+## FIN-121 current personal dashboard
+
+Inicio reads one STABLE SECURITY INVOKER owner/month RPC. It composes the existing
+safe-to-spend, received-income and bucket-consumption helpers, period/allocation
+metadata and a bounded pending-obligation preview within one calling-statement
+snapshot. No independent client financial queries are joined. The application
+boundary reuses exact allocation/domain arithmetic and rejects cross-owner, currency,
+period, component-total or preview-count inconsistencies. Preview rows are never an
+aggregate source. The current-month-only UI uses profile timezone, owner/month cache
+keys under the existing recurring invalidation family, cancellation on blur and
+background, and refetch on focus/resume/manual refresh. Financial figures are hidden
+while loading/refetching, after errors and without a valid current snapshot.

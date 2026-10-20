@@ -1681,3 +1681,12 @@ A scalar aggregate is complete regardless of Data API row limits. Client caches
 use owner/period keys and existing auth clear/cancellation; refreshing/error states
 hide prior numerical availability. Neither a partner nor an unrelated user receives
 another owner's financial components through this RPC.
+
+## FIN-121 dashboard isolation
+
+The dashboard RPC accepts a canonical month, not a caller-selected owner. It resolves
+only auth.uid()'s period and existing owner-only RLS data. Authentication, empty search
+path, authenticated-only EXECUTE and stable invoker semantics apply to the complete
+snapshot, including the bounded preview. No table or write grant changes. An absent
+owned period returns an explicit missing-period state, never another owner's period
+or a zero financial balance. Existing auth cache clearing remains mandatory.

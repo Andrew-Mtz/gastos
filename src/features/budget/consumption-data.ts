@@ -6,7 +6,7 @@ export const consumptionOwnerKey = (profileId: string) =>
   ['bucket-consumption', profileId] as const;
 export const consumptionKey = (profileId: string, periodId: string) =>
   [...consumptionOwnerKey(profileId), periodId] as const;
-const responseSchema = z.object({
+export const consumptionSnapshotSchema = z.object({
   budget_period_id: z.uuid(),
   base_currency: z.string().regex(/^[A-Z]{3}$/),
   buckets: z.array(
@@ -29,7 +29,7 @@ export async function readBucketConsumption(
   });
   const { data, error } = await (signal ? query.abortSignal(signal) : query);
   if (error) throw error;
-  const parsed = responseSchema.parse(data);
+  const parsed = consumptionSnapshotSchema.parse(data);
   if (
     parsed.budget_period_id.toLowerCase() !== id ||
     parsed.base_currency !== currency

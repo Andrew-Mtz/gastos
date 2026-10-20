@@ -456,6 +456,46 @@ await scenario(
   true,
 );
 
+await scenario(
+  'dashboard snapshot spans concurrent fixed payment across all cards and preview',
+  (c) => c.resolve(),
+  (c) => `with delay as materialized (select pg_sleep(6))
+    select 'SNAPSHOT:'||public.get_personal_dashboard(${c.month})::text from delay;`,
+  true,
+  async (c, auth, output) => {
+    const before = JSON.parse(
+      output
+        .split('\n')
+        .find((line) => line.startsWith('SNAPSHOT:'))
+        .slice(9),
+    );
+    assert.equal(before.availability.savings.spent_minor, 0);
+    assert.deepEqual(before.consumption.buckets, []);
+    assert.equal(
+      before.availability.commitments.buckets[0].confirmed_minor,
+      2840,
+    );
+    assert.equal(before.upcoming.length, 1);
+    assert.equal(before.upcoming[0].template_id, c.template);
+    const after = JSON.parse(
+      (
+        await run(
+          `begin;${auth}select public.get_personal_dashboard(${c.month});commit;`,
+        )
+      )
+        .split('\n')
+        .find((line) => line.startsWith('{')),
+    );
+    assert.equal(after.availability.savings.spent_minor, 2840);
+    assert.equal(after.consumption.buckets[0].spent_minor, 2840);
+    assert.deepEqual(after.availability.commitments.buckets, []);
+    assert.deepEqual(after.upcoming, []);
+  },
+  /unused/,
+  'FIXED',
+  true,
+);
+
 console.log(
-  'All seventeen finance concurrency scenarios passed; synthetic fixtures removed.',
+  'All eighteen finance concurrency scenarios passed; synthetic fixtures removed.',
 );

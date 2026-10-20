@@ -258,3 +258,31 @@ credential/security changes are authorized by this log.
 - Revisit: Accepted under delegated authority, not personally reviewed or confirmed
   by the owner. Pending owner review of presentation/formula; revisit cross-month
   payments/accounts later. FIN-123/125 must keep unresolved-obligation safeguards.
+
+## FIN-121: One current-month dashboard, not a merged client balance
+
+- Question: How should Inicio combine existing financial facts and upcoming bills
+  without mixing independently fetched states or implying cash availability?
+- Options: assemble existing query cards independently; persist a dashboard total;
+  compose existing stable reads into one owner/month snapshot.
+- Decision: Use one read-only stable invoker snapshot for the current financial
+  month in the profile timezone. Reuse ADR-073 and existing exact allocation rules.
+  Show received/expected income separately, this-month savings allocation separately
+  from cumulative protected savings, and bucket spending alongside its allocation.
+  Only ADR-073's gated margin is labeled available. Show at most five pending
+  obligations ordered by due date, including overdue days of this month, with a
+  full-list link. Complete commitments never come from that preview.
+- Reason: A payment or savings movement must not temporarily disappear between
+  independently racing cards. Expected income and cumulative savings cannot be
+  confused with ordinary remaining money. The current-month-only screen keeps
+  existing entry/navigation destinations aligned without adding historical UI.
+- Impact: No financial policy, persisted total, transaction, account balance,
+  conversion, corrections, closure or rollover. Existing owner-wide invalidation
+  also refreshes the dashboard. Navigation/background/authentication/month changes
+  cancel obsolete reads; loading/refetch/error hides cached financial figures.
+  Missing period or allocation directs setup rather than claiming zero availability.
+- Verification: Domain reuse and boundary checks, real owner/anonymous authorization,
+  complete totals beyond preview/row caps, concurrent payment snapshot proof,
+  lifecycle/navigation tests, generated types, bounded review and exact-head CI.
+- Revisit: Pending owner review of presentation. Historical dashboard navigation,
+  category charts and cross-period payments remain outside FIN-121.

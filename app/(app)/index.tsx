@@ -1,1 +1,1 @@
-export { BootstrapScreen as default } from '../../src/components/BootstrapScreen';
+export { DashboardScreen as default } from '../../src/features/dashboard/DashboardScreen';

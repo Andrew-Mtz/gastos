@@ -23,6 +23,9 @@ export async function readSafeToSpend(
   });
   const { data, error } = await (signal ? query.abortSignal(signal) : query);
   if (error) throw error;
+  return mapSafeToSpend(period, data);
+}
+export function mapSafeToSpend(period: BudgetPeriod, data: unknown) {
   const { savings: s, commitments: c } = snapshotSchema.parse(data);
   if (
     s.budget_period_id !== period.id ||
