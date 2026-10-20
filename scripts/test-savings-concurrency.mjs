@@ -75,7 +75,8 @@ async function scenario(
     ordinary = randomUUID(),
     savings = randomUUID(),
     category = randomUUID(),
-    income = randomUUID();
+    income = randomUUID(),
+    goal = randomUUID();
   const ids = {
     owner,
     september,
@@ -84,6 +85,7 @@ async function scenario(
     savings,
     category,
     income,
+    goal,
   };
   const auth = `set local role authenticated;
     set local request.jwt.claim.sub='${owner}';
@@ -93,7 +95,9 @@ async function scenario(
     `select public.register_savings_movement('${randomUUID()}','${period}','${type}',${amount},'USD','${date}',${type === 'SAVINGS_WITHDRAWAL'});`;
   const expense = (amount) =>
     `select public.register_personal_expense('${randomUUID()}','${september}',${amount},'USD','2026-09-02','${category}');`;
-  const ctx = { ...ids, move, expense };
+  const goalMove = (type, amount, period = september, date = '2026-09-02') =>
+    `select public.register_savings_movement('${randomUUID()}','${period}','${type}',${amount},'USD','${date}',${type === 'SAVINGS_WITHDRAWAL'},null,'${goal}');`;
+  const ctx = { ...ids, move, expense, goalMove };
   try {
     await run(`begin;
       insert into auth.users(id,email) values('${owner}','fin115-${owner}@example.invalid');
@@ -103,6 +107,7 @@ async function scenario(
       insert into public.budget_buckets(id,profile_id,name,type) values('${ordinary}','${owner}','Ordinary','SPENDABLE'),('${savings}','${owner}','Savings','SAVINGS');
       insert into public.categories(id,profile_id,name,budget_bucket_id) values('${category}','${owner}','Food','${ordinary}');
       ${auth}
+      select public.create_personal_savings_goal('${goal}','Synthetic goal',100,'USD');
       select public.save_budget_allocations('${september}','[{"budget_bucket_id":"${ordinary}","percentage_basis_points":8000},{"budget_bucket_id":"${savings}","percentage_basis_points":2000}]');
       select public.register_income('${income}','${september}',1000,'USD','2026-09-01');commit;`);
     const first = session(
@@ -150,6 +155,7 @@ async function scenario(
     // created by this invocation. No production DELETE capability is introduced.
     await run(`begin;delete from public.transactions where owner_profile_id='${owner}';
       delete from public.budget_allocations where budget_period_id in ('${september}','${october}');
+      delete from public.savings_goals where owner_profile_id='${owner}';
       delete from public.categories where profile_id='${owner}';delete from public.budget_buckets where profile_id='${owner}';
       delete from public.budget_periods where profile_id='${owner}';delete from public.profiles where id='${owner}';delete from auth.users where id='${owner}';commit;`);
     assert.equal(
@@ -215,6 +221,43 @@ await scenario(
   false,
   (c) => countMovements(c, 1),
 );
+
+await scenario(
+  'concurrent goal withdrawals cannot borrow general reserve',
+  (c) =>
+    c.goalMove('SAVINGS_CONTRIBUTION', 100) +
+    c.goalMove('SAVINGS_WITHDRAWAL', 75),
+  (c) => c.goalMove('SAVINGS_WITHDRAWAL', 50, c.october, '2026-10-02'),
+  false,
+  (c) => countMovements(c, 2),
+);
+await scenario(
+  'general withdrawal cannot consume concurrently funded goal',
+  (c) => c.goalMove('SAVINGS_CONTRIBUTION', 700),
+  (c) => c.move('SAVINGS_WITHDRAWAL', 201),
+  false,
+  (c) => countMovements(c, 1),
+);
+await scenario(
+  'goal funding sees ordinary availability from concurrent general withdrawal',
+  (c) => c.move('SAVINGS_WITHDRAWAL', 200),
+  (c) => c.goalMove('SAVINGS_CONTRIBUTION', 1000),
+  true,
+  async (c, auth) => {
+    await countMovements(c, 2);
+    assert.equal(
+      (
+        await run(
+          `begin;${auth}select public.get_savings_availability('${c.september}')->>'unassigned_savings_minor';rollback;`,
+        )
+      )
+        .split('\n')
+        .filter((x) => x === '0').length,
+      1,
+    );
+  },
+);
+
 console.log(
-  'All six savings concurrency scenarios passed; synthetic fixtures removed.',
+  'All nine savings concurrency scenarios passed; synthetic fixtures removed.',
 );

@@ -220,6 +220,47 @@ export type Database = {
         };
         Relationships: [];
       };
+      savings_goals: {
+        Row: {
+          created_at: string;
+          currency: string;
+          id: string;
+          name: string;
+          owner_profile_id: string;
+          scope: string;
+          target_amount_minor: number;
+          target_date: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          currency: string;
+          id?: string;
+          name: string;
+          owner_profile_id: string;
+          scope?: string;
+          target_amount_minor: number;
+          target_date?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          currency?: string;
+          id?: string;
+          name?: string;
+          owner_profile_id?: string;
+          scope?: string;
+          target_amount_minor?: number;
+          target_date?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'savings_goals_owner_profile_id_fkey';
+            columns: ['owner_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       transactions: {
         Row: {
           amount_minor: number;
@@ -231,6 +272,7 @@ export type Database = {
           description: string | null;
           id: string;
           owner_profile_id: string;
+          savings_goal_id: string | null;
           savings_validated: boolean;
           scope: string;
           transaction_date: string;
@@ -248,6 +290,7 @@ export type Database = {
           description?: string | null;
           id?: string;
           owner_profile_id: string;
+          savings_goal_id?: string | null;
           savings_validated?: boolean;
           scope?: string;
           transaction_date: string;
@@ -265,6 +308,7 @@ export type Database = {
           description?: string | null;
           id?: string;
           owner_profile_id?: string;
+          savings_goal_id?: string | null;
           savings_validated?: boolean;
           scope?: string;
           transaction_date?: string;
@@ -279,6 +323,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'categories';
             referencedColumns: ['id', 'profile_id'];
+          },
+          {
+            foreignKeyName: 'transactions_goal_owner_fkey';
+            columns: ['savings_goal_id', 'owner_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'savings_goals';
+            referencedColumns: ['id', 'owner_profile_id'];
           },
           {
             foreignKeyName: 'transactions_owner_profile_id_fkey';
@@ -301,8 +352,37 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      create_personal_savings_goal: {
+        Args: {
+          p_currency: string;
+          p_goal_id: string;
+          p_name: string;
+          p_target_amount_minor: number;
+          p_target_date?: string;
+        };
+        Returns: {
+          created_at: string;
+          currency: string;
+          id: string;
+          name: string;
+          owner_profile_id: string;
+          scope: string;
+          target_amount_minor: number;
+          target_date: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'savings_goals';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       get_bucket_consumption: {
         Args: { p_budget_period_id: string };
+        Returns: Json;
+      };
+      get_personal_savings_goals: {
+        Args: { p_through_month: string };
         Returns: Json;
       };
       get_received_income: {
@@ -353,6 +433,7 @@ export type Database = {
           description: string | null;
           id: string;
           owner_profile_id: string;
+          savings_goal_id: string | null;
           savings_validated: boolean;
           scope: string;
           transaction_date: string;
@@ -387,6 +468,7 @@ export type Database = {
           description: string | null;
           id: string;
           owner_profile_id: string;
+          savings_goal_id: string | null;
           savings_validated: boolean;
           scope: string;
           transaction_date: string;
@@ -407,6 +489,7 @@ export type Database = {
           p_budget_period_id: string;
           p_currency: string;
           p_description?: string;
+          p_savings_goal_id?: string;
           p_transaction_date: string;
           p_transaction_id: string;
           p_type: string;
@@ -422,6 +505,7 @@ export type Database = {
           description: string | null;
           id: string;
           owner_profile_id: string;
+          savings_goal_id: string | null;
           savings_validated: boolean;
           scope: string;
           transaction_date: string;

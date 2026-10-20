@@ -10,6 +10,7 @@ export type SavingsRequest = Readonly<{
   id: string;
   type: SavingsType;
   withdrawalConfirmed: boolean;
+  savingsGoalId?: string;
   form: IncomeForm;
 }>;
 export function validateSavingsRequest(
@@ -21,6 +22,7 @@ export function validateSavingsRequest(
       id: z.uuid(),
       type: z.enum(['SAVINGS_CONTRIBUTION', 'SAVINGS_WITHDRAWAL']),
       withdrawalConfirmed: z.boolean(),
+      savingsGoalId: z.uuid().optional(),
       form: validateIncomeForm(period),
     })
     .parse(request);
@@ -34,7 +36,7 @@ export function savingsErrorMessage(error: unknown) {
       ? error.code
       : null;
   if (code === '23514')
-    return 'El movimiento no es válido: revisa el ahorro disponible, el resto antes de compromisos, la fecha y la moneda. Un registro histórico incompatible también requiere corrección.';
+    return 'El movimiento no es válido: revisa el ahorro general o de la meta disponible, el resto antes de compromisos, la fecha y la moneda. Un registro histórico incompatible también requiere corrección.';
   if (code === '23505')
     return 'El identificador ya existe con otros datos o fue eliminado. Actualiza el historial antes de crear otro movimiento.';
   return incomeErrorMessage(error);

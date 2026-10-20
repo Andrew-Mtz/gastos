@@ -1048,7 +1048,7 @@ transfer, goals, correction UI, ordinary rollover or final safe-to-spend is intr
 
 ## FIN-116 — Personal Savings Goals
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-115
 
@@ -1067,6 +1067,28 @@ Create personal savings goals.
 ### Security
 
 Strictly personal.
+
+### Completion evidence
+
+Private goals support a name, exact positive target, immutable currency, optional
+calendar target date and keyset-paginated linked contribution/withdrawal history.
+ADR-069 defines additional funding, not reassignment of existing percentage savings.
+Progress is net explicit funding and may fall below target after a confirmed withdrawal.
+General savings and goals partition the protected reserve without double-counting.
+
+Owner-only RLS, immutable composite-owner linkage, exact operation replay and every
+historical goal/general month-prefix invariant extend FIN-115. The UI explains the
+subset semantics and keeps unknown-outcome operations pinned across navigation and
+month rollover. Authentication changes remove private UI and isolate owner caches.
+
+Verification includes domain/amount/date boundaries, real negative RLS/grants,
+corrections across goal/general reserves, cancellation/replay/navigation/auth tests,
+and nine two-session savings scenarios (the existing six plus three goal conflicts).
+Generated types are copied verbatim from a verified matching-head CI artifact; full
+quality, local-Supabase authorization/concurrency and type-drift checks gate merge.
+Native/device behavior remains unverified. No shared goals, assignment of existing
+savings, goal-edit/archive flow, bank transfer, conversion or later roadmap work.
+
 
 ---
 
@@ -1803,7 +1825,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-116 — Personal Savings Goals
+FIN-117 — Personal Recurring Expense Schema
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { createMoney } from '../../domain/money/money';
 import { supabase } from '../../infrastructure/supabase/client';
 import { calculateSavingsAvailability } from '../../domain/savings/savings-availability';
 import { createTransaction } from '../../domain/transaction/transaction';
@@ -24,6 +25,8 @@ const summarySchema = z.object({
   spendable_allocated_minor: minor,
   spent_minor: minor,
   configured: z.boolean(),
+  goal_reserved_minor: minor,
+  unassigned_savings_minor: minor,
 });
 export async function readSavingsMonth(
   profileId: string,
@@ -43,7 +46,24 @@ export async function readSavingsMonth(
     row.base_currency !== period.base_currency
   )
     throw new Error('Savings response does not match its period.');
+  const protectedMinor =
+    row.opening_protected_minor +
+    row.allocated_savings_minor +
+    row.contributions_minor -
+    row.withdrawals_minor;
+  if (
+    !Number.isSafeInteger(
+      row.goal_reserved_minor + row.unassigned_savings_minor,
+    ) ||
+    row.goal_reserved_minor + row.unassigned_savings_minor !== protectedMinor
+  )
+    throw new Error('Goal reserves must partition protected savings.');
   return {
+    goalReserved: createMoney(row.goal_reserved_minor, row.base_currency),
+    unassignedSavings: createMoney(
+      row.unassigned_savings_minor,
+      row.base_currency,
+    ),
     period,
     configured: row.configured,
     availability: calculateSavingsAvailability(row.base_currency, {
@@ -74,6 +94,9 @@ export async function registerSavings(
     p_currency: period.base_currency,
     p_transaction_date: parsed.form.date,
     p_withdrawal_confirmed: parsed.withdrawalConfirmed,
+    ...(parsed.savingsGoalId
+      ? { p_savings_goal_id: parsed.savingsGoalId }
+      : {}),
     ...(description === null ? {} : { p_description: description }),
   });
   if (error) throw error;
@@ -92,6 +115,7 @@ export async function registerSavings(
       deleted_at: z.null(),
       withdrawal_confirmed: z.boolean(),
       savings_validated: z.literal(true),
+      savings_goal_id: z.uuid().nullable(),
     })
     .parse(data);
   if (
@@ -103,7 +127,8 @@ export async function registerSavings(
     row.currency !== period.base_currency ||
     row.transaction_date !== parsed.form.date ||
     row.description !== description ||
-    row.withdrawal_confirmed !== parsed.withdrawalConfirmed
+    row.withdrawal_confirmed !== parsed.withdrawalConfirmed ||
+    row.savings_goal_id !== (parsed.savingsGoalId ?? null)
   )
     throw new Error('Savings response does not match its request.');
   return createTransaction({
