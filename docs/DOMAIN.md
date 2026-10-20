@@ -582,6 +582,13 @@ scope = PERSONAL
 
 ---
 
+FIN-109 registers actual income with a stable operation UUID. Identical retries
+return the same active record; different or deleted records cannot be overwritten
+or revived by registration. Received income is derived from active INCOME rows
+for one owner/period, not expected income. Empty received totals are zero; unsafe
+aggregate sums fail rather than round. Income registration increases received cash,
+not spending, and creates no savings transaction. FIN-110 handles bucket availability.
+
 # 15. Expense
 
 An expense transaction represents consumption of money.

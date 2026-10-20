@@ -532,6 +532,14 @@ financial date bounds, income currency, and active category references on insert
 or restore. Closed periods retain private read access but no ordinary mutation.
 No service role, definer function or production operation is introduced.
 
+FIN-109 `register_income` and `get_received_income` are authenticated-only SECURITY
+INVOKER RPCs with empty search paths. Registration derives ownership from auth.uid()
+and relies on FIN-108 constraints/RLS/period locking. Stable UUID replay validates
+the entire existing payload without modifying it; a closed-period replay is only a
+read. The aggregate checks owned period access, excludes deleted/non-income rows,
+and rejects mixed currency or unsafe sums. Income queries use owner/month keys and
+cancellable reads; late writes cannot populate a different authenticated identity.
+
 # 22. Avoiding Indirect Privacy Leaks
 
 Authorization must consider derived information, not just raw rows.

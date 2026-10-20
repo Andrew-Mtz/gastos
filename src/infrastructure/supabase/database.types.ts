@@ -295,6 +295,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      get_received_income: {
+        Args: { p_budget_period_id: string };
+        Returns: number;
+      };
       prepare_initial_budget_buckets: {
         Args: never;
         Returns: {
@@ -313,6 +317,37 @@ export type Database = {
           to: 'budget_buckets';
           isOneToOne: false;
           isSetofReturn: true;
+        };
+      };
+      register_income: {
+        Args: {
+          p_amount_minor: number;
+          p_budget_period_id: string;
+          p_currency: string;
+          p_description?: string;
+          p_transaction_date: string;
+          p_transaction_id: string;
+        };
+        Returns: {
+          amount_minor: number;
+          budget_period_id: string;
+          category_id: string | null;
+          created_at: string;
+          currency: string;
+          deleted_at: string | null;
+          description: string | null;
+          id: string;
+          owner_profile_id: string;
+          scope: string;
+          transaction_date: string;
+          type: string;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'transactions';
+          isOneToOne: true;
+          isSetofReturn: false;
         };
       };
       save_budget_allocations: {
