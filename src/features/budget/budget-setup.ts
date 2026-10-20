@@ -123,19 +123,17 @@ export function decimalText(value: number, digits: number): string {
 }
 export function formatMoney(money: Money): string {
   const digits = currencyDigits(money.currency);
-  const whole = Math.floor(money.amountMinor / 10 ** digits);
-  const fraction = String(money.amountMinor % 10 ** digits).padStart(
-    digits,
+  // Keep the fixed es-UY/code presentation portable to native runtimes without
+  // NumberFormat.formatToParts. Split integer text so no minor unit is rounded.
+  const magnitude = String(Math.abs(money.amountMinor)).padStart(
+    digits + 1,
     '0',
   );
-  return new Intl.NumberFormat('es-UY', {
-    style: 'currency',
-    currency: money.currency,
-    currencyDisplay: 'code',
-  })
-    .formatToParts(whole)
-    .map((part) => (part.type === 'fraction' ? fraction : part.value))
-    .join('');
+  const whole = digits === 0 ? magnitude : magnitude.slice(0, -digits);
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const fraction = digits === 0 ? '' : `,${magnitude.slice(-digits)}`;
+  const sign = money.amountMinor < 0 ? '-' : '';
+  return `${sign}${money.currency}\u00a0${grouped}${fraction}`;
 }
 export function setupPreview(
   currency: string,
