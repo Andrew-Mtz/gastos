@@ -681,7 +681,7 @@ Executable multi-session race coverage remains a documented limitation.
 
 ## FIN-106 — Initial Budget Setup
 
-**Status:** In Progress
+**Status:** Completed
 
 **Depends on:** FIN-105
 
@@ -704,8 +704,9 @@ plans, cancellation and stale-session/navigation protection. Local quality
 checks pass with 315 Jest tests; PostgreSQL CI passes 552 assertions across six
 files. Generated types are copied verbatim from the verified CI artifact.
 Independent review's delayed-save lifecycle finding is fixed with a regression.
-Final PR CI and merge remain pending. Native-device keyboard/back/screenshots
-and multi-session database race execution remain unverified.
+Quality and database CI passed, including the generated-type drift guard.
+Native-device keyboard/back/screenshots and multi-session database race execution
+remain unverified.
 
 ---
 
@@ -1687,7 +1688,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-106 — Initial Budget Setup
+FIN-107 — Category Domain and Schema
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.
