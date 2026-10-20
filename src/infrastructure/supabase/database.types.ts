@@ -231,6 +231,7 @@ export type Database = {
           description: string | null;
           id: string;
           owner_profile_id: string;
+          savings_validated: boolean;
           scope: string;
           transaction_date: string;
           type: string;
@@ -247,6 +248,7 @@ export type Database = {
           description?: string | null;
           id?: string;
           owner_profile_id: string;
+          savings_validated?: boolean;
           scope?: string;
           transaction_date: string;
           type: string;
@@ -263,6 +265,7 @@ export type Database = {
           description?: string | null;
           id?: string;
           owner_profile_id?: string;
+          savings_validated?: boolean;
           scope?: string;
           transaction_date?: string;
           type?: string;
@@ -350,6 +353,7 @@ export type Database = {
           description: string | null;
           id: string;
           owner_profile_id: string;
+          savings_validated: boolean;
           scope: string;
           transaction_date: string;
           type: string;
@@ -383,6 +387,7 @@ export type Database = {
           description: string | null;
           id: string;
           owner_profile_id: string;
+          savings_validated: boolean;
           scope: string;
           transaction_date: string;
           type: string;
@@ -417,6 +422,7 @@ export type Database = {
           description: string | null;
           id: string;
           owner_profile_id: string;
+          savings_validated: boolean;
           scope: string;
           transaction_date: string;
           type: string;
