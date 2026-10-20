@@ -68,6 +68,11 @@ paste its full output into reports. Keep the local stack on a trusted network.
 `src/infrastructure/supabase/database.types.ts`, formats it with Prettier, and
 preserves the existing file on generation failure. Commit types with schema
 changes. Type regeneration needs Docker; ordinary static checks use committed types.
+The database CI job also runs this same generator and uploads only the generated
+file as the `database-types` artifact, retained for seven days. It then fails if
+the generated file differs from Git. This lets a schema PR obtain authentic types
+from the isolated CI stack when Docker is unavailable locally; commit the exact
+artifact file and rerun CI to verify that there is no remaining type drift.
 
 FIN-005 covers the Profile schema, FIN-103 covers the Budget Period schema, and
 FIN-104 covers Budget Buckets. Focused transactional pgTAP tests exercise grants,

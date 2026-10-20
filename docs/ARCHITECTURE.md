@@ -1912,6 +1912,13 @@ output is suppressed to keep privileged local credentials out of logs. No hosted
 project, repository secrets, custom Docker cache, or deployment is involved.
 PRs should not merge unless both jobs pass.
 
+FIN-104 extends that same database job with `npm run db:types`, a seven-day
+artifact containing only `src/infrastructure/supabase/database.types.ts`, and a
+Git diff check that rejects uncommitted generated type changes. Generation runs
+against the migrated local CI stack, not a hosted database. Workflow permissions
+remain `contents: read`; generated files are reviewed and committed separately,
+not pushed automatically by CI.
+
 ---
 
 # 84. Build Strategy

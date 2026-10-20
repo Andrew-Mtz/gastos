@@ -644,8 +644,9 @@ Savings
 * archive support if needed.
 
 Implementation adds personal spendable/savings buckets, archive support,
-owner-only RLS, narrow SQL grants, and transactional security tests. Completion
-still requires generated database types and successful database verification.
+owner-only RLS, narrow SQL grants, transactional security tests, and generated
+database types. CI now regenerates those types and rejects drift. Final review
+and successful CI checks are required before marking this task complete.
 
 ---
 
