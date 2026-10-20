@@ -18,6 +18,12 @@ import { AuthNavigator } from '../../auth/AuthNavigator';
 import { useAuth } from '../../auth/AuthProvider';
 
 jest.mock('../../auth/AuthProvider', () => ({ useAuth: jest.fn() }));
+jest.mock('../../dashboard/DashboardScreen', () => {
+  const { Text: MockText } = jest.requireActual('react-native');
+  return {
+    DashboardScreen: () => <MockText role="heading">Gastos</MockText>,
+  };
+});
 jest.mock('../../budget/BudgetScreen', () => {
   const { Text: MockText } = jest.requireActual('react-native');
   return {

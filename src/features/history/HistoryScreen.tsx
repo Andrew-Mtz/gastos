@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { View } from 'react-native';
 import { AppText } from '../../components/ui/AppText';
@@ -15,6 +15,7 @@ import {
 } from '../../domain/transaction/transaction';
 import {
   historyKey,
+  monthSchema,
   readHistory,
   shiftMonth,
   type HistoryCursor,
@@ -29,14 +30,32 @@ const labels: Record<Transaction['type'], string> = {
 };
 export function HistoryScreen() {
   const auth = useAuth();
+  const params = useLocalSearchParams<{ month?: string }>();
+  const target = monthSchema.safeParse(params.month);
   if (auth.state.status !== 'AUTHENTICATED_READY') return null;
   return (
-    <PersonalHistory key={auth.state.userId} profile={auth.state.profile} />
+    <PersonalHistory
+      key={auth.state.userId}
+      profile={auth.state.profile}
+      requestedMonth={target.success ? target.data : undefined}
+    />
   );
 }
-function PersonalHistory({ profile }: { profile: Profile }) {
+function PersonalHistory({
+  profile,
+  requestedMonth,
+}: {
+  profile: Profile;
+  requestedMonth?: string;
+}) {
   const client = useQueryClient();
-  const [month, setMonth] = useState(() => currentMonth(profile.timezone));
+  const [month, setMonth] = useState(
+    () => requestedMonth ?? currentMonth(profile.timezone),
+  );
+  const selectedMonth = useRef(month);
+  useEffect(() => {
+    selectedMonth.current = month;
+  }, [month]);
   const query = useInfiniteQuery({
     queryKey: historyKey(profile.id, month),
     initialPageParam: null as HistoryCursor | null,
@@ -46,10 +65,12 @@ function PersonalHistory({ profile }: { profile: Profile }) {
   });
   useFocusEffect(
     useCallback(() => {
+      const targetMonth = requestedMonth ?? selectedMonth.current;
+      setMonth(targetMonth);
       void client.invalidateQueries({
-        queryKey: historyKey(profile.id, month),
+        queryKey: historyKey(profile.id, targetMonth),
       });
-    }, [client, profile.id, month]),
+    }, [client, profile.id, requestedMonth]),
   );
   return (
     <Screen scroll>

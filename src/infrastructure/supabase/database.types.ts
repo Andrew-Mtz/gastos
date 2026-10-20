@@ -503,6 +503,7 @@ export type Database = {
         Args: { p_budget_period_id: string };
         Returns: Json;
       };
+      get_personal_dashboard: { Args: { p_month: string }; Returns: Json };
       get_personal_recurring_month: {
         Args: { p_month: string };
         Returns: Json;

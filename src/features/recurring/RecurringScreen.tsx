@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { randomUUID } from 'expo-crypto';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AppText } from '../../components/ui/AppText';
@@ -33,7 +33,11 @@ import {
   resolveRecurring,
   stopTemplate,
 } from './recurring-data';
-import { recurringErrorMessage, type TemplateRequest } from './recurring-form';
+import {
+  recurringErrorMessage,
+  recurringMonthSchema,
+  type TemplateRequest,
+} from './recurring-form';
 import { CommittedMoney } from './CommittedMoney';
 import { TemplateEditor, ResolveEditor, StopEditor } from './RecurringEditors';
 
@@ -65,15 +69,29 @@ type Pending =
     };
 export function RecurringScreen() {
   const auth = useAuth();
+  const params = useLocalSearchParams<{ month?: string }>();
+  const target = recurringMonthSchema.safeParse(params.month);
   if (auth.state.status !== 'AUTHENTICATED_READY') return null;
   return (
-    <PersonalRecurring key={auth.state.userId} profile={auth.state.profile} />
+    <PersonalRecurring
+      key={auth.state.userId}
+      profile={auth.state.profile}
+      requestedMonth={target.success ? target.data : undefined}
+    />
   );
 }
-function PersonalRecurring({ profile }: { profile: Profile }) {
+function PersonalRecurring({
+  profile,
+  requestedMonth,
+}: {
+  profile: Profile;
+  requestedMonth?: string;
+}) {
   const auth = useAuth(),
     client = useQueryClient();
-  const [month, setMonth] = useState(() => currentMonth(profile.timezone));
+  const [month, setMonth] = useState(
+    () => requestedMonth ?? currentMonth(profile.timezone),
+  );
   const [editor, setEditor] = useState<Editor | null>(null),
     [pending, setPending] = useState<Pending | null>(null);
   const active = useRef(false),
@@ -81,6 +99,7 @@ function PersonalRecurring({ profile }: { profile: Profile }) {
   useFocusEffect(
     useCallback(() => {
       active.current = true;
+      if (requestedMonth) setMonth(requestedMonth);
       void client.invalidateQueries({
         queryKey: recurringOwnerKey(profile.id),
       });
@@ -89,7 +108,7 @@ function PersonalRecurring({ profile }: { profile: Profile }) {
         activeEditor.current = null;
         setEditor(null);
       };
-    }, [client, profile.id]),
+    }, [client, profile.id, requestedMonth]),
   );
   const query = useQuery({
     queryKey: recurringKey(profile.id, month),

@@ -1291,7 +1291,7 @@ native/device QA, account balances, cross-month payments or FIN-121+ implementat
 
 ## FIN-121 — Personal Dashboard v1
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-109 through FIN-120 as relevant
 
@@ -1313,6 +1313,33 @@ Show the most useful current-period financial information.
 ### UX Requirement
 
 Prioritize actionable numbers over charts.
+
+### Implementation evidence
+
+Inicio now presents one owner/current-month stable snapshot: actual and expected
+income, this-month protected/spendable allocations, cumulative protected savings
+with goal subsets, bucket usage, complete commitments, ADR-073's gated margins and
+five pending obligations ordered by due date with full-list navigation. Expected
+income never funds availability; unknown/prior unresolved obligations withhold the
+margin. Allocation and cumulative amounts are labeled distinctly, not cash balances.
+All financial figures are hidden on loading/refetch/error, blur and background;
+owner/month cancellation, focus/resume/month rollover and existing owner-wide
+financial invalidation keep the snapshot current. Auth/profile setup is unchanged.
+
+One bounded independent review found a retained-month navigation issue. Dashboard
+and shared availability links now carry validated month context into history and
+recurring screens; re-entry resets that target without blocking deliberate browsing.
+The reviewer confirmed the fix, with no remaining P1/P2 finding in that scope.
+Full local checks passed: 892 Jest tests in 49 suites, typecheck, lint and formatting.
+Disposable CI passed 1,445 SQL assertions in 23 files and eighteen real concurrent
+session scenarios, including one dashboard reader spanning a fixed-payment commit
+across consumption, commitments and the preview. Generated types were copied verbatim
+from artifact 12254762885, verifying source head 6d792d1cbbffdb19b2a90185f621b8b325174edf
+and ZIP SHA256 aaff71090ba3e1b84ccea0f3921c5882f32515f195fa927b69c98f29d46cc12a.
+Final exact-head quality/database/type-drift CI gates merge. No production database
+changes/deployment, native/device QA, new financial policy, corrections, period
+closure/reopening or remainder behavior is included. Reversible presentation choices
+are recorded for owner review, not claimed as personal confirmation.
 
 ---
 
@@ -1925,7 +1952,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-120 — Safe-to-Spend v1
+FIN-122 — Edit and Soft Delete Personal Transaction
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.

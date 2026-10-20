@@ -42,13 +42,23 @@ export function SafeToSpend({
         }}
       />
     );
+  return <SafeToSpendSummary period={period} data={query.data} />;
+}
+
+export function SafeToSpendSummary({
+  period,
+  data,
+}: {
+  period: BudgetPeriod;
+  data: Awaited<ReturnType<typeof readSafeToSpend>>;
+}) {
   const {
     components,
     commitments,
     confirmedMargin,
     estimatedMargin,
     configured,
-  } = query.data;
+  } = data;
   const money = (minor: number) =>
     formatMoney(createMoney(minor, period.base_currency));
   return (
@@ -127,7 +137,15 @@ export function SafeToSpend({
         consume ahorro automáticamente. No incluye dinero sobrante de otros
         meses ni obligaciones no registradas.
       </AppText>
-      <Button variant="secondary" onPress={() => router.push('/recurring')}>
+      <Button
+        variant="secondary"
+        onPress={() =>
+          router.push({
+            pathname: '/recurring',
+            params: { month: period.starts_on },
+          })
+        }
+      >
         Revisar obligaciones recurrentes
       </Button>
     </>
