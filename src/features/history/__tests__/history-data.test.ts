@@ -20,7 +20,7 @@ function row(index: number) {
     deleted_at: null,
   };
 }
-function database(rows = [row(1)]) {
+function database(rows: unknown = [row(1)]) {
   const query = Object.assign(
     Promise.resolve({ data: rows, error: null }),
     Object.fromEntries(

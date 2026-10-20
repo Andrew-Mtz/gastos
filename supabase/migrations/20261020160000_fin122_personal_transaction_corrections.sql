@@ -133,7 +133,7 @@ create function public.correct_personal_transaction(
 declare
   owner_id uuid := auth.uid(); original public.transactions; result public.transactions;
   event public.transaction_revisions; period public.budget_periods; period_id uuid;
-  payload jsonb; amount bigint; financial_date date; category uuid; description text;
+  payload jsonb; amount bigint; financial_date date; category uuid; corrected_description text;
 begin
   if owner_id is null or p_request_id is null or p_transaction_id is null then
     raise exception 'Authenticated correction identity is required' using errcode='42501';
@@ -191,9 +191,9 @@ begin
     amount := (p_changes->>'amount_minor')::bigint;
     financial_date := (p_changes->>'transaction_date')::date;
     category := (p_changes->>'category_id')::uuid;
-    description := p_changes->>'description';
+    corrected_description := p_changes->>'description';
     update public.transactions set amount_minor=amount,transaction_date=financial_date,
-      category_id=category,description=description
+      category_id=category,description=corrected_description
       where id=original.id and owner_profile_id=owner_id returning * into result;
   else
     if p_changes <> '{}'::jsonb then
