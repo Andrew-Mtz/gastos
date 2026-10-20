@@ -1394,71 +1394,773 @@ Codex is used as the primary implementation agent, but generated code and assump
 Codex may:
 
 * investigate;
-* p…7241 tokens truncated…000002','2026-10-01','2026-10-31','USD',999999);
-select is((select prosecdef from pg_proc where oid='public.register_income(uuid,uuid,bigint,text,date,text)'::regprocedure),false,'Registration is invoker');
-select is((select prosecdef from pg_proc where oid='public.get_received_income(uuid)'::regprocedure),false,'Aggregate is invoker');
-select ok(not has_function_privilege('anon','public.get_received_income(uuid)','EXECUTE'),'Anonymous aggregate denied');
-select ok(not has_function_privilege('anon','public.register_income(uuid,uuid,bigint,text,date,text)','EXECUTE'),'Anonymous registration denied');
-set local role authenticated;
-select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000001');
-select is(current_user::text,'authenticated','A client role');
-select is(auth.uid(),'f0050000-0000-4000-8000-000000000001'::uuid,'A subject');
-select is(public.get_received_income('f1030000-0000-4000-8000-000000000001'),0::bigint,'Expected income is not received income');
-select lives_ok($$select public.register_income('f1090000-0000-4000-8000-000000000001','f1030000-0000-4000-8000-000000000001',100000,'USD','2026-10-01','Salary')$$,'Register actual income');
-select is(public.get_received_income('f1030000-0000-4000-8000-000000000001'),100000::bigint,'Expected1500 received1000 example');
-select set_config('test.income_created_at',(select created_at::text from public.transactions where id='f1090000-0000-4000-8000-000000000001'),true);
-select lives_ok($$select public.register_income('f1090000-0000-4000-8000-000000000001','f1030000-0000-4000-8000-000000000001',100000,'USD','2026-10-01','Salary')$$,'Identical retry succeeds');
-select is((select count(*) from public.transactions),1::bigint,'Retry never duplicates money');
-select is((select created_at from public.transactions where id='f1090000-0000-4000-8000-000000000001'),current_setting('test.income_created_at')::timestamptz,'Replay preserves timestamps');
-select throws_ok($$select public.register_income('f1090000-0000-4000-8000-000000000001','f1030000-0000-4000-8000-000000000001',99999,'USD','2026-10-01','Salary')$$,'23505',null,'Changed payload cannot reuse identity');
-select lives_ok($$select public.register_income('f1090000-0000-4000-8000-000000000002','f1030000-0000-4000-8000-000000000001',43000,'USD','2026-10-15')$$,'Multiple incomes in one month');
-select is(public.get_received_income('f1030000-0000-4000-8000-000000000001'),143000::bigint,'Actual amounts aggregate exactly');
-select is((select expected_income_minor from public.budget_periods where id='f1030000-0000-4000-8000-000000000001'),150000::bigint,'Expected estimate remains unchanged');
-select lives_ok($$insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date)
-values('f0050000-0000-4000-8000-000000000001','f1030000-0000-4000-8000-000000000001','SAVINGS_CONTRIBUTION',1234,'USD','2026-10-15')$$,'Non-income fixture');
-select is(public.get_received_income('f1030000-0000-4000-8000-000000000001'),143000::bigint,'Non-income is excluded');
-select lives_ok($$update public.transactions set deleted_at=now() where id='f1090000-0000-4000-8000-000000000001'$$,'Soft delete actual income');
-select is(public.get_received_income('f1030000-0000-4000-8000-000000000001'),43000::bigint,'Deleted income is excluded');
-select throws_ok($$select public.register_income('f1090000-0000-4000-8000-000000000001','f1030000-0000-4000-8000-000000000001',100000,'USD','2026-10-01','Salary')$$,'23505',null,'Replay cannot resurrect removed income');
-select lives_ok($$update public.transactions set deleted_at=null where id='f1090000-0000-4000-8000-000000000001'$$,'Explicit restore');
-select throws_ok($$select public.register_income('f1090000-0000-4000-8000-000000000003','f1030000-0000-4000-8000-000000000001',100,'UYU','2026-10-01')$$,'23514',null,'No implicit currency conversion');
-select throws_ok($$select public.register_income('f1090000-0000-4000-8000-000000000003','f1030000-0000-4000-8000-000000000001',0,'USD','2026-10-01')$$,'23514',null,'Zero income denied');
-select throws_ok($$select public.get_received_income('f1030000-0000-4000-8000-000000000002')$$,'42501',null,'A cannot read foreign aggregate');
-reset role;
-set local role authenticated;
-select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000002');
-select is(current_user::text,'authenticated','Negative client role 2');
-select is(auth.uid(),'f0050000-0000-4000-8000-000000000002'::uuid,'Negative subject 2');
-select throws_ok($$select public.get_received_income('f1030000-0000-4000-8000-000000000001')$$,'42501',null,'Foreign aggregate denied 2');
-select throws_ok($$select public.register_income('f1090000-0000-4000-8000-000000000003','f1030000-0000-4000-8000-000000000001',100,'USD','2026-10-01')$$,'42501',null,'Foreign registration denied 2');
-reset role;
-set local role authenticated;
-select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000003');
-select is(current_user::text,'authenticated','Negative client role 3');
-select is(auth.uid(),'f0050000-0000-4000-8000-000000000003'::uuid,'Negative subject 3');
-select throws_ok($$select public.get_received_income('f1030000-0000-4000-8000-000000000001')$$,'42501',null,'Foreign aggregate denied 3');
-select throws_ok($$select public.register_income('f1090000-0000-4000-8000-000000000003','f1030000-0000-4000-8000-000000000001',100,'USD','2026-10-01')$$,'42501',null,'Foreign registration denied 3');
-reset role;
-set local role authenticated;
-select pg_temp.set_jwt_subject(null);
-select is(auth.uid(),null::uuid,'No identity');
-select throws_ok($$select public.get_received_income('f1030000-0000-4000-8000-000000000001')$$,'42501',null,'Missing identity denied');
-reset role;
-select pg_temp.set_jwt_subject(null);
-update public.budget_periods set status='CLOSED',closed_at=now() where id='f1030000-0000-4000-8000-000000000001';
-set local role authenticated;
-select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000001');
-select is(auth.uid(),'f0050000-0000-4000-8000-000000000001'::uuid,'A closed-period subject');
-select is(public.get_received_income('f1030000-0000-4000-8000-000000000001'),143000::bigint,'Closed total readable');
-select lives_ok($$select public.register_income('f1090000-0000-4000-8000-000000000002','f1030000-0000-4000-8000-000000000001',43000,'USD','2026-10-15')$$,'Closed identical replay is read-only');
-select throws_ok($$select public.register_income('f1090000-0000-4000-8000-000000000003','f1030000-0000-4000-8000-000000000001',100,'USD','2026-10-01')$$,'42501',null,'Closed new income rejected');
-reset role;
-select pg_temp.set_jwt_subject(null);
-update public.budget_periods set status='OPEN',closed_at=null where id='f1030000-0000-4000-8000-000000000001';
-set local role authenticated;
-select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000001');
-select lives_ok($$select public.register_income('f1090000-0000-4000-8000-000000000003','f1030000-0000-4000-8000-000000000001',9007199254740991,'USD','2026-10-01')$$,'Large safe single income');
-select throws_ok($$select public.get_received_income('f1030000-0000-4000-8000-000000000001')$$,'22003',null,'Aggregate overflow rejects rather than rounds');
-reset role;
-select * from finish();
-rollback;
+* propose;
+* implement explicitly scoped work;
+* write tests;
+* document findings.
+
+Codex may not silently decide:
+
+* new financial rules;
+* new security semantics;
+* major architectural patterns;
+* unresolved items listed in documentation.
+
+## Consequences
+
+When a task reaches an open decision, implementation should stop at the decision boundary and report the issue.
+
+---
+
+# ADR-047 — Prefer Small Correct Implementations Over Future-Proof Overengineering
+
+**Status:** Accepted
+
+## Context
+
+The product specification contains many future capabilities.
+
+Implementing abstractions for all of them immediately would slow development and increase risk.
+
+## Decision
+
+Implement the smallest architecture that correctly supports the current roadmap task while preserving established domain invariants.
+
+## Consequences
+
+Do not implement future functionality merely because it appears in `PRODUCT.md`.
+
+`ROADMAP.md` determines implementation scope.
+
+---
+
+# ADR-048 — Mobile-First, No Separate Web App During Initial Phases
+
+**Status:** Accepted
+
+## Context
+
+The primary use case is immediate personal and household expense management, particularly from an iPhone.
+
+Supporting a full separate web application would increase surface area.
+
+## Decision
+
+Initial development targets the React Native mobile application only.
+
+No separate web application is included in the initial roadmap.
+
+## Consequences
+
+Responsive web UX and browser-specific support are deferred.
+
+The underlying domain should remain portable enough that a web client could be added later.
+
+---
+
+# ADR-049 — Physical iPhone Is the Primary iOS Development Device
+
+**Status:** Accepted
+
+## Context
+
+Development is performed on Windows, where the native iOS Simulator is unavailable.
+
+## Decision
+
+Use a physical iPhone as the primary iOS testing device.
+
+During early compatible development:
+
+```text
+Expo tooling
+```
+
+When native capabilities are needed:
+
+```text
+EAS Development Build
+```
+
+For shared beta testing:
+
+```text
+TestFlight
+```
+
+## Consequences
+
+A Mac is not required for the initial development workflow.
+
+Cloud macOS infrastructure handles signed iOS builds where needed.
+
+---
+
+# ADR-050 — Use EAS for iOS Builds
+
+**Status:** Accepted
+
+## Context
+
+iOS builds require Apple toolchains unavailable locally on Windows.
+
+## Decision
+
+Use Expo EAS for:
+
+* development builds;
+* preview/beta builds;
+* production iOS builds.
+
+## Consequences
+
+EAS configuration becomes part of repository infrastructure.
+
+Apple signing and TestFlight configuration will be introduced when needed.
+
+---
+
+# ADR-051 — Delay Full Design-System Selection
+
+**Status:** Accepted
+
+## Context
+
+The project needs consistent UI primitives but does not yet have enough product screens to justify a large component system.
+
+## Decision
+
+Start with a lightweight internal design system using React Native primitives and reusable local components.
+
+Do not adopt a large third-party UI framework during bootstrap unless a concrete requirement justifies it.
+
+## Consequences
+
+Initial shared components may include:
+
+```text
+Button
+TextInput
+MoneyInput
+Card
+Modal
+Progress
+Typography primitives
+```
+
+A dedicated styling/design-system decision may be revisited after core product screens are known.
+
+---
+
+# ADR-052 — Do Not Persist Derived Dashboard Values Initially
+
+**Status:** Accepted
+
+## Context
+
+Values such as remaining budget and household balances can generally be derived from authoritative financial records.
+
+## Decision
+
+Do not initially persist derived dashboard totals solely for rendering convenience.
+
+Examples:
+
+```text
+remaining_budget
+safe_to_spend
+total_spent_this_month
+current_household_balance
+```
+
+should initially be derived.
+
+## Consequences
+
+Persisted summary snapshots may be introduced later when justified by:
+
+* period closing;
+* performance evidence;
+* historical reproducibility.
+
+---
+
+# ADR-053 — Closed Periods Require Explicit Reopening
+
+**Status:** Accepted
+
+## Context
+
+Historical financial periods should not change accidentally.
+
+## Decision
+
+A closed budget period cannot be modified through ordinary editing operations.
+
+The user must explicitly reopen it before editing relevant financial records.
+
+## Consequences
+
+Reopening should eventually be audit-relevant.
+
+UI must make the state clear.
+
+---
+
+# ADR-054 — Assistant/Siri Actions Require Idempotency When Retries Can Duplicate Money Events
+
+**Status:** Accepted
+
+## Context
+
+Voice, Siri, AI adapters, and network layers may retry requests.
+
+Duplicate financial mutations are unacceptable.
+
+## Decision
+
+Externally triggered financial operations must support idempotency whenever retry semantics can create duplicate records.
+
+The exact mechanism may be introduced when those features are implemented.
+
+## Consequences
+
+Potential implementation:
+
+```text
+idempotency_key
+```
+
+or another unique operation identifier.
+
+This is not required for ordinary MVP CRUD where duplication cannot occur through automatic retry.
+
+---
+
+# ADR-055 — Keep Expected Income Separate from Received Income
+
+**Status:** Accepted
+
+## Context
+
+The product must support variable income.
+
+Planning around expected income is different from treating money as actually available.
+
+## Decision
+
+Expected income is planning data.
+
+Received income is represented through actual income transactions.
+
+## Consequences
+
+The application must never imply that expected but unreceived income is spendable.
+
+Budget views may distinguish:
+
+```text
+planned
+actual
+```
+
+---
+
+# ADR-056 — Do Not Automatically Reallocate Overspending
+
+**Status:** Accepted
+
+## Context
+
+A user may exceed a spendable bucket.
+
+Automatically taking funds from another bucket would modify the user's financial plan without consent.
+
+## Decision
+
+Overspending may produce a negative remaining bucket balance.
+
+Do not automatically:
+
+* consume savings;
+* move funds from another bucket;
+* alter percentages.
+
+## Consequences
+
+Any reallocation must be explicit.
+
+---
+
+# ADR-057 — Household Model Must Not Permanently Assume Exactly Two Members
+
+**Status:** Accepted
+
+## Context
+
+The first use case is a couple, but hardcoding every domain rule around exactly two users would unnecessarily restrict the product.
+
+## Decision
+
+The model supports household membership as a collection of members.
+
+Initial UX may optimize for two members.
+
+## Consequences
+
+Split and balance algorithms should not fundamentally require exactly two participants.
+
+Features beyond two-person households may remain out of scope.
+
+---
+
+# ADR-058 — Use One Payer Per Shared Expense in the Initial UX
+
+**Status:** Accepted
+
+## Context
+
+Supporting multiple simultaneous payers adds additional data structures and UI complexity.
+
+Most initial household expenses are expected to have one person paying and responsibility split among members.
+
+## Decision
+
+The initial shared-expense flow supports one payer.
+
+The domain must not prevent introducing multiple payers later.
+
+## Consequences
+
+No `SharedExpensePayment` model is required initially.
+
+A future ADR can expand the model.
+
+---
+
+# ADR-059 — Equal Household Split Is Derived from Percentage Splits
+
+**Status:** Accepted
+
+## Context
+
+Supporting multiple split strategies immediately adds unnecessary implementation branches.
+
+## Decision
+
+The authoritative initial split strategy is percentage-based.
+
+An equal split is generated as an appropriate percentage allocation.
+
+## Consequences
+
+The initial domain focuses on:
+
+```text
+PERCENTAGE
+```
+
+Fixed-amount split strategies remain deferred.
+
+---
+
+# ADR-060 — Open Questions Must Remain Explicit
+
+**Status:** Accepted
+
+## Context
+
+Unresolved decisions are safer when documented than when silently guessed by developers or coding agents.
+
+## Decision
+
+Every architecture/domain/security document may contain an `Open Decisions` section.
+
+If implementation requires an unresolved decision:
+
+1. identify it;
+2. resolve it explicitly;
+3. add or update an ADR when significant;
+4. then implement.
+
+## Consequences
+
+"Reasonable assumption" is not sufficient for unresolved financial or security semantics.
+
+---
+
+# ADR-061 — Use Expo SDK 57 for Initial Bootstrap
+
+**Status:** Accepted
+
+## Context
+
+The project requires an explicit Expo SDK version before the initial application bootstrap.
+
+As of the initial implementation in September 2026, Expo SDK 57 is the current stable SDK and uses React Native 0.86 and React 19.2.
+
+## Decision
+
+Initialize the application using Expo SDK 57.
+
+Use Expo-compatible dependency versions selected through the official Expo tooling rather than manually selecting React Native or React versions.
+
+Use the latest compatible stable patch release within SDK 57.
+
+## Consequences
+
+- Expo SDK 57 defines the initial React Native compatibility baseline.
+- Dependencies must be installed using Expo-compatible versions.
+- `expo install --check` and `expo-doctor` must pass after bootstrap.
+- Future Expo SDK upgrades require dedicated work and must not occur incidentally during unrelated feature tasks.
+
+---
+
+# ADR-062 — Use Jest with jest-expo for Unit and Component Tests
+
+**Status:** Accepted
+
+## Context
+
+FIN-003 requires one repeatable runner for React Native component tests and future
+domain unit tests. Expo SDK 57's Jest preset uses the Jest 29 toolchain.
+
+## Decision
+
+Use Jest 29 with the SDK-compatible `jest-expo` preset and the React Native Jest
+preset matching the installed React Native version. Use React Native Testing
+Library 14 for component tests, with `test-renderer` compatible with React 19.2.
+Use `@types/jest` for TypeScript test globals and keep type checking separate.
+
+Colocate tests under `src/` in `__tests__` directories, using `.test.ts` for unit
+tests and `.test.tsx` for component tests. Colocate future domain unit tests with
+their domain modules when those modules exist; do not create empty domain folders.
+Keep domain tests independent of React and infrastructure.
+
+## Consequences
+
+- `npm test` runs once; `npm run test:watch` supports local iteration.
+- Component tests use asynchronous RNTL 14 APIs and accessible queries where practical.
+- Tests do not replace native/device verification.
+- Future Jest upgrades must remain aligned with Expo and React Native compatibility.
+- FIN-003 does not introduce E2E, database/RLS testing, coverage configuration, or CI.
+
+---
+
+# ADR-063 — Use Supabase CLI for Local Development
+
+**Status:** Accepted
+
+## Context
+
+FIN-004 needs reproducible database configuration and generated types before
+product schemas exist. The local Supabase development workflow was unresolved.
+
+## Decision
+
+Use local-first Supabase development with a Docker-compatible runtime and an
+exactly pinned Supabase CLI dev dependency in the project. Run the CLI through
+npm scripts so collaborators use the same version.
+
+Commit local configuration, migrations, and synthetic seed files. Rebuild the
+local database from migrations and seeds. Generate TypeScript types from the
+local `public` schema into `src/infrastructure/supabase/database.types.ts` and
+commit them according to ADR-042. Keep generation repeatable and preserve the
+existing file when generation fails.
+
+Defer hosted project provisioning. Public client configuration uses
+`EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; actual
+development values stay in ignored `.env.local`.
+
+## Consequences
+
+- Local startup and type regeneration require a running Docker-compatible engine.
+- Local database reset is destructive to local data; seeds must remain synthetic.
+- CLI caches, local credentials, and signing material stay out of Git.
+- FIN-004 uses a non-persistent client without importing it into the root UI.
+- Secure session persistence is defined for FIN-006 by ADR-064.
+- Hosted environments and deployment workflows require later scoped work.
+
+---
+
+# ADR-064 — Secure Supabase Session Persistence and Auth Lifecycle
+
+**Status:** Accepted
+
+## Context
+
+FIN-006 needs secure persistence for Supabase values that can exceed the small
+values appropriate for direct SecureStore storage, plus a single lifecycle that
+prevents stale identity, Profile cache, and refresh work from exposing private UI.
+
+## Decision
+
+Supabase Auth is authoritative for sessions. A small root Auth Context owns only
+reactive identity and lifecycle status. TanStack Query owns Profile server state
+under `['profile', authUserId]`; React Hook Form with Zod owns form state.
+Do not duplicate sessions/tokens into Query, Zustand, or another persistent store.
+
+Implement only the Supabase `getItem`/`setItem`/`removeItem` contract using:
+
+- Expo SecureStore for a native-generated 256-bit AES key, stored as small hex text;
+- AsyncStorage for a versioned AES-256-GCM ciphertext envelope;
+- native Expo Crypto APIs, with UTF-8 input, a fresh 96-bit nonce for every write,
+  and a 128-bit authentication tag. AAD binds format version, the Gastos/project
+  namespace, and the logical Supabase storage key.
+
+Use `WHEN_UNLOCKED_THIS_DEVICE_ONLY` and `requireAuthentication: false`.
+No biometric prompt, plaintext fallback, truncation, custom AES primitives,
+encryption wrapper, or long-lived decrypted-key cache is introduced.
+
+Serialize operations per logical key. A rejected operation must not poison later
+work. For a new entry, persist the native-generated key before encrypting and
+storing the complete envelope. Refresh writes reuse the existing key and replace
+the AsyncStorage value with newly encrypted content. Do not rotate keys on every
+refresh. These two stores do not provide a cross-store transaction; serialization
+applies within the single application client/runtime.
+
+Read behavior:
+
+- no key and no payload: return null;
+- orphan key or orphan payload: remove unusable material and return null;
+- valid pair: decrypt and return the complete value;
+- unknown/corrupt envelope, invalid tag, or wrong key: remove unusable material,
+  fail closed, and require sign-in after retry acknowledges the cleared state;
+- temporary storage access failure: show a retryable initialization error,
+  never silently reinterpret it as unauthenticated.
+
+Removal waits behind pending entry operations, deletes SecureStore first, then
+AsyncStorage, attempts both removals, and reports unconfirmed cleanup. Keychain
+items may survive reinstall while app-container AsyncStorage typically does not;
+orphan combinations never establish authentication. Expo Go is not evidence of
+standalone reinstall semantics.
+
+The one root lifecycle uses `getSession` and a short synchronous
+`onAuthStateChange` callback. Newer Auth events win over stale initialization.
+One AppState listener reconciles initial/foreground/background refresh and cleans
+up on unmount/Fast Refresh. No custom Supabase lock is introduced. Client settings
+are `persistSession: true`, `autoRefreshToken: true`, and
+`detectSessionInUrl: false`.
+
+Explicit states cover initializing, initialization error, unauthenticated,
+Profile loading/missing/error/ready, and signing out. Profile queries start only
+after authenticated initialization; query errors never mean missing Profile.
+Protected routes are UX; existing RLS/grants enforce security. Profile Setup uses
+the authenticated UUID and ordinary INSERT, re-reading after duplicate/lost
+responses. Late work cannot repopulate a different user's state.
+
+Logout immediately locks private UI, cancels and clears private Query state,
+stops refresh, and uses `signOut({ scope: 'local' })`. Confirm local storage and
+session removal and clear private state again. If remote revocation fails but
+local removal is confirmed, remain logged out with a concise warning. Unconfirmed
+local cleanup stays locked and retryable. Do not claim global logout or immediate
+invalidation of already-issued access JWTs.
+
+## Consequences
+
+Native SecureStore/Crypto/AsyncStorage behavior requires physical-device testing,
+including actual session size, restart persistence, logout, and user switching.
+Mocked unit tests and local API integration do not replace that evidence.
+FIN-006 supports basic email/password only. Provider expansion, biometrics,
+account deletion/anonymization, EAS, and persistent financial caches remain out
+of scope. No Profile migration, grant, or RLS change is required.
+
+---
+
+# ADR-065 — Defer iOS Development Build Until Required
+
+**Status:** Accepted
+
+## Context
+
+The project runs successfully on a physical iPhone using Expo Go from Windows.
+Local Supabase connectivity, authentication, navigation, and current React Native
+dependencies work in Expo Go. FIN-011's original acceptance requires a signed
+physical-device development build. The Windows + EAS physical-device workflow
+requires active Apple Developer Program membership. The user can pay for that
+membership, but no current product capability requires activating it.
+
+## Decision
+
+Continue using Expo Go as the primary iOS development workflow for the current
+product phases. Defer:
+
+* Apple Developer Program activation for this project;
+* `expo-dev-client`;
+* EAS project initialization/linking;
+* EAS development build profiles;
+* iPhone device registration;
+* signing/provisioning setup;
+* TestFlight setup;
+* native ATS/networking configuration specific to a standalone build.
+
+Resume FIN-011 or a successor native-build task before a requirement such as
+Siri/App Intents, an unsupported native dependency, TestFlight distribution,
+signed development-client testing, or App Store preparation. Do not introduce
+this infrastructure solely to satisfy a roadmap checkbox.
+
+## Consequences
+
+Benefits:
+
+* avoids premature native/build infrastructure;
+* avoids paying for membership before it provides development value;
+* keeps Phase 0 focused on the architecture currently required;
+* preserves the fast Expo Go development workflow.
+
+Trade-offs:
+
+* Expo Go does not prove behavior inside the final signed application binary;
+* Keychain/bundle-specific behavior of the final app remains unverified;
+* custom native features cannot be implemented/tested until this decision is revisited;
+* TestFlight distribution remains unavailable.
+
+ADR-049 and ADR-050 remain Accepted and are not canceled or superseded. They
+remain the intended physical-device/EAS strategy once activated. Expo Go is not
+a permanent architectural limitation. FIN-012 may review the current foundation
+with FIN-011 explicitly deferred, without claiming signed-build verification.
+
+---
+
+# ADR-066 — Register Income in the Budget Period Currency Initially
+
+**Status:** Accepted (explicit user decision, 2026-10-20)
+
+## Decision
+
+For FIN-109/FIN-110, income can be registered only in the currency snapshotted
+on its budget period. Enforce this in the database as well as the form. Preserve
+original transaction amounts and currencies; do not invent a rate, convert using
+current rates, or combine unlike currencies.
+
+## Consequences
+
+Future cross-currency income registration and budget conversion remain pending.
+That work must define explicit exchange-rate snapshots and reproducible allocation
+before lifting this temporary restriction. Expense conversion is not decided here.
+
+---
+
+# ADR-067 — Phase 1 Personal Expenses Use Their Period Currency
+
+**Status:** Accepted under delegated implementation authority (2026-10-20),
+pending owner review of `OVERNIGHT_DECISIONS.md`.
+
+New and restored personal expenses require the budget period's currency and an
+active owned category mapped to an active SPENDABLE bucket. The category's immutable
+bucket relation determines consumption. Savings are never an ordinary expense
+source. Cross-currency expenses require Phase 4 conversion semantics before they
+can be accepted; no rates are inferred and no historical values are rewritten.
+
+Minimal custom category creation is included in FIN-111 so the existing category
+schema can be used from the expense form. Category-management features remain
+outside this task. Existing legacy invalid expenses remain visible to history;
+future calculations must fail explicitly rather than silently ignore them.
+
+---
+
+# Superseding Decisions
+
+When replacing an accepted ADR:
+
+1. do not delete the old ADR;
+2. change its status to:
+
+```text
+Superseded by ADR-XXX
+```
+
+3. create the new ADR;
+4. explain why the decision changed.
+
+This preserves architectural history.
+
+---
+
+# Current Open Decisions
+
+The following decisions remain intentionally unresolved.
+
+They should be addressed only when needed by the roadmap.
+
+## Authentication
+
+* authentication providers beyond basic email/password;
+
+## Household
+
+* invitation lifecycle;
+* former-member historical visibility;
+* detailed household roles;
+* who may edit another member's household-created transaction;
+* settlement reversal permissions.
+
+## Financial Accounts
+
+* full credit-card liability model;
+* credit-card statement model;
+* shared financial accounts.
+
+## Recurring Expenses
+
+* whether fixed recurring expenses automatically generate actual transactions.
+
+## Multi-Currency
+
+* exchange-rate provider;
+* exact cross-currency budget-consumption rules.
+
+## Safe-to-Spend
+
+* final treatment of estimated future expenses.
+
+## Infrastructure
+
+* final E2E framework;
+* monitoring provider;
+* notification architecture;
+* AI provider;
+* voice transcription provider;
+* exact Siri implementation details.
+
+## Privacy / Production
+
+* account deletion;
+* data retention;
+* backup policy;
+* screenshot/app-switcher protection.
+
+---
+
+# Decision Review Rule
+
+Before introducing any of the following, check whether an ADR exists:
+
+* new backend service;
+* new persistence technology;
+* new state-management library;
+* new UI framework;
+* privileged database function;
+* external provider;
+* offline synchronization;
+* realtime architecture;
+* background processing;
+* new financial representation;
+* new authorization model.
+
+If the change materially alters the architecture, create an ADR before implementation.
+
+---
+
+# Related Documentation
+
+Consult:
+
+* `PRODUCT.md` for intended product behavior;
+* `DOMAIN.md` for financial semantics;
+* `SECURITY.md` for mandatory security boundaries;
+* `ARCHITECTURE.md` for architectural structure;
+* `ROADMAP.md` for implementation order;
+* `AGENTS.md` for agent/developer workflow.
+
+A decision recorded here must not override a higher-level product, domain, or security invariant without those documents being updated explicitly.
