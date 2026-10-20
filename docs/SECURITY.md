@@ -554,6 +554,15 @@ never mutates history, including closed months. Category creation uses the exist
 owner-only table grants. Client reads are cancellable and owner/month scoped;
 pending financial request identity survives tab navigation, not process restart.
 
+FIN-113's consumption RPC is authenticated-only SECURITY INVOKER with an empty
+search path and explicit owned-period lookup using `auth.uid()`. Source-table RLS
+and existing grants are unchanged; archived classifications remain owner-only.
+The aggregate accepts no owner override, writes no rows, and exposes only the
+caller's complete period consumption. Invalid legacy classifications/currencies
+and unsafe sums produce explicit errors instead of partial financial results.
+SQL tests exercise real owner, partner-persona, unrelated, anonymous and missing
+identity access; household membership itself remains a later-phase feature.
+
 # 22. Avoiding Indirect Privacy Leaks
 
 Authorization must consider derived information, not just raw rows.

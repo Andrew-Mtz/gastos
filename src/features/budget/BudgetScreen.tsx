@@ -39,6 +39,8 @@ import {
 import { spacing } from '../../theme/tokens';
 import { ReceivedBudgetAvailability } from './ReceivedBudgetAvailability';
 import { incomeOwnerKey } from '../income/income-data';
+import { BucketConsumption } from './BucketConsumption';
+import { consumptionOwnerKey } from './consumption-data';
 
 export function BudgetScreen() {
   const auth = useAuth();
@@ -183,6 +185,14 @@ function PersonalBudget({ profile }: { profile: Profile }) {
           refreshingPlan={query.isFetching}
         />
       )}
+      {period && (
+        <BucketConsumption
+          profileId={profile.id}
+          periodId={period.id}
+          currency={period.base_currency}
+          refreshingPlan={query.isFetching}
+        />
+      )}
       {period?.status === 'CLOSED' ? (
         <AppText>Este período está cerrado.</AppText>
       ) : (
@@ -221,6 +231,9 @@ function PersonalBudget({ profile }: { profile: Profile }) {
         variant="secondary"
         onPress={() => {
           void query.refetch();
+          void queryClient.invalidateQueries({
+            queryKey: consumptionOwnerKey(profile.id),
+          });
           void queryClient.invalidateQueries({
             queryKey: incomeOwnerKey(profile.id),
           });

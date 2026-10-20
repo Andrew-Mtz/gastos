@@ -13,6 +13,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { type Profile } from '../auth/auth-data';
 import { historyOwnerKey } from '../history/history-data';
 import { budgetKey } from '../budget/budget-data';
+import { consumptionOwnerKey } from '../budget/consumption-data';
 import { currentMonth, type BudgetPeriod } from '../budget/budget-setup';
 import {
   expenseKey,
@@ -120,6 +121,9 @@ function PersonalExpense({ profile }: { profile: Profile }) {
               activeEditor.current = null;
             }
             await Promise.all([
+              client.invalidateQueries({
+                queryKey: consumptionOwnerKey(profile.id),
+              }),
               client.invalidateQueries({
                 queryKey: historyOwnerKey(profile.id),
               }),

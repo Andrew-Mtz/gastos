@@ -47,6 +47,13 @@ update public.transactions set deleted_at=null where id='f1130000-0000-4000-8000
 insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,category_id)
 select auth.uid(),'f1030000-0000-4000-8000-000000000001','EXPENSE',1,'USD','2026-10-03','f1070000-0000-4000-8000-000000000001' from generate_series(1,1001);
 select is(public.get_bucket_consumption('f1030000-0000-4000-8000-000000000001')#>>'{buckets,0,spent_minor}','1376','Full aggregate exceeds both history and Data API transaction page sizes');
+insert into public.categories(id,profile_id,name,budget_bucket_id) values
+('f1070000-0000-4000-8000-000000000005',auth.uid(),'Games','f1040000-0000-4000-8000-000000000002');
+insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,category_id) values
+(auth.uid(),'f1030000-0000-4000-8000-000000000001','EXPENSE',25,'USD','2026-10-03','f1070000-0000-4000-8000-000000000005');
+select is(public.get_bucket_consumption('f1030000-0000-4000-8000-000000000001')#>>'{buckets,1,spent_minor}','25','Second spendable bucket remains a separate SQL group');
+select public.save_budget_allocations('f1030000-0000-4000-8000-000000000001','[{"budget_bucket_id":"f1040000-0000-4000-8000-000000000003","percentage_basis_points":10000}]');
+select is(public.get_bucket_consumption('f1030000-0000-4000-8000-000000000001')#>>'{buckets,1,spent_minor}','25','Removing an allocation never erases its expense consumption');
 update public.categories set archived_at=now() where id='f1070000-0000-4000-8000-000000000001';
 update public.budget_buckets set archived_at=now() where id='f1040000-0000-4000-8000-000000000001';
 select is(public.get_bucket_consumption('f1030000-0000-4000-8000-000000000001')#>>'{buckets,0,spent_minor}','1376','Archival preserves historical mapping and consumption');

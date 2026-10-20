@@ -18,6 +18,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { period, profile, request, category, bucket } from './fixtures';
 import { currentMonth } from '../../budget/budget-setup';
 import { financialDate } from '../../income/income-form';
+import { consumptionKey } from '../../budget/consumption-data';
 jest.mock('../expense-data', () => ({
   ...jest.requireActual('../expense-data'),
   readExpenseMonth: jest.fn(),
@@ -108,6 +109,8 @@ test('successful expense refreshes totals and returns to summary', async () => {
   const { client } = await openScreen();
   const actualKey = expenseOwnerKey(profile.id);
   client.setQueryData(actualKey, 100000);
+  const spentKey = consumptionKey(profile.id, period.id);
+  client.setQueryData(spentKey, { synthetic: true });
   const user = await beginExpense();
   await user.press(screen.getByRole('button', { name: 'Guardar gasto' }));
   await screen.findByText(/Solo gastos en/);
@@ -118,6 +121,7 @@ test('successful expense refreshes totals and returns to summary', async () => {
   await waitFor(() =>
     expect(client.getQueryState(actualKey)?.isInvalidated).toBe(true),
   );
+  expect(client.getQueryState(spentKey)?.isInvalidated).toBe(true);
 });
 test('pending request blocks duplicate taps and survives leave/return', async () => {
   let resolve!: () => void;

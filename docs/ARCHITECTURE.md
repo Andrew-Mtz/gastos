@@ -1682,6 +1682,19 @@ category names and original transaction amounts/currencies, and consume cancella
 signals. Owner/month Query keys isolate histories; successful income and expense
 registration invalidate history. No totals, schema changes or editing are added.
 
+FIN-113 adds a stable, invoker `get_bucket_consumption` RPC. Its scalar JSON
+response contains complete per-bucket sums and minimal historical bucket labels,
+not paginated transaction history. Response size scales with relevant buckets,
+not transactions; a Data API row limit cannot silently truncate the total. All
+checks and aggregates use the same read snapshot. The application validates the
+period/currency and response schema, then pure domain code validates unique
+bucket identities, safe Money amounts and the exact total in deterministic order.
+Presupuesto displays consumption separately from received allocations, including
+owned periods without an active plan. Queries are owner/period-scoped, cancellable,
+refreshed on focus/manual action and invalidated after expense registration.
+Pending/error refreshes hide figures. No new dependency, persisted totals,
+remaining/safe-to-spend calculation or savings operation is introduced.
+
 # 69. AI Architecture
 
 AI is not part of the initial MVP infrastructure.
