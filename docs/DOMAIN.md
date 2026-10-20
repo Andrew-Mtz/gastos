@@ -832,6 +832,30 @@ MONTHLY
 
 ---
 
+FIN-117 / ADR-070 persists owner-only monthly definitions with immutable terms. A template
+requires an active same-owner category mapped to an active SPENDABLE bucket at
+creation. FIXED requires a positive safe-integer amount; VARIABLE may carry a
+nonnegative estimate or null for unknown. An estimate is never actual spending.
+The explicit currency, category, amount mode, amount, due day and first/last months
+cannot be edited by ordinary clients. Due day 1–31 clamps to the month's last day;
+first/optional inclusive last months are canonical calendar-month start dates.
+Creation starts no earlier than the owner's current financial month and cannot
+overlap an already closed owned period. A retry reads the original definition,
+even after time passes, a category is archived or a period closes.
+
+A last month limits the schedule without deleting history. A separate explicit
+stopped-from month excludes that and later months, may only shorten the schedule,
+and must be no earlier than the owner's current financial month. It cannot change
+a covered closed month or touch actual transactions. Stopping at/before the first
+month cancels a mistaken future template; clearing/extending a stop is forbidden.
+Original terms and server stop provenance remain readable. Broad edits/reactivation
+require a later versioned operation. Category
+or bucket archival does not erase a recurring obligation. Creating a template has
+zero cash, spending, budget-consumption and savings impact. No actual transaction,
+occurrence, automatic fixed generation or commitment amount is created in FIN-117.
+
+---
+
 # 22. Committed Money
 
 Committed money represents expected obligations that have not yet been paid.

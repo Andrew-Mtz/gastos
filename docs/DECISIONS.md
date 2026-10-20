@@ -2146,6 +2146,54 @@ explicit, independently documented operation.
 
 ---
 
+# ADR-070 — Immutable Monthly Personal Recurring Templates
+
+**Status:** Accepted under delegated implementation authority (2026-10-20),
+pending owner review of `OVERNIGHT_DECISIONS.md`.
+
+FIN-117 is creation/read/stop schema, not occurrence generation or a scheduling UI.
+A personal MONTHLY template names an owned active category whose immutable mapping
+points to an active SPENDABLE bucket. Its denomination is explicit and immutable,
+not inferred from changing profile defaults; template creation does not require a
+budget period. Later actual resolution must use the period currency (ADR-067) or
+fail explicitly, without conversion or rewriting the original template.
+
+FIXED has a positive safe-integer minor amount. VARIABLE has either a nonnegative
+safe-integer estimate (zero is explicit) or null (unknown). Neither is actual spending.
+Due day is 1–31, clamped to the last valid day of shorter months. The required first
+month and optional inclusive last month are canonical first-of-month calendar dates.
+Creation cannot begin before the owner's current financial month, derived using the
+profile timezone, or overlap an already closed owned period. These creation checks
+are not reapplied to an identical replay: retry reads the immutable original row.
+
+All financial definition fields and technical provenance are immutable to clients.
+The only permitted update is an explicit stopped-from month, no earlier than the
+owner's current financial month. It excludes that and later months, may only move
+earlier, cannot be cleared or extended, and cannot change any covered closed month.
+Stopping at/before the first month cancels a mistaken future definition. The original
+schedule remains intact and a server-managed stop timestamp preserves provenance.
+Identical stop replay is read-only. Optional inclusive last month remains immutable.
+There is no broad edit/delete, replacement or reactivation operation. Later category/
+bucket archival does not rewrite a template. An explicit versioned operation is
+needed before broad edits or reactivation. No policy should treat category archival
+as cancellation of an established obligation.
+
+Creation uses an authenticated invoker RPC with stable operation UUID and exact
+payload replay, backed by the same RLS, constraints and validation as direct INSERT.
+Template and budget-period statement locks share the existing owner finance lock;
+new template writes require READ COMMITTED. This makes the closed-month check
+compatible with future lifecycle operations using the same lock. There is no
+household access, privileged function, transaction write or financial aggregate change.
+Cash, spending, budget consumption and savings impacts are all zero.
+
+Later FIN-118/119 work must identify each owner/template/month occurrence once,
+preserve its original obligation and link the one actual transaction, then exclude
+resolved commitments from additional subtraction. This is a design requirement, not
+an occurrence table, resolution action or commitment calculation implemented here.
+Fixed recurring automatic transaction generation remains intentionally undecided.
+
+---
+
 # Superseding Decisions
 
 When replacing an accepted ADR:

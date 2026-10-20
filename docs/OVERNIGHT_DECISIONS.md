@@ -124,3 +124,41 @@ credential/security changes are authorized by this log.
   isolated caches, interruption/cancellation and exact-head CI are required.
 - Revisit: Pending owner review. An explicit assignment/release operation for existing
   savings can be designed separately; FIN-122 must preserve sub-reserve invariants.
+
+## FIN-117: Immutable monthly personal templates
+
+- Question: What does a template mean before occurrences, resolution and commitments
+  exist, and how can later changes avoid rewriting historical obligations?
+- Options: editable live definitions with retroactive recomputation; versioned
+  definitions plus occurrence snapshots now; immutable definitions with a narrow prospective stop operation.
+- Decision: Implement immutable definitions with a narrow stop operation, matching this roadmap
+  task's schema scope.
+  MONTHLY templates have an explicit first month and optional inclusive last month,
+  an owned active category mapped to an active SPENDABLE bucket, immutable currency,
+  and a due day from 1 through 31 (clamped to the month's last day). FIXED requires
+  a positive safe-integer amount; VARIABLE accepts an optional nonnegative estimate,
+  where null is unknown and zero is an explicit estimate, never actual spending.
+  Creation may start in the owner's current financial month or later, not earlier,
+  and cannot overlap an already closed owned period. Exact UUID retries return the
+  original row without reactivating it or applying current creation eligibility.
+- Reason: This provides useful persisted definitions without inventing a scheduler,
+  automatic fixed transactions, past obligations or mutable historical meaning.
+- Impact: No actual transaction, cash, spending, budget consumption or savings change.
+  Templates are private and independent of a particular budget-period currency;
+  later resolution must still obey ADR-067 and never infer conversion. Category and
+  bucket archives preserve the definition, not erase historical obligations. The sole permitted change is an explicit stopped-from month, no earlier than the
+  owner's current month. It only shortens the schedule, cannot be cleared/extended,
+  and cannot affect a covered closed month. Stopping at/before the first month
+  cancels a mistaken future template. Original fields and stop provenance survive.
+  No broad edit, deletion, replacement or reactivation operation is exposed.
+  A defined last month also ends eligibility without rewriting the row. No creation/list
+  UI is included in this schema task; FIN-118 can add the minimal entry/resolve UI.
+  Later occurrence work must uniquely identify owner/template/month, snapshot the
+  obligation and link its actual transaction before commitment calculations exclude
+  resolved items, so a fixed template and its actual expense are not counted twice.
+- Verification: Safe bounds and calendar/leap-year domain tests; real PostgreSQL
+  direct-write/RPC grants, RLS, forged references, immutable history, closed periods,
+  exact replay and financial neutrality; generated types and full exact-head CI.
+- Revisit: Pending owner review. A future explicit edit/reactivation operation must be
+  effective-month/version based and preserve already established obligations. Fixed
+  automatic generation remains an open decision, not permission supplied here.
