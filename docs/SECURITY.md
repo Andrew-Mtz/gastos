@@ -1714,3 +1714,15 @@ have owner-only SELECT and no client INSERT/UPDATE/DELETE/TRUNCATE grants. Revis
 are server-managed; every existing direct description/delete/restore also leaves a
 trail. Independent review and actual PostgreSQL privacy/grant/forgery tests cover both
 definer functions. No household-membership shortcut or production change is allowed.
+
+## FIN-123 lifecycle capability
+
+The ADR-075 close RPC is a bounded definer capability, not a broader status grant.
+It validates auth.uid() and explicit owner scope, READ COMMITTED and the owner finance
+lock before row locks. The server's financial month, lifecycle version, exact preview,
+explicit confirmation and absence of unresolved obligations are mandatory. Empty
+search_path and qualified objects prevent search-path substitution. Evidence is private,
+append-only to authenticated clients, with no INSERT/UPDATE/DELETE privileges; only
+the authenticated role can execute close. Old exact replay is read-only. Existing
+closed-period guards still cover direct metadata/allocation/transaction restoration,
+FIN-122 correction and recurring-template paths. No production privileges are expanded.

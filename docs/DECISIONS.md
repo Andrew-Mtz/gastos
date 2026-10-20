@@ -2474,3 +2474,38 @@ Consult:
 * `AGENTS.md` for agent/developer workflow.
 
 A decision recorded here must not override a higher-level product, domain, or security invariant without those documents being updated explicitly.
+
+# ADR-075 — Completed-Month Closure with Immutable Evidence
+
+**Status:** Accepted under delegated implementation authority (2026-10-20),
+pending owner review of `OVERNIGHT_DECISIONS.md`.
+
+FIN-123 closes only a calendar month strictly earlier than the server clock's current
+month in the owner's persisted financial timezone. Client dates are never eligibility
+authority. All unresolved selected-month and prior obligations block closure, including
+known estimates, unknown amounts and zero estimates. Closure never cancels an obligation,
+backdates a payment, carries money, contributes savings or disposes of a remainder.
+A missing complete plan can be closed, but does not manufacture a numerical availability.
+
+A successful explicit confirmation records an immutable versioned as-of snapshot of
+existing complete dashboard facts, including bucket consumption, deficits, commitments
+and cumulative protected savings. Its timestamp and financial timezone identify what
+was finalized. Later explicit corrections to an older open period may change current
+cumulative savings; they never rewrite this snapshot, which is not a current balance.
+A preview fingerprint must still match after acquiring the owner finance lock, otherwise
+the user reviews fresh facts. Fingerprints are conflict detection, not authorization.
+
+Each period has a server-owned lifecycle version. Each close retains its request UUID,
+expected version, exact preview fingerprint, resulting version and immutable snapshot.
+Exact retries return that original evidence without mutation, including after later
+lifecycle changes; stale new requests never close another lifecycle. FIN-124 must advance
+the version on reopening and preserve every close. FIN-125 must use current authorized
+state and cannot mistake snapshot remainder or reserved/unknown money for free cash.
+
+One bounded SECURITY DEFINER RPC is required because clients deliberately lack status,
+closed timestamp and lifecycle UPDATE grants. It uses an empty search_path, non-null
+auth.uid(), explicit owner predicates, READ COMMITTED and the existing owner lock before
+period locks, then checks confirmation, version, server month, obligations and fingerprint.
+Only authenticated EXECUTE is granted; evidence has owner-only SELECT and no client
+writes. Existing ordinary transaction/correction/allocation/template guards stay intact.
+No reopen operation, new monetary transaction or general status mutation is introduced.

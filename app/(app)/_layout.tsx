@@ -42,6 +42,7 @@ export default function AppLayout() {
       <Tabs.Screen name="savings-goals" options={{ href: null }} />
       <Tabs.Screen name="recurring" options={{ href: null }} />
       <Tabs.Screen name="history" options={{ href: null }} />
+      <Tabs.Screen name="periods" options={{ href: null }} />
       {tabs.map(({ name, title, icon }) => (
         <Tabs.Screen
           key={name}

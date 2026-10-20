@@ -1397,7 +1397,7 @@ not claimed as personal approval.
 
 ## FIN-123 — Close Budget Period
 
-**Status:** Not Started
+**Status:** In Progress
 
 **Depends on:** FIN-121
 
