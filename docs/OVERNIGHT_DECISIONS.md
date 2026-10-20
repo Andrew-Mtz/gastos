@@ -455,3 +455,38 @@ credential/security changes are authorized by this log.
 - Revisit: Reversible schema-staging choices accepted under delegated authority,
   pending owner review. Phase 1 physical acceptance and the prior margin error
   remain separate and unresolved; this work neither diagnoses nor closes them.
+
+## FIN-202: Bounded first-household creation and active-member reads
+
+- Question: How can FIN-202 make Hogar useful without silently deciding invitations,
+  multiple active households, detailed role powers or former-member history?
+- Options considered: Wait for a complete membership lifecycle and explicit FIN-203
+  decisions, leaving Hogar unavailable; or deliver a narrow first-household creation
+  and active-read slice while keeping every later lifecycle operation unsupported.
+- Decision: ADR-079, recorded before code, adopts the narrow slice. First creation
+  is temporarily limited to Profiles with no membership history, with atomic
+  explicit OWNER membership. This is a flow limitation, not an approved global
+  household/member/OWNER cardinality rule. Collections remain unrestricted.
+- Reason: A first household and minimal active identity read can be implemented and
+  reviewed independently without guessing future invitation, departure or rejoin
+  semantics. The flow limit is conservative and reversible when those decisions
+  are explicitly made; waiting for the entire lifecycle is not required for this
+  bounded capability.
+- Impact: OWNER and MEMBER receive active read access only. Creator provenance is
+  never authorization. Private Profile preferences and finances stay private;
+  only authorized active names/roles are projected. Inactive-only history gets a
+  clear unsupported state, without old-household disclosure or deletion advice.
+  No invitations, departures, rejoining, ownership transfer, role changes, default
+  splits, real household/member creation, financial effect or deployment is added.
+- Verification: Tests cover exact lost-response recovery, active-only replay,
+  concurrent creation, projection minimization, SQL grants/RLS and private-source
+  isolation. UI tests cover background/focus, remount and authentication cache
+  boundaries. Authentic schema types, independent review, exact-head full CI and
+  manual/native acceptance remain gates; local mocked tests do not prove SQL RLS.
+- Revisit: These delegated temporary choices remain pending owner review, not
+  personal owner confirmation. FIN-203 needs explicit owner decisions and is not
+  implicitly authorized. Initial local preparation used reviewed FIN-201 e2d682c;
+  PR #42 is now merged as 75f8610 with the same tree. FIN-202 may proceed to a draft
+  PR and disposable CI under the owner's publication authorization, retaining
+  review, authentic types and exact-head full CI gates before merge. The full
+  membership lifecycle and Phase 1 physical acceptance remain separate open work.

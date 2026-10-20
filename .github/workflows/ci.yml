@@ -82,6 +82,9 @@ jobs:
       - name: Test savings write concurrency
         run: node scripts/test-savings-concurrency.mjs
 
+      - name: Test household authorization concurrency
+        run: node scripts/test-household-concurrency.mjs
+
       - name: Test authenticated personal finance journey
         run: npm run test:finance-api
 

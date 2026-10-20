@@ -1952,3 +1952,14 @@ configured, has no selected/prior unresolved obligations and retains sufficient 
 ordinary funds. Downstream carries must be dealt with explicitly; no automatic reversal,
 savings use or backdating. Old exact requests remain read-only after later lifecycle
 changes. Versioned saved summaries are historical evidence, never current authority.
+
+## FIN-202 bounded membership slice (ADR-079)
+
+The first-household operation is temporarily limited to Profiles with no membership
+history. This is not a global single-active-household domain rule: the schema and
+read model remain collections without a two-member or owner-count limit. Creation
+atomically adds an explicit active OWNER membership, never inferred as authorization
+from createdBy. OWNER/MEMBER share read rights only; role changes and all lifecycle
+operations remain unsupported. Inactive-only history gets a clear unsupported UI
+state, not automatic rejoining, erasure or old-household disclosure. Invitation and
+former-member historical policy remain open. No financial impact is introduced.
