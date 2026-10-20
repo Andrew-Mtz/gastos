@@ -118,3 +118,53 @@ test('money formatting preserves the last minor unit at the safe-integer limit',
   );
   expect(decimalText(Number.MAX_SAFE_INTEGER, 2)).toBe('90071992547409.91');
 });
+
+describe.each([true, false])(
+  'NumberFormat.formatToParts available: %s',
+  (available) => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      Intl.NumberFormat.prototype,
+      'formatToParts',
+    )!;
+    beforeAll(() => {
+      if (!available)
+        Object.defineProperty(Intl.NumberFormat.prototype, 'formatToParts', {
+          ...descriptor,
+          value: undefined,
+        });
+    });
+    afterAll(() => {
+      Object.defineProperty(
+        Intl.NumberFormat.prototype,
+        'formatToParts',
+        descriptor,
+      );
+    });
+
+    test.each([
+      [0, 'USD', 'USD\u00a00,00'],
+      [1, 'USD', 'USD\u00a00,01'],
+      [-1, 'USD', '-USD\u00a00,01'],
+      [123456, 'UYU', 'UYU\u00a01.234,56'],
+      [-123456, 'USD', '-USD\u00a01.234,56'],
+      [0, 'JPY', 'JPY\u00a00'],
+      [1, 'JPY', 'JPY\u00a01'],
+      [-1234, 'JPY', '-JPY\u00a01.234'],
+      [0, 'KWD', 'KWD\u00a00,000'],
+      [1, 'KWD', 'KWD\u00a00,001'],
+      [-1, 'KWD', '-KWD\u00a00,001'],
+      [1234567, 'KWD', 'KWD\u00a01.234,567'],
+      [Number.MAX_SAFE_INTEGER, 'USD', 'USD\u00a090.071.992.547.409,91'],
+      [-Number.MAX_SAFE_INTEGER, 'USD', '-USD\u00a090.071.992.547.409,91'],
+      [Number.MAX_SAFE_INTEGER, 'JPY', 'JPY\u00a09.007.199.254.740.991'],
+      [-Number.MAX_SAFE_INTEGER, 'JPY', '-JPY\u00a09.007.199.254.740.991'],
+      [Number.MAX_SAFE_INTEGER, 'KWD', 'KWD\u00a09.007.199.254.740,991'],
+      [-Number.MAX_SAFE_INTEGER, 'KWD', '-KWD\u00a09.007.199.254.740,991'],
+    ] as const)(
+      'formats %s minor units of %s exactly',
+      (amount, currency, expected) => {
+        expect(formatMoney(createMoney(amount, currency))).toBe(expected);
+      },
+    );
+  },
+);

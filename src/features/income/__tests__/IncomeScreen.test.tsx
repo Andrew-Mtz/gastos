@@ -94,6 +94,31 @@ test('expected and received remain visibly separate', async () => {
   expect(screen.getByText(/Recibido:/)).toHaveTextContent(/1.000,00/);
   expect(screen.getByText(/Esperado:/)).toHaveTextContent(/1.500,00/);
 });
+test('persisted expected and received income render without NumberFormat.formatToParts', async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(
+    Intl.NumberFormat.prototype,
+    'formatToParts',
+  )!;
+  Object.defineProperty(Intl.NumberFormat.prototype, 'formatToParts', {
+    ...descriptor,
+    value: undefined,
+  });
+  try {
+    await openScreen();
+    expect(screen.getByText(/Recibido:/)).toHaveTextContent(/1.000,00/);
+    expect(screen.getByText(/Esperado:/)).toHaveTextContent(/1.500,00/);
+    const user = await beginIncome();
+    await user.press(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(await screen.findByText(/Recibido:/)).toHaveTextContent(/1.000,00/);
+    expect(registerIncome).not.toHaveBeenCalled();
+  } finally {
+    Object.defineProperty(
+      Intl.NumberFormat.prototype,
+      'formatToParts',
+      descriptor,
+    );
+  }
+});
 test('cancel discards unsaved input without writing', async () => {
   await openScreen();
   const user = await beginIncome();

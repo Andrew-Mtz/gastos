@@ -431,3 +431,76 @@ test('refocus reloads period allocations before showing actual bucket amounts', 
   expect(screen.getByText(/Ahorro:.*572,00/)).toBeOnTheScreen();
   expect(screen.getByText(/Necesidades: 45.00%/)).toHaveTextContent(/675,00/);
 });
+
+test('first expected-income digit, saving and reopening render without NumberFormat.formatToParts', async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(
+    Intl.NumberFormat.prototype,
+    'formatToParts',
+  )!;
+  Object.defineProperty(Intl.NumberFormat.prototype, 'formatToParts', {
+    ...descriptor,
+    value: undefined,
+  });
+  try {
+    const view = await budget();
+    const user = userEvent.setup();
+    await user.press(
+      screen.getByRole('button', { name: 'Configurar presupuesto' }),
+    );
+    const input = await screen.findByLabelText(
+      'Ingreso esperado (USD, opcional)',
+    );
+    await user.type(input, '1');
+    expect(screen.getByText(/Necesidades: 50.00%/)).toHaveTextContent(/0,50/);
+    await user.type(input, '500');
+    const period = {
+      id: 'a1060000-0000-4000-8000-000000000001',
+      profile_id: profile.id,
+      starts_on: '2026-10-01',
+      ends_on: '2026-10-31',
+      status: 'OPEN' as const,
+      base_currency: 'USD',
+      expected_income_minor: 150000,
+    };
+    jest.mocked(readBudget).mockResolvedValue({
+      period,
+      buckets,
+      allocations: buckets.map((bucket, index) => ({
+        budget_period_id: period.id,
+        budget_bucket_id: bucket.id,
+        percentage_basis_points: [5000, 3000, 2000][index],
+      })),
+    });
+    jest.mocked(saveInitialBudget).mockResolvedValue(period);
+    await user.press(
+      screen.getByRole('button', { name: 'Guardar presupuesto' }),
+    );
+    expect(await screen.findByText('Presupuesto guardado')).toBeOnTheScreen();
+    expect(saveInitialBudget).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/Necesidades: 50.00%/)).toHaveTextContent(/750,00/);
+    expect(await screen.findByText(/Total recibido:/)).toHaveTextContent(
+      /1.430,00/,
+    );
+    expect(screen.getByText(/Necesidades:.*715,00/)).toBeOnTheScreen();
+    await view.unmount();
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+    });
+    await render(
+      <QueryClientProvider client={client}>
+        <BudgetScreen />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText('Presupuesto guardado')).toBeOnTheScreen();
+    expect(screen.getByText(/Necesidades: 50.00%/)).toHaveTextContent(/750,00/);
+    expect(await screen.findByText(/Total recibido:/)).toHaveTextContent(
+      /1.430,00/,
+    );
+  } finally {
+    Object.defineProperty(
+      Intl.NumberFormat.prototype,
+      'formatToParts',
+      descriptor,
+    );
+  }
+});
