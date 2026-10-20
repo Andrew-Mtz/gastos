@@ -784,7 +784,7 @@ found no blockers; date and restoration regressions cover its minor suggestions.
 
 ## FIN-109 — Register Income
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-108, FIN-105
 
@@ -806,6 +806,19 @@ Received: USD 1000
 ```
 
 The application must not report USD 1500 as received.
+
+FIN-109 adds a same-budget-currency income form and an owner-only, invoker RPC
+with stable request identity. Multiple active income transactions determine the
+received total; expected income is displayed separately and never substituted.
+SQL tests cover exact replay/conflict, soft deletion, closed periods, totals,
+safe bounds and cross-owner denial. Real PostgreSQL CI passes 739 assertions;
+types are copied verbatim from verified artifact 12239693117. Automated UI tests
+cover cancellation, duplicate submission, uncertain retry, late responses,
+refocus after budget setup and month rollover. Independent review found no
+blocking issue; its refocus and deterministic-clock findings were addressed.
+Native-device QA and full-process-restart recovery were not exercised; pending
+request identity currently survives tab navigation, not process termination.
+Currency conversion remains deferred under ADR-066.
 
 ---
 
@@ -1700,7 +1713,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-109 — Register Income
+FIN-110 — Income-Based Budget Availability
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.

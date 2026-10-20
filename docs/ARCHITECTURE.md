@@ -1656,6 +1656,17 @@ application, new dependencies, or actual-income functionality is introduced.
 
 ---
 
+FIN-109 replaces the Transacciones placeholder with current-month income entry and
+separate expected/received totals. Form input uses existing exact decimal parsing,
+React Hook Form/Zod and the period currency; financial dates use the profile timezone.
+Invoker RPCs register one income idempotently and derive its private received total.
+The client retains an unresolved request identity and original period across tab
+navigation, prevents duplicate taps and does not retry mutations automatically.
+New drafts cannot be dismissed by older completions. Auth changes unmount private
+state; no persistent local transaction cache or offline queue is introduced. A full
+app/process restart does not preserve unresolved request state; users should refresh
+received totals before re-entering an uncertain registration after restart.
+
 # 69. AI Architecture
 
 AI is not part of the initial MVP infrastructure.

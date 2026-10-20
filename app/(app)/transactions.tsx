@@ -1,9 +1,4 @@
-import { PlaceholderScreen } from '../../src/features/navigation/PlaceholderScreen';
+import { IncomeScreen } from '../../src/features/income/IncomeScreen';
 export default function Route() {
-  return (
-    <PlaceholderScreen
-      title="Transacciones"
-      message="La funcionalidad de transacciones se añadirá más adelante."
-    />
-  );
+  return <IncomeScreen />;
 }

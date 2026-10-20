@@ -25,6 +25,13 @@ jest.mock('../../budget/BudgetScreen', () => {
   };
 });
 
+jest.mock('../../income/IncomeScreen', () => {
+  const { Text: MockText } = jest.requireActual('react-native');
+  return {
+    IncomeScreen: () => <MockText role="heading">Transacciones</MockText>,
+  };
+});
+
 const StateContext = createContext<
   'AUTHENTICATED_READY' | 'UNAUTHENTICATED' | 'AUTHENTICATED_PROFILE_MISSING'
 >('AUTHENTICATED_READY');
