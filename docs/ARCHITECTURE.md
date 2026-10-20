@@ -1003,6 +1003,15 @@ removed rows and restoring existing identities rather than physically deleting
 financial records. It returns active rows ordered by bucket UUID. RLS and narrow
 column grants protect direct access as well as RPC use.
 
+Allocation mutations explicitly require PostgreSQL `READ COMMITTED`, the normal
+Data API transaction isolation. Both the row trigger and RPC reject snapshot
+isolation rather than trusting a parent lock with a stale transaction snapshot.
+The SQL regression suite exercises rejection of direct and RPC writes under
+`REPEATABLE READ`. Multi-session race tests are not yet present. Mixing direct
+allocation writes with the complete-set RPC can produce a recoverable PostgreSQL
+deadlock because row-lock acquisition order differs; callers should prefer the
+RPC and may retry the entire failed transaction, never a partial write sequence.
+
 `src/domain/budget/budget-allocation.ts` validates immutable period plans and derives
 planned Money values using existing FIN-102 allocation logic with canonical bucket
 UUID ordering. Unknown expected income stays null. Planned amounts are not stored,

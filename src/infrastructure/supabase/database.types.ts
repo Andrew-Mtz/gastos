@@ -9,6 +9,51 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      budget_allocations: {
+        Row: {
+          budget_bucket_id: string;
+          budget_period_id: string;
+          created_at: string;
+          deleted_at: string | null;
+          id: string;
+          percentage_basis_points: number;
+          updated_at: string;
+        };
+        Insert: {
+          budget_bucket_id: string;
+          budget_period_id: string;
+          created_at?: string;
+          deleted_at?: string | null;
+          id?: string;
+          percentage_basis_points: number;
+          updated_at?: string;
+        };
+        Update: {
+          budget_bucket_id?: string;
+          budget_period_id?: string;
+          created_at?: string;
+          deleted_at?: string | null;
+          id?: string;
+          percentage_basis_points?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'budget_allocations_bucket_fkey';
+            columns: ['budget_bucket_id'];
+            isOneToOne: false;
+            referencedRelation: 'budget_buckets';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'budget_allocations_period_fkey';
+            columns: ['budget_period_id'];
+            isOneToOne: false;
+            referencedRelation: 'budget_periods';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       budget_buckets: {
         Row: {
           archived_at: string | null;
@@ -129,7 +174,24 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      save_budget_allocations: {
+        Args: { p_allocations: Json; p_budget_period_id: string };
+        Returns: {
+          budget_bucket_id: string;
+          budget_period_id: string;
+          created_at: string;
+          deleted_at: string | null;
+          id: string;
+          percentage_basis_points: number;
+          updated_at: string;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'budget_allocations';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
     };
     Enums: {
       [_ in never]: never;

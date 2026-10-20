@@ -28,6 +28,11 @@ declare
   period_owner uuid;
   period_status text;
 begin
+  -- A parent lock serializes commands only when subsequent reads can see the
+  -- preceding writer. Snapshot-isolated writes require a different contract.
+  if pg_catalog.current_setting('transaction_isolation') <> 'read committed' then
+    raise exception 'Budget allocation writes require READ COMMITTED isolation' using errcode = '0A000';
+  end if;
   if tg_op = 'UPDATE' and (
     new.id <> old.id or new.budget_period_id <> old.budget_period_id
     or new.budget_bucket_id <> old.budget_bucket_id
@@ -142,6 +147,12 @@ begin
   if auth.uid() is null then
     raise exception 'Authentication is required' using errcode = '42501';
   end if;
+  -- A parent lock serializes commands only when subsequent reads can see the
+  -- preceding writer. Snapshot-isolated writes require a different contract.
+  if pg_catalog.current_setting('transaction_isolation') <> 'read committed' then
+    raise exception 'Budget allocation writes require READ COMMITTED isolation' using errcode = '0A000';
+  end if;
+
   select id into period_id from public.budget_periods
   where id = p_budget_period_id and profile_id = auth.uid() and status = 'OPEN'
   for update;

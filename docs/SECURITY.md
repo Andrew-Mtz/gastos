@@ -492,7 +492,8 @@ physical DELETE, or TRUNCATE access is granted.
 it has no elevated privileges, uses an empty search path, and explicitly checks
 `auth.uid()` and period ownership. Direct writes obey the same RLS, row checks and
 deferred 10000-basis-point invariant. Parent-period row locking serializes saves
-with each other and lifecycle writes; failed replacements roll back as one
+with each other and lifecycle writes at the enforced `READ COMMITTED` isolation;
+snapshot-isolated writes are rejected. Failed replacements roll back as one
 operation. Removed rows remain private and recoverable, but a restore UI and
 account-deletion policy are not part of this task.
 
