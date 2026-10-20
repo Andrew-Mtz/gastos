@@ -69,7 +69,7 @@ select is((select default_amount_minor from public.recurring_expenses where id='
 select lives_ok($$select pg_temp.template('f1170000-0000-4000-8000-000000000001')$$,'Exact create replay');
 select is((select count(*) from public.recurring_expenses),4::bigint,'Retry does not duplicate');
 select throws_ok($$select pg_temp.template('f1170000-0000-4000-8000-000000000001','{"amount":1}')$$,'23505',null,'Conflicting replay cannot overwrite');
-select throws_ok(format($$select pg_temp.template('f1170000-0000-4000-8000-000000000005',%L::jsonb)$$,v),'23514',null,'Invalid scalar values are rejected: '||v)
+select throws_ok(format($$select pg_temp.template('f1170000-0000-4000-8000-000000000005',%L::jsonb)$$,v),'23514',null,'Invalid scalar values are rejected: '||v::text)
 from unnest(array['{"amount":null}','{"amount":0}','{"amount":-1}','{"amount":9007199254740992}',
  '{"name":""}','{"name":" "}','{"name":" Rent"}','{"currency":"usd"}',
  '{"due_day":0}','{"due_day":32}','{"amount_mode":"OTHER"}',
@@ -123,6 +123,23 @@ select lives_ok($$select public.stop_personal_recurring_expense('f1170000-0000-4
 select lives_ok($$select pg_temp.template('f1170000-0000-4000-8000-000000000001')$$,'Exact create replay in closed period is read-only');
 select lives_ok($$select pg_temp.template('f1170000-0000-4000-8000-000000000006',jsonb_build_object('active_from',pg_temp.month(1)))$$,'Future schedule does not change closed month');
 select lives_ok($$select public.stop_personal_recurring_expense('f1170000-0000-4000-8000-000000000005',pg_temp.month())$$,'Already completed stop replay survives closure');
+-- Closed-window checks cover both original and effective schedule boundaries.
+select lives_ok($$select pg_temp.template('f1170000-0000-4000-8000-000000000009',jsonb_build_object('active_from',pg_temp.month(1),'active_until',pg_temp.month(2)))$$,'Create bounded future schedule');
+select lives_ok($$select pg_temp.template('f1170000-0000-4000-8000-000000000010',jsonb_build_object('active_from',pg_temp.month(1),'active_until',pg_temp.month(3)))$$,'Create future schedule to stop before closure');
+select lives_ok($$select public.stop_personal_recurring_expense('f1170000-0000-4000-8000-000000000010',pg_temp.month(2))$$,'Stop excludes second month before it closes');
+reset role;
+insert into public.budget_periods(profile_id,starts_on,ends_on,base_currency,status,closed_at)
+select 'f0050000-0000-4000-8000-000000000001',pg_temp.month(n),(pg_temp.month(n)+interval '1 month -1 day')::date,'USD','CLOSED',now()
+from unnest(array[2,3]) n;
+set local role authenticated;
+select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000001');
+select is(current_user::text,'authenticated','A role after future-closure fixtures');
+select is(auth.uid(),'f0050000-0000-4000-8000-000000000001'::uuid,'A identity after future-closure fixtures');
+select throws_ok($$select pg_temp.template('f1170000-0000-4000-8000-000000000011',jsonb_build_object('active_from',pg_temp.month(1)))$$,'23514',null,'Future covered closed month blocks creation');
+select throws_ok($$select public.stop_personal_recurring_expense('f1170000-0000-4000-8000-000000000009',pg_temp.month(1))$$,'23514',null,'Closed month at inclusive active_until blocks stop');
+select lives_ok($$select public.stop_personal_recurring_expense('f1170000-0000-4000-8000-000000000009',pg_temp.month(3))$$,'Closed month beyond active_until is unaffected');
+select lives_ok($$select public.stop_personal_recurring_expense('f1170000-0000-4000-8000-000000000010',pg_temp.month(1))$$,'Closed months already excluded by earlier stop are unaffected');
+select lives_ok($$select pg_temp.template('f1170000-0000-4000-8000-000000000011',jsonb_build_object('active_from',pg_temp.month(1),'active_until',pg_temp.month(1)))$$,'Closed month beyond bounded schedule does not block creation');
 reset role;
 set local role authenticated;
 select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000002');
