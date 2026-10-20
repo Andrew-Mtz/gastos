@@ -524,6 +524,14 @@ of RLS. New mappings require an active owned bucket. Archive/restore retains
 private history; system categories are read-only to clients. The timestamp trigger
 is SECURITY INVOKER with an empty search path and no direct client EXECUTE grant.
 
+FIN-108 transactions enforce owner-only access, personal-only scope and composite
+same-owner period/category foreign keys. Clients cannot overwrite immutable
+financial fields or timestamps, physically delete or truncate records. An invoker
+trigger locks an owned open period under READ COMMITTED before writes and checks
+financial date bounds, income currency, and active category references on insert
+or restore. Closed periods retain private read access but no ordinary mutation.
+No service role, definer function or production operation is introduced.
+
 # 22. Avoiding Indirect Privacy Leaks
 
 Authorization must consider derived information, not just raw rows.

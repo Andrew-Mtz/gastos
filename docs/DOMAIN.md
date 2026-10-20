@@ -546,6 +546,19 @@ REIMBURSEMENT
 
 Not every transaction affects spending.
 
+FIN-108 persists only personal INCOME, EXPENSE, SAVINGS_CONTRIBUTION and
+SAVINGS_WITHDRAWAL rows, each belonging to an owned calendar budget period.
+Amounts are positive safe-integer minor units; dates are financial dates rather
+than creation timestamps. Optional category relations enforce the same owner.
+Clients may update descriptions and soft-delete/restore open-period records,
+not reassign the original amount, currency, date, type or category. Deletion
+preserves identity and is excluded by subsequent calculation paths. This schema
+does not implement expense/savings operations or determine their budget effects.
+
+ADR-066 limits income to its period currency for this stage. Cross-currency income
+registration/conversion is deferred, not silently estimated. Existing open currency
+decisions continue to apply to expenses and future conversion.
+
 ---
 
 # 14. Income
