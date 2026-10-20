@@ -2059,6 +2059,54 @@ future calculations must fail explicitly rather than silently ignore them.
 
 ---
 
+# ADR-068 — Cumulative Protected Savings and Explicit Extra Movements
+
+**Status:** Accepted under delegated implementation authority (2026-10-20),
+pending owner review of `OVERNIGHT_DECISIONS.md`.
+
+Each currency has a separate cumulative protected reserve. Through a selected
+month it equals the sum of each month's independently largest-remainder-rounded
+received-income savings allocation, plus active additional contributions, minus
+active withdrawals. Expected income, future months, expenses and other currencies
+never fund that reserve. An unconfigured month contributes zero allocated reserve;
+an incomplete configured allocation or incompatible legacy movement is an error.
+
+A contribution is additional earmarking from the selected month's ordinary
+remainder before commitments, not recording the percentage allocation again.
+At creation/restoration it cannot exceed that remainder. A withdrawal requires
+an affirmative confirmation flag and cannot make any cumulative monthly prefix
+negative. A late historical correction cannot invalidate later withdrawals.
+Ordinary expenses can still overspend without changing the protected reserve;
+contribution eligibility is a creation/restoration check, not a permanent ban on
+a later expense deficit. Neither savings action changes cash or expense consumption.
+No physical bank transfer occurs. With no configured plan, contribution eligibility
+is unavailable; existing cumulative savings may still be withdrawn into that month.
+
+The month-specific ordinary movement adjustment is withdrawals minus contributions.
+The remainder before commitments is ordinary allocated income plus that adjustment
+minus expense consumption. It may be negative and is explicitly not safe-to-spend.
+No ordinary unused amount rolls forward here; cumulative savings need no additional
+rollover transaction. Cross-currency movements are rejected, not converted.
+
+Database invoker functions preserve RLS. Owner-scoped transaction advisory locks
+serialize transaction and allocation writes, including expenses, at READ COMMITTED.
+Deferred constraints validate final historical prefixes after atomic replacements;
+registration checks new/restored contributions under the same lock. Stable operation
+UUIDs return identical existing rows without writing, including closed-period replay.
+Confirmation evidence records the caller's affirmative request, not proof of a
+physical gesture. Existing legacy savings rows remain visible in history but fail
+savings availability until removed or explicitly restored under current funding/confirmation
+guards. All incompatible active rows must be soft-deleted atomically before eligible
+restoration; closed periods still require reopening. A
+server-managed validation marker prevents unfunded schema-only contributions from
+becoming withdrawable money. No legacy financial amount is rewritten.
+
+FIN-122 corrections must preserve these constraints; FIN-125 must not double-roll
+protected savings. Goals, accounts, commitments and the final FIN-120 formula remain
+separate tasks. Runtime/device verification is not supplied by component tests.
+
+---
+
 # Superseding Decisions
 
 When replacing an accepted ADR:

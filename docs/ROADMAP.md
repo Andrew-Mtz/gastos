@@ -1007,7 +1007,7 @@ formula remain separate tasks; delegated scope decisions are documented.
 
 ## FIN-115 — Explicit Savings Contribution and Withdrawal
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-114
 
@@ -1022,6 +1022,27 @@ Support explicit savings movements.
 * confirmation for withdrawal;
 * transaction history;
 * deterministic availability.
+
+### Implementation note
+
+Personal savings now supports extra contributions and separately confirmed withdrawals,
+with owner-only history, stable operation replay and deterministic cumulative protection
+by currency through the selected month. Each month's allocation is rounded independently;
+extra contributions reduce ordinary remainder before commitments and withdrawals return it.
+Ordinary overspending remains possible without consuming protected savings. ADR-068 and
+`OVERNIGHT_DECISIONS.md` record the delegated semantics and legacy compatibility boundary.
+
+Invoker RPCs and owner-wide write serialization enforce funding, historical prefix,
+confirmation, closed-period, currency, safe-integer and direct-write guards. Legacy savings
+require server validation rather than an invented backfill; incompatible rows stay in
+history and require atomic recoverable cleanup before eligible restoration. Generated
+types are copied verbatim from the verified exact-migration-head CI artifact.
+
+Local typecheck, lint, formatting and all 593 Jest tests across 35 suites pass. Real
+local-Supabase CI passed 933 SQL assertions across 16 files and all six two-session
+lock-wait scenarios. Independent review found no remaining blocker. Final exact-head
+CI/type-drift verification gates merge. Device/native behavior is unverified; no bank
+transfer, goals, correction UI, ordinary rollover or final safe-to-spend is introduced.
 
 ---
 
@@ -1782,7 +1803,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-115 — Explicit Savings Contribution and Withdrawal
+FIN-116 — Personal Savings Goals
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.

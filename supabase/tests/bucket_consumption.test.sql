@@ -38,8 +38,8 @@ insert into public.transactions(id,owner_profile_id,budget_period_id,type,amount
 ('f1130000-0000-4000-8000-000000000002',auth.uid(),'f1030000-0000-4000-8000-000000000001','EXPENSE',275,'USD','2026-10-02','f1070000-0000-4000-8000-000000000002'),
 ('f1130000-0000-4000-8000-000000000003',auth.uid(),'f1030000-0000-4000-8000-000000000003','EXPENSE',999,'USD','2026-11-02','f1070000-0000-4000-8000-000000000001');
 select is(public.get_bucket_consumption('f1030000-0000-4000-8000-000000000001')#>>'{buckets,0,spent_minor}','375','Multiple categories aggregate into original unallocated bucket; other month excluded');
-insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date)
-select auth.uid(),'f1030000-0000-4000-8000-000000000001',kind,9999,'USD','2026-10-03'
+insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,withdrawal_confirmed)
+select auth.uid(),'f1030000-0000-4000-8000-000000000001',kind,case when kind='INCOME' then 9999 else 100 end,'USD','2026-10-03',kind='SAVINGS_WITHDRAWAL'
 from unnest(array['INCOME','SAVINGS_CONTRIBUTION','SAVINGS_WITHDRAWAL']) kind;
 select is(public.get_bucket_consumption('f1030000-0000-4000-8000-000000000001')#>>'{buckets,0,spent_minor}','375','All non-expense movement types excluded');
 update public.transactions set deleted_at=now() where id='f1130000-0000-4000-8000-000000000001';
@@ -89,6 +89,8 @@ select is(current_user::text,'authenticated','Owner closed read role');
 select is(auth.uid(),'f0050000-0000-4000-8000-000000000001'::uuid,'Owner closed read identity');
 select is(public.get_bucket_consumption('f1030000-0000-4000-8000-000000000001')#>>'{buckets,0,spent_minor}','1376','Closed historical consumption remains readable');
 reset role;
+set constraints all immediate;
+set constraints all deferred;
 -- Synthetic legacy rows represent data predating ADR-067. Disable triggers only
 -- inside this rolled-back test fixture; no product validation is weakened.
 alter table public.transactions disable trigger user;

@@ -2236,3 +2236,20 @@ Before implementing substantial code, consult:
 * `AGENTS.md`
 
 Any implementation requiring a new architectural pattern must identify that change before coding.
+
+## FIN-115 explicit savings path
+
+The savings route is a hidden tab reached from Transacciones. Its application
+module validates one scalar invoker summary, then the pure savings domain derives
+protected reserve, the monthly movement adjustment and ordinary remainder before
+commitments. Database aggregation is complete and independently rounds each month;
+no history pagination limit or persisted derived balance is involved. The form uses
+shared exact input parsing. Withdrawal has a separate amount/date/currency review
+and explicit confirmation; neither action performs an actual bank transfer.
+
+Owner/month query keys, cancellation, focus refresh and owner-wide invalidation
+keep cross-period balances current. Unconfirmed request identity and payload survive
+tab navigation, with no automatic mutation retries; auth changes discard private
+state. Full process restart recovery remains unimplemented, as in income/expense
+registration. Native/device QA remains unverified. The local-only concurrency
+harness runs after pgTAP in CI via `node scripts/test-savings-concurrency.mjs`.

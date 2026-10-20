@@ -61,3 +61,39 @@ credential/security changes are authorized by this log.
   PostgreSQL CI assertions for overspending, immutable type and private sources.
 - Revisit: Pending owner review. FIN-115 defines explicit movement effects;
   FIN-120 consumes the ordinary allocation and resolves its final formula.
+
+
+## FIN-115: Explicit savings, denomination and historical availability
+
+- Question: Are savings monthly or cumulative; does a contribution duplicate the
+  protected percentage; how do withdrawals, corrections and simultaneous writes work?
+- Options: period-only reserves; cumulative explicit contributions without allocated
+  savings; cumulative allocated savings plus additional explicit contributions.
+- Decision: Use the last option, separately per currency, through each calendar
+  month. Round each month's income allocation independently with canonical bucket
+  UUID tie-breaking. Additional contributions reduce that month's ordinary remainder
+  before commitments; withdrawals increase it. Never duplicate the allocated reserve.
+  New/restored contributions require sufficient ordinary remainder before commitments.
+  Withdrawals require explicit affirmative confirmation and sufficient cumulative
+  protected funds through their month. Every affected historical monthly prefix must
+  remain nonnegative, including after deletion/restoration or allocation correction.
+- Reason: Savings persist across months without inventing an opening balance or
+  spending money from future months. Explicit movements are earmarking, not bank
+  transfers, income or spending. Ordinary expenses may still overspend, without
+  consuming protected savings or retroactively invalidating valid contributions.
+- Impact: No currency conversion, cross-currency spending, account balances, goals,
+  ordinary month-end rollover or final safe-to-spend is introduced. Availability is
+  month-granular, not an intraday cash ledger. Existing incompatible legacy movements
+  remain in history and block a reliable summary until corrected, never silently
+  reclassified. A server-managed validation marker is granted only to new/restored
+  movements that pass funding checks; legacy contributions cannot invent money.
+  Multiple incompatible rows require atomic soft-delete cleanup before eligible
+  restoration; closed periods still require reopening. Finite safe-integer bounds
+  apply to components and derived balances.
+  FIN-122 must retain correction guards; FIN-125 must not duplicate savings rollover.
+- Verification: Exact domain arithmetic, SQL authorization and direct-write tests,
+  historical-prefix/correction tests, concurrent owner-write SQL tests, idempotent
+  retries, confirmation/cancel/navigation/auth/cache tests, independent review and
+  exact-head generated types/full CI are required before merge.
+- Revisit: Pending owner review; revisit intramonth cash availability with accounts,
+  conversion with Phase 4, corrections in FIN-122 and remainder actions in FIN-125.
