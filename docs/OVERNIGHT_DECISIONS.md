@@ -22,3 +22,20 @@ credential/security changes are authorized by this log.
 - Verification: Database direct-write/RPC negative tests, form/application tests,
   independent review and complete CI required before merge.
 - Revisit: Pending owner review; extend with explicit historical conversion later.
+
+## FIN-113: Consumption visibility without an active allocation
+
+- Question: Should spending in a valid spendable bucket disappear when that bucket
+  has no active allocation in the period?
+- Options: show only configured allocations; include every bucket with actual
+  spending as well as configured spendable buckets with zero spending.
+- Decision: Include both. Keep archived category/bucket mappings; an absent or
+  removed allocation does not erase an expense's original bucket meaning.
+- Reason: Actual spending must not be understated or silently reassigned.
+- Impact: Consumption is shown even for an unconfigured owned period. It is not a
+  remaining balance or safe-to-spend figure. ADR-067's legacy invalid-expense
+  rejection remains unchanged; no original record is repaired or rewritten.
+- Verification: SQL tests for unallocated, archived and zero-consumption buckets,
+  complete aggregates beyond history page limits, plus domain and UI tests.
+- Revisit: Pending owner review; later reallocation/closing tasks can reuse these
+  complete consumption figures without changing historical classification.
