@@ -18,6 +18,12 @@ import { AuthNavigator } from '../../auth/AuthNavigator';
 import { useAuth } from '../../auth/AuthProvider';
 
 jest.mock('../../auth/AuthProvider', () => ({ useAuth: jest.fn() }));
+jest.mock('../../budget/BudgetScreen', () => {
+  const { Text: MockText } = jest.requireActual('react-native');
+  return {
+    BudgetScreen: () => <MockText role="heading">Presupuesto</MockText>,
+  };
+});
 
 const StateContext = createContext<
   'AUTHENTICATED_READY' | 'UNAUTHENTICATED' | 'AUTHENTICATED_PROFILE_MISSING'

@@ -497,6 +497,23 @@ snapshot-isolated writes are rejected. Failed replacements roll back as one
 operation. Removed rows remain private and recoverable, but a restore UI and
 account-deletion policy are not part of this task.
 
+FIN-106's `prepare_initial_budget_buckets` is a deliberately narrow SECURITY
+DEFINER function: invoker grants cannot provision protected system rows. It
+accepts no arguments, requires a non-null `auth.uid()` and its existing profile,
+locks that profile, inserts only three fixed system definitions, and returns
+only that owner's keyed rows. It uses an empty search path, qualified references,
+no dynamic SQL, and no client-selected ownership, names, types, or permissions.
+Only authenticated callers receive EXECUTE. A unique owner/key index prevents
+duplicate defaults. Clients receive no INSERT/UPDATE grant for `system_key`.
+
+`save_initial_budget` remains SECURITY INVOKER and composes FIN-105's atomic save
+under existing RLS, grants and constraints. It validates exactly three distinct
+owned default references, locks the canonical personal month, rejects closed
+periods or currency mismatch, and never replaces an existing different plan.
+Identical retries preserve identities and timestamps. The client cancels private
+reads through TanStack Query, isolates keys by owner/month, and checks current
+identity and focus revision before showing asynchronous results.
+
 ---
 
 # 22. Avoiding Indirect Privacy Leaks

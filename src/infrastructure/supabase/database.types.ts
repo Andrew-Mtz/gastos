@@ -62,6 +62,7 @@ export type Database = {
           is_system: boolean;
           name: string;
           profile_id: string;
+          system_key: string | null;
           type: string;
           updated_at: string;
         };
@@ -72,6 +73,7 @@ export type Database = {
           is_system?: boolean;
           name: string;
           profile_id: string;
+          system_key?: string | null;
           type: string;
           updated_at?: string;
         };
@@ -82,6 +84,7 @@ export type Database = {
           is_system?: boolean;
           name?: string;
           profile_id?: string;
+          system_key?: string | null;
           type?: string;
           updated_at?: string;
         };
@@ -174,6 +177,26 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      prepare_initial_budget_buckets: {
+        Args: never;
+        Returns: {
+          archived_at: string | null;
+          created_at: string;
+          id: string;
+          is_system: boolean;
+          name: string;
+          profile_id: string;
+          system_key: string | null;
+          type: string;
+          updated_at: string;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'budget_buckets';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
       save_budget_allocations: {
         Args: { p_allocations: Json; p_budget_period_id: string };
         Returns: {
@@ -190,6 +213,32 @@ export type Database = {
           to: 'budget_allocations';
           isOneToOne: false;
           isSetofReturn: true;
+        };
+      };
+      save_initial_budget: {
+        Args: {
+          p_allocations?: Json;
+          p_base_currency: string;
+          p_expected_income_minor?: number;
+          p_starts_on: string;
+        };
+        Returns: {
+          base_currency: string;
+          closed_at: string | null;
+          created_at: string;
+          ends_on: string;
+          expected_income_minor: number | null;
+          id: string;
+          profile_id: string;
+          starts_on: string;
+          status: string;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'budget_periods';
+          isOneToOne: true;
+          isSetofReturn: false;
         };
       };
     };

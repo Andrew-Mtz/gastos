@@ -681,7 +681,7 @@ Executable multi-session race coverage remains a documented limitation.
 
 ## FIN-106 — Initial Budget Setup
 
-**Status:** Not Started
+**Status:** In Progress
 
 **Depends on:** FIN-105
 
@@ -697,6 +697,15 @@ Allow a user to select:
 ### Requirements
 
 Display percentages and calculated expected amounts before saving.
+
+Implementation provides all four strategies, exact expected-amount previews,
+private idempotent default provisioning, atomic initial setup, read-only saved
+plans, cancellation and stale-session/navigation protection. Local quality
+checks pass with 315 Jest tests; PostgreSQL CI passes 552 assertions across six
+files. Generated types are copied verbatim from the verified CI artifact.
+Independent review's delayed-save lifecycle finding is fixed with a regression.
+Final PR CI and merge remain pending. Native-device keyboard/back/screenshots
+and multi-session database race execution remain unverified.
 
 ---
 
