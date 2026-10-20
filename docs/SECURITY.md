@@ -540,6 +540,12 @@ read. The aggregate checks owned period access, excludes deleted/non-income rows
 and rejects mixed currency or unsafe sums. Income queries use owner/month keys and
 cancellable reads; late writes cannot populate a different authenticated identity.
 
+FIN-110 consumes the same invoker aggregate without broadening database access.
+Derived bucket amounts remain scoped to the authenticated profile and period in
+query keys. The auth boundary clears private queries; changing owner/period never
+reuses another key's values. Pending/error refreshes hide actual figures rather
+than substituting expected income. No household visibility or elevated key is added.
+
 # 22. Avoiding Indirect Privacy Leaks
 
 Authorization must consider derived information, not just raw rows.

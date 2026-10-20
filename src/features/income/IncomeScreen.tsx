@@ -18,7 +18,12 @@ import {
   formatMoney,
   type BudgetPeriod,
 } from '../budget/budget-setup';
-import { incomeKey, readIncomeMonth, registerIncome } from './income-data';
+import {
+  incomeKey,
+  incomeOwnerKey,
+  readIncomeMonth,
+  registerIncome,
+} from './income-data';
 import {
   financialDate,
   incomeErrorMessage,
@@ -115,7 +120,7 @@ function PersonalIncome({ profile }: { profile: Profile }) {
             }
             await Promise.all([
               client.invalidateQueries({
-                queryKey: incomeKey(profile.id, targetPeriod.starts_on),
+                queryKey: incomeOwnerKey(profile.id),
               }),
               client.invalidateQueries({
                 queryKey: budgetKey(profile.id, targetPeriod.starts_on),

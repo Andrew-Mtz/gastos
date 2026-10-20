@@ -37,6 +37,8 @@ import {
   type Strategy,
 } from './budget-setup';
 import { spacing } from '../../theme/tokens';
+import { ReceivedBudgetAvailability } from './ReceivedBudgetAvailability';
+import { incomeOwnerKey } from '../income/income-data';
 
 export function BudgetScreen() {
   const auth = useAuth();
@@ -57,13 +59,17 @@ function PersonalBudget({ profile }: { profile: Profile }) {
     useCallback(() => {
       active.current = true;
       focusRevision.current += 1;
-      setMonth(currentMonth(profile.timezone));
+      const nextMonth = currentMonth(profile.timezone);
+      setMonth(nextMonth);
+      void queryClient.invalidateQueries({
+        queryKey: budgetKey(profile.id, nextMonth),
+      });
       return () => {
         active.current = false;
         focusRevision.current += 1;
         setBuckets(null);
       };
-    }, [profile.timezone]),
+    }, [queryClient, profile.id, profile.timezone]),
   );
   const key = budgetKey(profile.id, month);
   const query = useQuery({
@@ -115,17 +121,21 @@ function PersonalBudget({ profile }: { profile: Profile }) {
         }}
       />
     );
-  const plan =
+  const allocationPlan =
     period && allocations.length > 0
+      ? createBudgetAllocationPlan(
+          period.id,
+          currency,
+          allocations.map((item) => ({
+            budgetBucketId: item.budget_bucket_id,
+            percentageBasisPoints: item.percentage_basis_points,
+          })),
+        )
+      : null;
+  const plan =
+    allocationPlan && period
       ? calculatePlannedBudgetAllocation(
-          createBudgetAllocationPlan(
-            period.id,
-            currency,
-            allocations.map((item) => ({
-              budgetBucketId: item.budget_bucket_id,
-              percentageBasisPoints: item.percentage_basis_points,
-            })),
-          ),
+          allocationPlan,
           period.expected_income_minor,
         )
       : null;
@@ -138,6 +148,7 @@ function PersonalBudget({ profile }: { profile: Profile }) {
       {plan ? (
         <>
           <AppText tone="success">Presupuesto guardado</AppText>
+          <AppText variant="section">Planificación esperada</AppText>
           {plan.map((item) => {
             const bucket = savedBuckets.find(
               (entry) => entry.id === item.budgetBucketId,
@@ -163,6 +174,14 @@ function PersonalBudget({ profile }: { profile: Profile }) {
           Elige cómo distribuir tus ingresos esperados entre necesidades, ocio y
           ahorro.
         </AppText>
+      )}
+      {allocationPlan && (
+        <ReceivedBudgetAvailability
+          profileId={profile.id}
+          plan={allocationPlan}
+          buckets={savedBuckets}
+          refreshingPlan={query.isFetching}
+        />
       )}
       {period?.status === 'CLOSED' ? (
         <AppText>Este período está cerrado.</AppText>
@@ -202,6 +221,9 @@ function PersonalBudget({ profile }: { profile: Profile }) {
         variant="secondary"
         onPress={() => {
           void query.refetch();
+          void queryClient.invalidateQueries({
+            queryKey: incomeOwnerKey(profile.id),
+          });
         }}
       >
         Actualizar

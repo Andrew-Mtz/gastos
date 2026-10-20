@@ -1667,6 +1667,14 @@ state; no persistent local transaction cache or offline queue is introduced. A f
 app/process restart does not preserve unresolved request state; users should refresh
 received totals before re-entering an uncertain registration after restart.
 
+FIN-110 adds a received-income section to Presupuesto, separate from expected
+planning. Pure domain logic derives allocations from the owner-only aggregate RPC;
+components do no financial arithmetic. Received totals use owner/period query keys,
+with cancellable reads and no fallback to expected values on loading/error. Income
+registration invalidates the owner's income query prefix, including bucket totals;
+refocus and manual refresh also reload availability. No new tables, persisted
+balances, conversion, spending consumption or savings movements are introduced.
+
 # 69. AI Architecture
 
 AI is not part of the initial MVP infrastructure.

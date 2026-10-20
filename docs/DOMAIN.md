@@ -377,6 +377,15 @@ no period, allocation, cash movement, spending, or savings transaction.
 
 ---
 
+FIN-110 derives actual bucket allocations from the period's total active received
+income, not the estimate. It allocates the aggregate once with FIN-102 largest
+remainder and stable normalized bucket IDs; separately rounded installments are
+not added together. Zero received means zero in every bucket. All values remain
+safe integer minor units in the budget currency; no allocation balances are stored.
+These are pre-consumption amounts, not remaining balances or safe-to-spend. Savings
+allocations are labeled separately and never silently redistributed to spending.
+Expense consumption, protected-savings balances and commitments remain later tasks.
+
 # 10. Category
 
 A `Category` classifies financial activity.

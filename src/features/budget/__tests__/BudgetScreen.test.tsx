@@ -15,6 +15,7 @@ import {
 } from '../budget-data';
 import { useAuth } from '../../auth/AuthProvider';
 import { buckets } from './fixtures';
+import { readReceivedIncome } from '../../income/income-data';
 jest.mock('../budget-data', () => ({
   ...jest.requireActual('../budget-data'),
   readBudget: jest.fn(),
@@ -24,6 +25,10 @@ jest.mock('../budget-data', () => ({
 jest.mock('../../../infrastructure/supabase/client', () => ({ supabase: {} }));
 jest.mock('../../auth/AuthProvider', () => ({ useAuth: jest.fn() }));
 jest.mock('expo-router', () => ({ useFocusEffect: jest.fn() }));
+jest.mock('../../income/income-data', () => ({
+  ...jest.requireActual('../../income/income-data'),
+  readReceivedIncome: jest.fn(),
+}));
 const save = jest.fn<Promise<void>, [unknown]>();
 const cancel = jest.fn();
 const emptyBudget = { period: null, buckets: [], allocations: [] };
@@ -39,6 +44,7 @@ const profile = {
 const isCurrentUser = jest.fn(() => true);
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.mocked(readReceivedIncome).mockResolvedValue(143000);
   save.mockResolvedValue(undefined);
   isCurrentUser.mockReturnValue(true);
   jest.mocked(readBudget).mockResolvedValue(emptyBudget);
@@ -219,6 +225,11 @@ test('leaving and returning while preparation is pending cannot reopen a dismiss
     focus?.();
     finish(buckets);
   });
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Configurar presupuesto' }),
+    ).toBeEnabled(),
+  );
   expect(
     screen.queryByRole('button', { name: 'Cancelar' }),
   ).not.toBeOnTheScreen();
@@ -237,6 +248,11 @@ test('a late auth interruption cannot open the personal editor', async () => {
     .press(screen.getByRole('button', { name: 'Configurar presupuesto' }));
   isCurrentUser.mockReturnValue(false);
   await act(async () => finish(buckets));
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Configurar presupuesto' }),
+    ).toBeEnabled(),
+  );
   expect(
     screen.queryByRole('button', { name: 'Cancelar' }),
   ).not.toBeOnTheScreen();
@@ -284,6 +300,11 @@ test('existing plan and closed period are read-only', async () => {
   );
   expect(await screen.findByText('Presupuesto guardado')).toBeOnTheScreen();
   expect(screen.getByText('Este período está cerrado.')).toBeOnTheScreen();
+  expect(await screen.findByText(/Total recibido:/)).toHaveTextContent(
+    /1.430,00/,
+  );
+  expect(screen.getByText(/Necesidades: 50.00%/)).toHaveTextContent(/50,00/);
+  expect(screen.getByText(/Necesidades:.*715,00/)).toBeOnTheScreen();
   expect(
     screen.queryByRole('button', { name: 'Configurar presupuesto' }),
   ).not.toBeOnTheScreen();
@@ -344,10 +365,69 @@ test('late save success refreshes data without dismissing a newer draft', async 
     screen.getByRole('button', { name: 'Configurar presupuesto' }),
   );
   await user.press(await screen.findByRole('button', { name: 'Ahorrador' }));
+  invalidate.mockClear();
   await act(async () => {
     finish();
   });
   await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(1));
   expect(screen.getByRole('button', { name: 'Ahorrador' })).toBeSelected();
   expect(screen.getByRole('button', { name: 'Cancelar' })).toBeOnTheScreen();
+});
+
+test('refocus reloads period allocations before showing actual bucket amounts', async () => {
+  let rootFocus: (() => void | (() => void)) | undefined;
+  jest.mocked(useFocusEffect).mockImplementation((callback) => {
+    rootFocus ??= callback;
+  });
+  const saved = {
+    period: {
+      id: 'a1100000-0000-4000-8000-000000000001',
+      profile_id: profile.id,
+      starts_on: '2026-10-01',
+      ends_on: '2026-10-31',
+      status: 'OPEN' as const,
+      base_currency: 'USD',
+      expected_income_minor: 150000,
+    },
+    buckets,
+    allocations: buckets.map((bucket, index) => ({
+      budget_period_id: 'a1100000-0000-4000-8000-000000000001',
+      budget_bucket_id: bucket.id,
+      percentage_basis_points: [5000, 3000, 2000][index],
+    })),
+  };
+  jest.mocked(readBudget).mockResolvedValue(saved);
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+  });
+  await render(
+    <QueryClientProvider client={client}>
+      <BudgetScreen />
+    </QueryClientProvider>,
+  );
+  expect(await screen.findByText(/Necesidades:.*715,00/)).toBeOnTheScreen();
+  let finish!: (value: typeof saved) => void;
+  jest.mocked(readBudget).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await act(async () => {
+    rootFocus?.();
+  });
+  await screen.findByRole('progressbar');
+  expect(screen.queryByText(/Total recibido:/)).not.toBeOnTheScreen();
+  await act(async () => {
+    finish({
+      ...saved,
+      allocations: saved.allocations.map((item, index) => ({
+        ...item,
+        percentage_basis_points: [4500, 1500, 4000][index],
+      })),
+    });
+  });
+  expect(await screen.findByText(/Necesidades:.*643,50/)).toBeOnTheScreen();
+  expect(screen.getByText(/Ahorro:.*572,00/)).toBeOnTheScreen();
+  expect(screen.getByText(/Necesidades: 45.00%/)).toHaveTextContent(/675,00/);
 });
