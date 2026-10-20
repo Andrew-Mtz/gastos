@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { randomUUID } from 'expo-crypto';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -179,6 +179,9 @@ function PersonalIncome({ profile }: { profile: Profile }) {
           {pending ? 'Comprobar registro pendiente' : 'Registrar ingreso'}
         </Button>
       )}
+      <Button variant="secondary" onPress={() => router.push('/expenses')}>
+        Gastos personales
+      </Button>
       <Button
         variant="secondary"
         onPress={() => {

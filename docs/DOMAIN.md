@@ -565,8 +565,8 @@ preserves identity and is excluded by subsequent calculation paths. This schema
 does not implement expense/savings operations or determine their budget effects.
 
 ADR-066 limits income to its period currency for this stage. Cross-currency income
-registration/conversion is deferred, not silently estimated. Existing open currency
-decisions continue to apply to expenses and future conversion.
+registration/conversion is deferred, not silently estimated. ADR-067 separately limits Phase 1 expenses to the period currency; future
+conversion semantics remain open.
 
 ---
 
@@ -618,6 +618,13 @@ amount = UYU 2500
 * Expense recognition must not be duplicated when payment instruments are later settled.
 
 ---
+
+FIN-111 registers expenses with stable operation identities. Exact retries only
+read their existing active record; conflicting or deleted registrations cannot be
+silently overwritten or revived. New/restored expenses require an active owned
+category mapped to an active SPENDABLE bucket. The immutable mapping preserves
+historical bucket meaning. Cash, spending and budget consumption each reflect the
+expense amount; savings are unchanged. Consumption totals belong to FIN-113.
 
 # 16. Transfer
 

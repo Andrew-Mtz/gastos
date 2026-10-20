@@ -350,6 +350,38 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      register_personal_expense: {
+        Args: {
+          p_amount_minor: number;
+          p_budget_period_id: string;
+          p_category_id: string;
+          p_currency: string;
+          p_description?: string;
+          p_transaction_date: string;
+          p_transaction_id: string;
+        };
+        Returns: {
+          amount_minor: number;
+          budget_period_id: string;
+          category_id: string | null;
+          created_at: string;
+          currency: string;
+          deleted_at: string | null;
+          description: string | null;
+          id: string;
+          owner_profile_id: string;
+          scope: string;
+          transaction_date: string;
+          type: string;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'transactions';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       save_budget_allocations: {
         Args: { p_allocations: Json; p_budget_period_id: string };
         Returns: {

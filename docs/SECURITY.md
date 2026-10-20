@@ -546,6 +546,14 @@ query keys. The auth boundary clears private queries; changing owner/period neve
 reuses another key's values. Pending/error refreshes hide actual figures rather
 than substituting expected income. No household visibility or elevated key is added.
 
+FIN-111 adds authenticated-only invoker expense registration with an empty search
+path. Ownership derives from auth.uid(); existing period locks, grants and RLS
+remain authoritative. A write trigger also enforces same-period currency and
+active owned spendable-category mapping on direct inserts/restores. Exact replay
+never mutates history, including closed months. Category creation uses the existing
+owner-only table grants. Client reads are cancellable and owner/month scoped;
+pending financial request identity survives tab navigation, not process restart.
+
 # 22. Avoiding Indirect Privacy Leaks
 
 Authorization must consider derived information, not just raw rows.
