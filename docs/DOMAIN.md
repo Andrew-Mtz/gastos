@@ -413,6 +413,14 @@ Category
 * Archived categories remain usable for historical reporting.
 * Historical transactions must not lose category meaning if a category is later archived.
 
+FIN-107 persists personal categories with an optional explicit same-owner bucket
+reference. Clients can rename or archive custom categories but cannot reassign
+the owner, bucket mapping, or system provenance. Archive/restore preserves the
+same identity and mapping, including historical references to archived buckets.
+New categories may reference only active buckets. Active category state alone
+does not establish bucket eligibility for future financial operations. No default
+set or management UI is introduced in this schema task.
+
 Household category behavior may later support either:
 
 * household-specific categories;

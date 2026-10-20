@@ -712,7 +712,7 @@ remain unverified.
 
 ## FIN-107 — Category Domain and Schema
 
-**Status:** Not Started
+**Status:** In Progress
 
 **Depends on:** FIN-104
 
