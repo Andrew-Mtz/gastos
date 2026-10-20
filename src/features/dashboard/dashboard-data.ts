@@ -11,6 +11,7 @@ import {
 } from '../budget/budget-setup';
 import { consumptionSnapshotSchema } from '../budget/consumption-data';
 import { mapSafeToSpend } from '../budget/safe-to-spend-data';
+import { MarginReadError, marginRpcError } from '../budget/margin-read-error';
 import { recurringOwnerKey } from '../recurring/recurring-data';
 import { recurringMonthSchema } from '../recurring/recurring-form';
 
@@ -202,8 +203,17 @@ export async function readDashboard(
 ) {
   z.uuid().parse(owner);
   recurringMonthSchema.parse(month);
-  const query = supabase.rpc('get_personal_dashboard', { p_month: month });
-  const { data, error } = await (signal ? query.abortSignal(signal) : query);
-  if (error) throw error;
-  return mapDashboard(owner, month, data);
+  let response;
+  try {
+    const query = supabase.rpc('get_personal_dashboard', { p_month: month });
+    response = await (signal ? query.abortSignal(signal) : query);
+  } catch {
+    throw new MarginReadError('TRANSPORT');
+  }
+  if (response.error) throw marginRpcError(response.error, response.status);
+  try {
+    return mapDashboard(owner, month, response.data);
+  } catch {
+    throw new MarginReadError('INVALID_CONTRACT');
+  }
 }

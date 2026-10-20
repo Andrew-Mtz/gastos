@@ -93,13 +93,7 @@ function CurrentDashboard({ profile }: { profile: Profile }) {
     );
   const data = query.data;
   const heading = (
-    <>
-      <AppText variant="title">Gastos</AppText>
-      <AppText variant="section">Tu mes · {month.slice(0, 7)}</AppText>
-      <AppText tone="secondary">
-        Mes actual según {profile.timezone}. Los accesos abren este mes.
-      </AppText>
-    </>
+    <AppText variant="title">Tu mes · {month.slice(0, 7)}</AppText>
   );
   if (!data.period)
     return (
@@ -128,72 +122,86 @@ function CurrentDashboard({ profile }: { profile: Profile }) {
   return (
     <Screen scroll>
       {heading}
-      <AppText>
+      <AppText variant="caption" tone="secondary">
         {period.base_currency} ·{' '}
         {period.status === 'CLOSED' ? 'Período cerrado' : 'Período abierto'}
       </AppText>
-      <View style={styles.card}>
-        <SafeToSpendSummary period={period} data={availability} />
+      <View style={[styles.card, styles.primaryCard]}>
+        <SafeToSpendSummary period={period} data={availability} compact />
         {!availability.configured && (
           <Button onPress={() => router.push('/budget')}>
             Configurar presupuesto
           </Button>
         )}
       </View>
+      <View style={styles.actions}>
+        {period.status === 'CLOSED' && (
+          <AppText tone="warning">
+            Este período está cerrado. Para modificarlo, revísalo en
+            Presupuesto.
+          </AppText>
+        )}
+        <Button
+          disabled={period.status === 'CLOSED'}
+          onPress={() => router.push('/expenses')}
+        >
+          Registrar gasto
+        </Button>
+        <Button
+          variant="secondary"
+          disabled={period.status === 'CLOSED'}
+          onPress={() => router.push('/transactions')}
+        >
+          Registrar ingreso
+        </Button>
+      </View>
       <View style={styles.card}>
-        <AppText variant="section">Ingresos y distribución del mes</AppText>
+        <AppText variant="section">Ingresos del mes</AppText>
         <AppText>
           Ingresos recibidos: {formatMoney(data.receivedIncome)}
         </AppText>
-        <AppText>
+        <AppText variant="caption" tone="secondary">
           Ingresos esperados:{' '}
           {data.expectedIncome
             ? formatMoney(data.expectedIncome)
             : 'Sin estimación'}
           . No disponibles para gastar.
         </AppText>
-        <AppText>
+        <AppText variant="caption" tone="secondary">
           Asignado a ahorro este mes:{' '}
           {money(availability.components.allocated_savings_minor)}
         </AppText>
-        <AppText>
+        <AppText variant="caption" tone="secondary">
           Asignado a fondos gastables:{' '}
           {money(availability.components.spendable_allocated_minor)}
         </AppText>
-        <AppText tone="secondary">
+        <AppText variant="caption" tone="secondary">
           Las asignaciones son anteriores a los gastos, aportes y compromisos.
           No son fondos restantes.
         </AppText>
-        <Button
-          variant="secondary"
-          onPress={() => router.push('/transactions')}
-        >
-          Registrar ingreso
-        </Button>
-        <Button variant="secondary" onPress={() => router.push('/budget')}>
+        <Button variant="text" onPress={() => router.push('/budget')}>
           Ver presupuesto
         </Button>
       </View>
       <View style={styles.card}>
         <AppText variant="section">Ahorro protegido acumulado</AppText>
-        <AppText>{formatMoney(availability.savings.protectedSavings)}</AppText>
-        <AppText>
+        <AppText variant="section" accessibilityRole="text">
+          {formatMoney(availability.savings.protectedSavings)}
+        </AppText>
+        <AppText variant="caption" tone="secondary">
           Hasta este mes, solo en {period.base_currency}. Incluye el ahorro
           asignado y movimientos explícitos, no un saldo bancario ni dinero
           gastable.
         </AppText>
-        <AppText>
+        <AppText variant="caption" tone="secondary">
           Reservado en metas:{' '}
           {money(availability.components.goal_reserved_minor)} · Sin meta:{' '}
           {money(availability.components.unassigned_savings_minor)}
         </AppText>
-        <Button variant="secondary" onPress={() => router.push('/savings')}>
+        <Button variant="text" onPress={() => router.push('/savings')}>
           Ver ahorro
         </Button>
-        <Button
-          variant="secondary"
-          onPress={() => router.push('/savings-goals')}
-        >
+        <Button variant="text" onPress={() => router.push('/savings-goals')}>
           Ver metas
         </Button>
       </View>
@@ -218,17 +226,14 @@ function CurrentDashboard({ profile }: { profile: Profile }) {
             Aún no hay fondos gastables configurados ni gastos registrados.
           </AppText>
         )}
-        <AppText>
+        <AppText variant="caption" tone="secondary">
           Comparación de asignaciones de ingresos, arrastres y gastos, no
           disponibilidad transferible por fondo. Los positivos no compensan por
           sí solos el déficit global. El margen mensual de arriba incluye ahorro
           adicional y compromisos.
         </AppText>
-        <Button onPress={() => router.push('/expenses')}>
-          Registrar gasto
-        </Button>
         <Button
-          variant="secondary"
+          variant="text"
           onPress={() =>
             router.push({ pathname: '/history', params: { month } })
           }
@@ -238,7 +243,7 @@ function CurrentDashboard({ profile }: { profile: Profile }) {
       </View>
       <View style={styles.card}>
         <AppText variant="section">Obligaciones pendientes del mes</AppText>
-        <AppText>
+        <AppText variant="caption" tone="secondary">
           Por vencer y vencidas, ordenadas por fecha.{' '}
           {availability.commitments.unresolvedCount} pendientes en total; vista
           previa de {data.upcoming.length}.
@@ -260,7 +265,7 @@ function CurrentDashboard({ profile }: { profile: Profile }) {
           </AppText>
         )}
         <Button
-          variant="secondary"
+          variant="text"
           onPress={() =>
             router.push({ pathname: '/recurring', params: { month } })
           }
@@ -268,6 +273,9 @@ function CurrentDashboard({ profile }: { profile: Profile }) {
           Ver todas las obligaciones
         </Button>
       </View>
+      <AppText variant="caption" tone="secondary">
+        Mes actual según {profile.timezone}. Los accesos abren este mes.
+      </AppText>
       <Button
         variant="secondary"
         onPress={() => {
@@ -280,6 +288,8 @@ function CurrentDashboard({ profile }: { profile: Profile }) {
   );
 }
 const styles = StyleSheet.create({
+  actions: { gap: spacing.sm },
+  primaryCard: { borderWidth: 1, borderColor: colors.action },
   card: {
     gap: spacing.sm,
     padding: spacing.lg,

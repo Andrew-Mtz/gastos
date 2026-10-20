@@ -14,6 +14,7 @@ import { dashboardKey, mapDashboard, readDashboard } from '../dashboard-data';
 import { useAuth, type AuthState } from '../../auth/AuthProvider';
 import { recurringOwnerKey } from '../../recurring/recurring-data';
 import { formatMoney } from '../../budget/budget-setup';
+import { MarginReadError } from '../../budget/margin-read-error';
 import { createMoney } from '../../../domain/money/money';
 import { period, profile, snapshot } from './fixtures';
 jest.mock('../dashboard-data', () => ({
@@ -85,7 +86,7 @@ test('Inicio shows a consistent actionable current month with honest labels and 
   ).toBeOnTheScreen();
   expect(screen.getByText(/Tu mes · 2026-10/)).toBeOnTheScreen();
   expect(
-    screen.getByText(`Margen antes de estimaciones: ${money(500)}`),
+    screen.getByLabelText(`Margen antes de estimaciones: ${money(500)}`),
   ).toBeOnTheScreen();
   expect(
     screen.getByText(`Asignado a ahorro este mes: ${money(200)}`),
@@ -97,6 +98,18 @@ test('Inicio shows a consistent actionable current month with honest labels and 
     screen.getByText(/Ingresos esperados:.*No disponibles para gastar/),
   ).toBeOnTheScreen();
   expect(screen.getByText(/Necesidades: gastado.*asignado/)).toBeOnTheScreen();
+  expect(
+    screen.getByText(/Cuenta lo recibido, no los ingresos esperados/),
+  ).toBeOnTheScreen();
+  const actions = screen
+    .getAllByRole('button')
+    .map((button) => button.props.accessibilityLabel);
+  expect(actions.indexOf('Registrar gasto')).toBeLessThan(
+    actions.indexOf('Ver presupuesto'),
+  );
+  expect(actions.indexOf('Registrar ingreso')).toBeLessThan(
+    actions.indexOf('Ver ahorro'),
+  );
   expect(
     screen.getByText(/2026-10-01 · Alquiler · Confirmado/),
   ).toBeOnTheScreen();
@@ -155,6 +168,10 @@ test('older unresolved obligations block both margins while component facts rema
 test('manual refetch hides ALL old figures and errors cannot reuse them; retry recovers', async () => {
   const view = await open();
   await screen.findByText(/Ingresos recibidos:/);
+  await userEvent
+    .setup()
+    .press(screen.getByRole('button', { name: 'Ver cálculo del margen' }));
+  expect(screen.getByText(/Menos gastos registrados:/)).toBeOnTheScreen();
   let reject!: (error: unknown) => void;
   jest.mocked(readDashboard).mockImplementationOnce(
     () =>
@@ -169,7 +186,8 @@ test('manual refetch hides ALL old figures and errors cannot reuse them; retry r
     /Actualizando tu resumen mensual/,
   );
   expect(screen.queryByText(/Ingresos recibidos:/)).not.toBeOnTheScreen();
-  expect(screen.queryByText(/Margen antes/)).not.toBeOnTheScreen();
+  expect(screen.queryByLabelText(/Margen antes/)).not.toBeOnTheScreen();
+  expect(screen.queryByText(/Menos gastos registrados:/)).not.toBeOnTheScreen();
   expect(screen.queryByText(/Alquiler/)).not.toBeOnTheScreen();
   await act(async () => reject({ code: '23514' }));
   expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -181,9 +199,168 @@ test('manual refetch hides ALL old figures and errors cannot reuse them; retry r
     .press(screen.getByRole('button', { name: 'Reintentar' }));
   await screen.findByText(/Ingresos recibidos:/);
   expect(
+    screen.getByRole('button', { name: 'Ver cálculo del margen' }),
+  ).toBeCollapsed();
+  expect(screen.queryByText(/Menos gastos registrados:/)).not.toBeOnTheScreen();
+  expect(
     view.client.getQueryData(dashboardKey(profile.id, period.starts_on)),
   ).toBeDefined();
 });
+test('calculation is opt-in, accessible, reversible and never issues a financial request', async () => {
+  await open();
+  await screen.findByText(/Ingresos recibidos:/);
+  const reads = jest.mocked(readDashboard).mock.calls.length;
+  const user = userEvent.setup();
+  expect(screen.queryByText(/Cómo se calcula/)).not.toBeOnTheScreen();
+  expect(
+    screen.getByRole('heading', { name: 'Margen mensual para gastar' }),
+  ).toBeOnTheScreen();
+  for (let i = 0; i < 2; i++) {
+    const expand = screen.getByRole('button', {
+      name: 'Ver cálculo del margen',
+    });
+    expect(expand).toBeCollapsed();
+    await user.press(expand);
+    const collapse = screen.getByRole('button', {
+      name: 'Ocultar cálculo del margen',
+    });
+    expect(collapse).toBeExpanded();
+    expect(screen.getByText(/Menos gastos registrados:/)).toBeOnTheScreen();
+    await user.press(collapse);
+    expect(
+      screen.queryByText(/Menos gastos registrados:/),
+    ).not.toBeOnTheScreen();
+    expect(
+      screen.getByLabelText(`Margen antes de estimaciones: ${money(500)}`),
+    ).toBeOnTheScreen();
+  }
+  expect(readDashboard).toHaveBeenCalledTimes(reads);
+  expect(router.push).not.toHaveBeenCalled();
+});
+test.each(['unknown', 'unconfigured'] as const)(
+  '%s blocker stays visible with calculation collapsed',
+  async (blocker) => {
+    const s = snapshot();
+    if (blocker === 'unknown') {
+      s.availability.commitments.buckets[0].estimated_count = 0;
+      s.availability.commitments.buckets[0].estimated_minor = 0;
+      s.availability.commitments.buckets[0].unknown_count = 1;
+      s.upcoming[1].default_amount_minor = null;
+    } else {
+      s.allocations = [];
+      s.availability.savings.configured = false;
+      s.availability.savings.allocated_savings_minor = 0;
+      s.availability.savings.spendable_allocated_minor = 0;
+      s.availability.savings.unassigned_savings_minor = 450;
+    }
+    jest.mocked(readDashboard).mockResolvedValue(result(s));
+    await open();
+    expect(await screen.findByText(/Margen no disponible/)).toBeOnTheScreen();
+    expect(
+      screen.getByRole('button', { name: 'Ver cálculo del margen' }),
+    ).toBeCollapsed();
+    expect(
+      screen.queryByLabelText(/Margen antes de estimaciones:/),
+    ).not.toBeOnTheScreen();
+    expect(screen.queryByText(/Margen estimado tras/)).not.toBeOnTheScreen();
+    if (blocker === 'unknown') {
+      expect(screen.getByText(/no se tratarán como cero/)).toBeOnTheScreen();
+      await userEvent.setup().press(
+        screen.getByRole('button', {
+          name: 'Revisar obligaciones recurrentes',
+        }),
+      );
+      expect(router.push).toHaveBeenLastCalledWith({
+        pathname: '/recurring',
+        params: { month: period.starts_on },
+      });
+    } else {
+      expect(screen.getByText(/Configura la distribución/)).toBeOnTheScreen();
+      await userEvent
+        .setup()
+        .press(screen.getByRole('button', { name: 'Configurar presupuesto' }));
+      expect(router.push).toHaveBeenLastCalledWith('/budget');
+    }
+  },
+);
+test('negative and zero-estimate warnings remain visible without expanding details', async () => {
+  const s = snapshot();
+  s.availability.savings.spent_minor = 750;
+  s.consumption.buckets[0].spent_minor = 750;
+  s.availability.commitments.buckets[0].estimated_minor = 0;
+  s.upcoming[1].default_amount_minor = 0;
+  jest.mocked(readDashboard).mockResolvedValue(result(s));
+  await open();
+  expect(
+    await screen.findByLabelText(
+      `Margen antes de estimaciones: ${money(-100)}`,
+    ),
+  ).toBeOnTheScreen();
+  expect(screen.getByText(/Déficit mensual/)).toBeOnTheScreen();
+  expect(screen.getByText(/posible déficit/)).toBeOnTheScreen();
+  expect(
+    screen.getByText(
+      /Margen estimado tras estimaciones conocidas: aproximadamente/,
+    ),
+  ).toHaveTextContent(
+    `Margen estimado tras estimaciones conocidas: aproximadamente ${money(-100)}. No es dinero garantizado.`,
+  );
+  expect(
+    screen.getByText(/Electricidad · Estimado: aproximadamente/),
+  ).toHaveTextContent(
+    `2026-10-31 · Electricidad · Estimado: aproximadamente ${money(0)}`,
+  );
+  expect(screen.queryByText(/Cómo se calcula/)).not.toBeOnTheScreen();
+});
+test('closed period explains blocked entry actions while keeping history accessible', async () => {
+  const s = snapshot();
+  const data = result(s);
+  if (!data.period) throw new Error('Fixture must include a period.');
+  data.period.status = 'CLOSED';
+  jest.mocked(readDashboard).mockResolvedValue(data);
+  await open();
+  expect(
+    await screen.findByText(/Este período está cerrado/),
+  ).toBeOnTheScreen();
+  const user = userEvent.setup();
+  for (const label of ['Registrar gasto', 'Registrar ingreso']) {
+    const button = screen.getByRole('button', { name: label });
+    expect(button).toBeDisabled();
+    await user.press(button);
+  }
+  expect(router.push).not.toHaveBeenCalled();
+  await user.press(screen.getByRole('button', { name: 'Ver historial' }));
+  expect(router.push).toHaveBeenCalledWith({
+    pathname: '/history',
+    params: { month: period.starts_on },
+  });
+});
+test.each([
+  ['TRANSPORT', 'MARGEN-CONEXION'],
+  ['RPC', 'MARGEN-SERVICIO'],
+  ['INVALID_CONTRACT', 'MARGEN-RESPUESTA'],
+] as const)(
+  '%s diagnostic is accessible, hides amounts and retries explicitly',
+  async (reason, reference) => {
+    jest
+      .mocked(readDashboard)
+      .mockRejectedValueOnce(new MarginReadError(reason));
+    await open();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      new RegExp(reference),
+    );
+    expect(screen.queryByText(/Ingresos recibidos:/)).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/Margen antes/)).not.toBeOnTheScreen();
+    await userEvent
+      .setup()
+      .press(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(
+      await screen.findByLabelText(
+        `Margen antes de estimaciones: ${money(500)}`,
+      ),
+    ).toBeOnTheScreen();
+  },
+);
 test('every existing owner-wide financial invalidation refetches the dashboard', async () => {
   const { client } = await open();
   await screen.findByText(/Ingresos recibidos:/);
