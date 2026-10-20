@@ -4,6 +4,7 @@ export function snapshot() {
   const spendable = 'f1040000-0000-4000-8000-000000000001';
   const savings = 'f1040000-0000-4000-8000-000000000002';
   return {
+    snapshot_version: 2 as const,
     owner_profile_id: profile.id,
     month: period.starts_on,
     period: { ...period, expected_income_minor: 99999 },
@@ -57,6 +58,13 @@ export function snapshot() {
         budget_period_id: period.id,
         base_currency: 'USD',
         configured: true,
+        snapshot_version: 2 as const,
+        carry: {
+          incoming_minor: 0,
+          outgoing_minor: 0,
+          unallocated_minor: 0,
+          buckets: [] as { budget_bucket_id: string; amount_minor: number }[],
+        },
         opening_protected_minor: 500,
         allocated_savings_minor: 200,
         contributions_minor: 100,

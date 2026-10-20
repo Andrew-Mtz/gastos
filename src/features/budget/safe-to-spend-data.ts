@@ -3,7 +3,7 @@ import { calculateSafeToSpend } from '../../domain/budget/safe-to-spend';
 import { supabase } from '../../infrastructure/supabase/client';
 import { commitmentSnapshotSchema } from '../recurring/commitment-data';
 import { recurringOwnerKey } from '../recurring/recurring-data';
-import { savingsSummarySchema } from '../savings/savings-data';
+import { parseSavingsSummary } from '../savings/savings-data';
 import { type BudgetPeriod } from './budget-setup';
 
 // Every relevant mutation already invalidates this owner-wide financial family,
@@ -11,7 +11,7 @@ import { type BudgetPeriod } from './budget-setup';
 export const safeToSpendKey = (owner: string, periodId: string) =>
   [...recurringOwnerKey(owner), 'safe-to-spend', periodId] as const;
 const snapshotSchema = z.object({
-  savings: savingsSummarySchema,
+  savings: z.unknown(),
   commitments: commitmentSnapshotSchema,
 });
 export async function readSafeToSpend(
@@ -25,8 +25,13 @@ export async function readSafeToSpend(
   if (error) throw error;
   return mapSafeToSpend(period, data);
 }
-export function mapSafeToSpend(period: BudgetPeriod, data: unknown) {
-  const { savings: s, commitments: c } = snapshotSchema.parse(data);
+export function mapSafeToSpend(
+  period: BudgetPeriod,
+  data: unknown,
+  snapshotVersion: 1 | 2 = 2,
+) {
+  const { savings, commitments: c } = snapshotSchema.parse(data);
+  const s = parseSavingsSummary(savings, snapshotVersion);
   if (
     s.budget_period_id !== period.id ||
     c.budget_period_id !== period.id ||
@@ -38,6 +43,10 @@ export function mapSafeToSpend(period: BudgetPeriod, data: unknown) {
     throw new Error('Availability snapshot mismatch.');
   const result = calculateSafeToSpend({
     configured: s.configured,
+    carry: {
+      incomingMinor: s.carry.incoming_minor,
+      outgoingMinor: s.carry.outgoing_minor,
+    },
     savings: {
       openingProtectedMinor: s.opening_protected_minor,
       allocatedSavingsMinor: s.allocated_savings_minor,

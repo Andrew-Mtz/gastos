@@ -13,6 +13,10 @@ export type SavingsComponents = Readonly<{
   spendableAllocatedMinor: number;
   spentMinor: number;
 }>;
+export type OrdinaryCarry = Readonly<{
+  incomingMinor: number;
+  outgoingMinor: number;
+}>;
 export type SavingsAvailability = Readonly<{
   protectedSavings: Money;
   ordinaryMovementAdjustment: Money;
@@ -24,6 +28,7 @@ export type SavingsAvailability = Readonly<{
 export function calculateSavingsAvailability(
   currency: string,
   components: SavingsComponents,
+  carry: OrdinaryCarry = { incomingMinor: 0, outgoingMinor: 0 },
 ): SavingsAvailability {
   const values = Object.values(components);
   if (
@@ -31,6 +36,12 @@ export function calculateSavingsAvailability(
     values.some((value) => !Number.isSafeInteger(value) || value < 0)
   )
     throw new Error('Savings components require nonnegative safe minor units.');
+  if (
+    [carry.incomingMinor, carry.outgoingMinor].some(
+      (v) => !Number.isSafeInteger(v) || v < 0,
+    )
+  )
+    throw new Error('Carry components require nonnegative safe minor units.');
   const opening = createMoney(components.openingProtectedMinor, currency);
   const allocated = createMoney(components.allocatedSavingsMinor, currency);
   const contributions = createMoney(components.contributionsMinor, currency);
@@ -46,13 +57,19 @@ export function calculateSavingsAvailability(
     ordinaryMovementAdjustment: subtractMoney(withdrawals, contributions),
     ordinaryRemainderBeforeCommitments: subtractMoney(
       subtractMoney(
-        addMoney(
-          createMoney(components.spendableAllocatedMinor, currency),
-          withdrawals,
+        subtractMoney(
+          addMoney(
+            addMoney(
+              createMoney(components.spendableAllocatedMinor, currency),
+              createMoney(carry.incomingMinor, currency),
+            ),
+            withdrawals,
+          ),
+          contributions,
         ),
-        contributions,
+        createMoney(components.spentMinor, currency),
       ),
-      createMoney(components.spentMinor, currency),
+      createMoney(carry.outgoingMinor, currency),
     ),
   });
 }

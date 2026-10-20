@@ -1494,7 +1494,7 @@ Delegated choices remain pending owner review, not personal confirmation.
 
 ## FIN-125 — Month-End Remainder
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-123
 
@@ -1511,6 +1511,42 @@ Calculate unused bucket money at period closing.
 ### Important
 
 If this conflicts with the 100%-allocation invariant, resolve the domain rule before implementation rather than improvising.
+
+### Implementation (ADR-077)
+
+The documented delegated gate keeps 10000bps for new income only. One confirmed
+atomic action closes a completed OPEN source and uses an explicit amount up to the
+net ordinary remainder, including deficits and extra savings movements. It can fund
+general savings once, carry to a selected next-month SPENDABLE bucket, or keep a
+separate unallocated carry credit. Carry is neither income nor a second savings split.
+The destination must be owned, OPEN, configured and same-currency. Undisposed money
+remains historical, not automatically spendable next month.
+
+Immutable v2 close evidence stores post-action facts; existing v1 evidence remains
+readable. Active outbound carry blocks a new ordinary reopen. A separately reviewed
+atomic reversal debits the still-OPEN, solvent destination and reopens the source;
+all current/prior obligations must be resolved and downstream carries undone first.
+Original exact disposition/close/reversal/reopen replays remain read-only forever.
+
+Complete scalar reads, current-vs-historical UI, owner-wide invalidation and in-session
+QueryClient request recovery extend existing boundaries without a generic ledger.
+Process-termination recovery, multi-action splits, redistribution of an existing
+unallocated credit, automatic carry, FX, bank transfers, production deployment and
+native/device QA are not added. The conservative domain choice awaits owner review.
+
+### Validation
+
+Independent bounded review and delta review found no actionable issues. Local full
+Jest passed 1015 tests in 54 suites. Disposable Supabase CI at schema head
+`cda8a50ec8e73513fc87375b351dc4c5e823e85d` passed 1904 SQL assertions across
+32 files and 57 real two-session scenarios, including seven carry/reversal races.
+Generated types were copied verbatim from run `39420020537`, artifact `12262404468`,
+with the workflow head verified and ZIP SHA256
+`99869142a074f93544030d18eff18e9d344f2ce12010e6687c60428412c6acb7` checked.
+The complete reviewed head must pass all CI jobs, including generated-type drift,
+before readiness/merge. This does not claim production migration or device QA.
+
+
 
 ---
 

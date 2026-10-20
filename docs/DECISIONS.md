@@ -2540,3 +2540,51 @@ EXECUTE. History is owner-only SELECT without client writes or household access.
 Unresolved close and reopen requests live in auth-cleared in-session query state so
 screen remount cannot lose their exact UUID/version/fingerprint. No automatic retry,
 process-restart recovery, FIN-125 remainder disposition or future restriction is added.
+
+# ADR-077 — Net Month-End Disposition and Reversible Separate Carry
+
+**Status:** Accepted under delegated implementation authority (2026-10-20),
+pending owner review of `OVERNIGHT_DECISIONS.md`; not personal owner confirmation.
+
+The 10000bps allocation invariant applies to actual received INCOME, not existing
+money carried between months. A separate owner-private carry credit is never income,
+expense, savings allocation or physical transfer. It debits ordinary source funds once
+and credits the immediately next same-currency configured OPEN period once. Its explicit
+destination is a SPENDABLE bucket or an unallocated ordinary pool. The latter is not an
+incomplete percentage plan. No source bucket is invented for unattributed savings
+movements. UI separates income allocation, received carry and gross bucket residuals.
+
+The only actionable cap is the live global ordinary remainder: SPENDABLE income
+allocation plus withdrawals plus incoming carry minus expenses, extra contributions
+and outgoing carry. Deficits are preserved, not ignored by summing positive buckets.
+The source must be a completed OPEN configured month, with no unresolved selected or
+prior obligations, including zero estimates. One confirmed close-and-dispose request
+may add an existing validated general SAVINGS_CONTRIBUTION or create one carry. It
+checks the full preview/lifecycle before mutation, then stores the post-action close
+snapshot. Undisposed remainder is historical only; nothing is automatically rolled.
+Percentage SAVINGS allocations are already cumulative and never contributed again.
+
+The operation records immutable request/amount/destination/closure evidence. Carry
+is active unless a separate immutable reversal exists. New reopening of a source
+with active outbound carry is rejected. The explicit action "reverse carry and reopen
+source" is atomic, records both events and requires current source lifecycle/fingerprint
+and a current destination snapshot. Destination must be OPEN, configured, same currency,
+without unresolved selected/prior obligations and with net funds >= the returned amount.
+It cannot implicitly take savings, cancel bills or reverse downstream carry. Existing
+savings disposition transactions use ordinary audited correction and historical-prefix
+solvency rules after explicit reopening; no extra savings balance is maintained.
+
+Every exact request replay checks the entire original payload and reads immutable
+original results BEFORE current-state validation. Old close/reopen replay remains
+read-only. Closed evidence is versioned (v1 remains readable, v2 includes carry) and
+never rewritten, even after explicit reversal or older-month correction. This extends
+ADR-068/073's no-ordinary-rollover limitation only for these explicit credits. Funding
+checks for all new/restored/increased savings contributions include carry; cumulative
+goal/general reserves and legacy validation remain unchanged.
+
+Narrow definer operations are required for atomic lifecycle/evidence writes, with no
+new client mutation grants. All objects have empty search_path, non-null auth.uid(),
+explicit owner/reference checks, READ COMMITTED, and owner finance lock before rows.
+Carry/evidence tables are owner-only SELECT; no household, anon or arbitrary writes.
+The read path is one stable complete scalar snapshot, not paginated client totals.
+No generic ledger, new dependency, automatic action, bank model or later-phase work.

@@ -1738,3 +1738,25 @@ change period status/version/closed_at. Household membership grants no access. E
 closed-period mutation guards are unchanged. Pending lifecycle requests survive screen
 remount only inside the auth-cleared QueryClient; obsolete responses cannot restore
 private UI or cross account boundaries.
+
+## FIN-125 disposition and reversal capability
+
+ADR-077 adds owner-private append-only disposition and reversal evidence with SELECT
+RLS only, no direct client INSERT/UPDATE/DELETE/TRUNCATE or ownership mutation. Narrow
+definer RPCs perform atomic close-and-dispose and reverse-carry-and-reopen operations
+because clients cannot mutate lifecycle or evidence. Each validates auth.uid(), complete
+confirmed payload, all owned references and same currency, READ COMMITTED, preview
+fingerprints and lifecycle under the owner finance lock before any period/row locks.
+Empty search_path, fully qualified objects and no dynamic SQL/owner override prevent
+privilege expansion. Exact owner/payload replay reads original results before current
+lifecycle checks. Carry is separate from transactions and cannot be forged as income.
+
+New reopening is guarded against active outgoing carry; compound explicit reversal
+retains immutable audit and requires sufficient current destination ordinary funds,
+OPEN lifecycle and no pending obligations. Savings contribution creation/restoration/
+increase includes carry under existing serialization; legacy provenance and cumulative
+goal/general-prefix safeguards are unchanged. Stable owner-only scalar reads preserve
+full aggregates and historical snapshot versioning. Auth-cleared in-session pending
+requests retain IDs through remount; all owner financial namespaces invalidate after
+attempts. Independent privilege/conservation review, real RLS negative/forged-write
+checks and two-session races are required. No hosted database changes or deployment.

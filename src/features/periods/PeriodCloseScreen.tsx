@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Fragment as ReactFragment,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { AppState } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { randomUUID } from 'expo-crypto';
@@ -7,7 +13,7 @@ import { AppText } from '../../components/ui/AppText';
 import { Button } from '../../components/ui/Button';
 import { Screen } from '../../components/ui/Screen';
 import { ErrorState, LoadingState } from '../../components/ui/StatusState';
-import { createMoney, subtractMoney } from '../../domain/money/money';
+import { createMoney } from '../../domain/money/money';
 import { useAuth } from '../auth/AuthProvider';
 import { type Profile } from '../auth/auth-data';
 import {
@@ -16,7 +22,6 @@ import {
   formatMoney,
 } from '../budget/budget-setup';
 import { mapDashboard } from '../dashboard/dashboard-data';
-import { budgetKey } from '../budget/budget-data';
 import { consumptionOwnerKey } from '../budget/consumption-data';
 import { incomeOwnerKey } from '../income/income-data';
 import { expenseOwnerKey } from '../expense/expense-data';
@@ -39,9 +44,16 @@ import {
   isRejectedClose,
   periodCloseKey,
   readPeriodClose,
-  type CloseRequest,
+  type PeriodOperation,
   type PeriodCloseContext,
 } from './period-close-data';
+
+import { RemainderReview, ReversalReview } from './RemainderReview';
+import {
+  disposeRemainder,
+  reverseCarry,
+  remainderErrorMessage,
+} from './remainder-data';
 
 export function PeriodCloseScreen() {
   const auth = useAuth(),
@@ -71,6 +83,9 @@ function PersonalPeriodClose({
   const selected = useRef(month),
     active = useRef(false);
   const [visible, setVisible] = useState(false);
+  const [remainderReview, setRemainderReview] = useState<
+    'dispose' | { dispositionId: string } | null
+  >(null);
   const [review, setReview] = useState<PeriodCloseContext | null>(null);
   const pendingKey = pendingLifecycleKey(profile.id);
   const pendingQuery = useQuery<PendingLifecycle | null>({
@@ -106,6 +121,7 @@ function PersonalPeriodClose({
         active.current = false;
         setVisible(false);
         setReview(null);
+        setRemainderReview(null);
         setNotice(null);
         void client.cancelQueries({ queryKey: recurringOwnerKey(profile.id) });
       };
@@ -114,6 +130,7 @@ function PersonalPeriodClose({
   useEffect(() => {
     const listener = AppState.addEventListener('change', (state) => {
       setReview(null);
+      setRemainderReview(null);
       if (state !== 'active') {
         setVisible(false);
         void client.cancelQueries({ queryKey: recurringOwnerKey(profile.id) });
@@ -124,7 +141,8 @@ function PersonalPeriodClose({
     });
     return () => listener.remove();
   }, [client, profile.id, refresh]);
-  const submit = async (request: CloseRequest, kind: 'close' | 'reopen') => {
+  const submit = async (operation: PeriodOperation) => {
+    const { request, kind } = operation;
     const previous = client.getQueryData<PendingLifecycle | null>(pendingKey);
     if (
       previous?.inFlight ||
@@ -134,14 +152,14 @@ function PersonalPeriodClose({
     )
       return;
     client.setQueryData<PendingLifecycle>(pendingKey, {
-      kind,
-      request,
+      ...operation,
       inFlight: true,
     });
     const requestCache = client
       .getQueryCache()
       .find({ queryKey: pendingKey, exact: true });
     setReview(null);
+    setRemainderReview(null);
     setNotice(null);
     // QueryClient auth clear invalidates even a late response after same-owner re-login.
     const isCurrentRequest = () =>
@@ -152,25 +170,36 @@ function PersonalPeriodClose({
         request.id;
     try {
       if (kind === 'close') await closePeriod(request);
-      else await reopenPeriod(request);
+      else if (operation.kind === 'reopen')
+        await reopenPeriod(operation.request);
+      else if (operation.kind === 'dispose')
+        await disposeRemainder(operation.request);
+      else if (operation.kind === 'reverse')
+        await reverseCarry(operation.request);
       if (!isCurrentRequest()) return;
       client.setQueryData(pendingKey, null);
       if (active.current && selected.current === request.month)
         setNotice(
           kind === 'close'
             ? 'Cierre confirmado. El resumen histórico se conserva sin mover dinero.'
-            : 'Reapertura confirmada para esta solicitud. Revisa el estado actualizado del mes antes de corregir; una acción posterior puede haberlo cerrado de nuevo. Los cierres anteriores se conservan. No se movió dinero.',
+            : kind === 'dispose'
+              ? 'Disposición y cierre confirmados para esta solicitud. Revisa los datos actualizados; no se movió dinero en una cuenta bancaria.'
+              : kind === 'reverse'
+                ? 'Reversión y reapertura confirmadas para esta solicitud. Se conserva toda la evidencia anterior; revisa el estado actualizado de ambos meses.'
+                : 'Reapertura confirmada para esta solicitud. Revisa el estado actualizado del mes antes de corregir; una acción posterior puede haberlo cerrado de nuevo. Los cierres anteriores se conservan. No se movió dinero.',
         );
     } catch (error) {
       if (!isCurrentRequest()) return;
       client.setQueryData<PendingLifecycle | null>(pendingKey, () =>
-        isRejectedClose(error) ? null : { kind, request, inFlight: false },
+        isRejectedClose(error) ? null : { ...operation, inFlight: false },
       );
       if (active.current && selected.current === request.month)
         setNotice(
           kind === 'close'
             ? closeErrorMessage(error)
-            : reopenErrorMessage(error),
+            : kind === 'reopen'
+              ? reopenErrorMessage(error)
+              : remainderErrorMessage(error),
         );
     } finally {
       // Do not reintroduce auth-cleared private cache. A settled request is null;
@@ -190,7 +219,7 @@ function PersonalPeriodClose({
             incomeOwnerKey(profile.id),
             expenseOwnerKey(profile.id),
             consumptionOwnerKey(profile.id),
-            budgetKey(profile.id, request.month),
+            ['budget-setup', profile.id],
           ].map((queryKey) => client.invalidateQueries({ queryKey })),
         );
       }
@@ -211,12 +240,16 @@ function PersonalPeriodClose({
           <Button
             loading={busy}
             onPress={() => {
-              void submit(pending.request, pending.kind);
+              void submit(pending);
             }}
           >
             {pending.kind === 'close'
               ? 'Comprobar cierre pendiente'
-              : 'Comprobar reapertura pendiente'}
+              : pending.kind === 'reopen'
+                ? 'Comprobar reapertura pendiente'
+                : pending.kind === 'reverse'
+                  ? 'Comprobar reversión pendiente'
+                  : 'Comprobar disposición pendiente'}
           </Button>
         </>
       )}
@@ -225,6 +258,7 @@ function PersonalPeriodClose({
         disabled={month === '0001-01-01'}
         onPress={() => {
           setReview(null);
+          setRemainderReview(null);
           setMonth((value) => shiftMonth(value, -1));
         }}
       >
@@ -235,6 +269,7 @@ function PersonalPeriodClose({
         disabled={month === '9999-12-01'}
         onPress={() => {
           setReview(null);
+          setRemainderReview(null);
           setMonth((value) => shiftMonth(value, 1));
         }}
       >
@@ -266,7 +301,7 @@ function PersonalPeriodClose({
                 : 'No se puede cerrar mientras existan obligaciones pendientes de este mes o anteriores. Revisa los registros reales; no cambies fechas para omitir pendientes.'}
             </AppText>
           )}
-          {data.can_close && !review && (
+          {data.can_close && !review && !remainderReview && (
             <Button
               disabled={!!pending || busy}
               onPress={() => setReview(data)}
@@ -290,10 +325,10 @@ function PersonalPeriodClose({
                 <Button
                   loading={busy}
                   onPress={() => {
-                    void submit(
-                      buildCloseRequest(randomUUID(), review),
-                      'close',
-                    );
+                    void submit({
+                      kind: 'close',
+                      request: buildCloseRequest(randomUUID(), review),
+                    });
                   }}
                 >
                   Confirmar cierre
@@ -303,14 +338,21 @@ function PersonalPeriodClose({
                 </Button>
               </>
             )}
-          {data.period.status === 'CLOSED' && !review && (
-            <Button
-              disabled={!!pending || busy}
-              onPress={() => setReview(data)}
-            >
-              Revisar reapertura
-            </Button>
-          )}
+          {data.period.status === 'CLOSED' &&
+            !review &&
+            !remainderReview &&
+            !data.history.dispositions.some(
+              (d) =>
+                d.action !== 'SAVINGS' &&
+                !data.history.reversals.some((r) => r.disposition_id === d.id),
+            ) && (
+              <Button
+                disabled={!!pending || busy}
+                onPress={() => setReview(data)}
+              >
+                Revisar reapertura
+              </Button>
+            )}
           {review?.period?.status === 'CLOSED' &&
             'reopen_hash' in review &&
             data.reopen_hash === review.reopen_hash && (
@@ -327,10 +369,10 @@ function PersonalPeriodClose({
                 <Button
                   loading={busy}
                   onPress={() => {
-                    void submit(
-                      buildReopenRequest(randomUUID(), review),
-                      'reopen',
-                    );
+                    void submit({
+                      kind: 'reopen',
+                      request: buildReopenRequest(randomUUID(), review),
+                    });
                   }}
                 >
                   Confirmar reapertura
@@ -340,6 +382,80 @@ function PersonalPeriodClose({
                 </Button>
               </>
             )}
+          {data.can_close &&
+            data.summary?.period &&
+            data.summary.availability.configured &&
+            !review &&
+            !remainderReview && (
+              <Button
+                disabled={!!pending}
+                onPress={() => setRemainderReview('dispose')}
+              >
+                Gestionar remanente y cerrar
+              </Button>
+            )}
+          {remainderReview === 'dispose' && (
+            <RemainderReview
+              owner={profile.id}
+              month={month}
+              disabled={!!pending}
+              onSubmit={(operation) => {
+                void submit(operation);
+              }}
+              onCancel={() => setRemainderReview(null)}
+            />
+          )}
+          {remainderReview && typeof remainderReview === 'object' && (
+            <ReversalReview
+              owner={profile.id}
+              dispositionId={remainderReview.dispositionId}
+              disabled={!!pending}
+              onSubmit={(operation) => {
+                void submit(operation);
+              }}
+              onCancel={() => setRemainderReview(null)}
+            />
+          )}
+          {data.history.dispositions.map((d) => {
+            const reversed = data.history.reversals.some(
+              (r) => r.disposition_id === d.id,
+            );
+            return (
+              <ReactFragment key={d.id}>
+                <AppText>
+                  Disposición histórica:{' '}
+                  {formatMoney(createMoney(d.amount_minor, d.currency))} ·{' '}
+                  {d.action === 'SAVINGS'
+                    ? 'Aporte adicional a ahorro general'
+                    : d.action === 'CARRY_BUCKET'
+                      ? `Arrastre a ${d.destination_bucket_name}`
+                      : 'Arrastre sin asignar'}
+                  {reversed ? ' · Revertido explícitamente' : ''}.{' '}
+                  {d.created_at}
+                </AppText>
+                {d.action !== 'SAVINGS' && !reversed && (
+                  <>
+                    <AppText>
+                      El origen no puede reabrirse solo mientras este arrastre
+                      siga activo. Revertirlo también reabrirá el origen; el
+                      destino debe estar abierto y conservar fondos suficientes
+                      sin obligaciones pendientes.
+                    </AppText>
+                    {!remainderReview && (
+                      <Button
+                        disabled={!!pending || !!review}
+                        onPress={() =>
+                          setRemainderReview({ dispositionId: d.id })
+                        }
+                      >
+                        Revisar reversión y reapertura
+                      </Button>
+                    )}
+                  </>
+                )}
+              </ReactFragment>
+            );
+          })}
           <LifecycleHistory context={data} />
           <Button
             variant="secondary"
@@ -363,6 +479,7 @@ function PersonalPeriodClose({
         variant="secondary"
         onPress={() => {
           setReview(null);
+          setRemainderReview(null);
           void refresh();
         }}
       >
@@ -425,14 +542,20 @@ export function CloseSummary({ context }: { context: PeriodCloseContext }) {
           {bucket.allocatedAmount
             ? formatMoney(bucket.allocatedAmount)
             : 'Sin distribución'}{' '}
-          · diferencia{' '}
-          {bucket.allocatedAmount
-            ? formatMoney(
-                subtractMoney(bucket.allocatedAmount, bucket.spentAmount),
-              )
+          · arrastre recibido {formatMoney(bucket.carriedAmount)} · remanente
+          bruto{' '}
+          {bucket.grossRemainder
+            ? formatMoney(bucket.grossRemainder)
             : 'Sin calcular'}
         </AppText>
       ))}
+      <AppText>
+        Arrastre recibido sin asignar:{' '}
+        {money(availability.components.carry.unallocated_minor)} · Total
+        recibido: {money(availability.components.carry.incoming_minor)} · Salida
+        de arrastre: {money(availability.components.carry.outgoing_minor)}. No
+        son ingresos nuevos ni ahorro.
+      </AppText>
       <AppText>
         Las diferencias por fondo no son dinero libre; no incluyen todos los
         movimientos ni compromisos.
@@ -454,8 +577,8 @@ export function CloseSummary({ context }: { context: PeriodCloseContext }) {
           : 'Margen mensual no disponible: faltan datos o hay obligaciones sin resolver.'}
       </AppText>
       <AppText>
-        El cierre no convierte el margen en un remanente transferido ni
-        arrastrado al siguiente mes.
+        El cierre simple no dispone del remanente. Lo no dispuesto permanece
+        histórico, no se convierte automáticamente en dinero del mes siguiente.
       </AppText>
     </>
   );
@@ -509,6 +632,7 @@ function HistoricalClose({
     context.owner_profile_id,
     context.month,
     event.summary,
+    event.snapshot_version,
   );
   if (!summary.period) return null;
   return (

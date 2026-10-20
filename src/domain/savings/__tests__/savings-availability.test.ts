@@ -57,3 +57,37 @@ test('rejects overdraw, invalid currency and unsafe intermediate sums', () => {
     }),
   ).toThrow();
 });
+test('zero-cash carry changes only net ordinary capacity, never cumulative protected savings', () => {
+  const result = calculateSavingsAvailability('USD', base, {
+    incomingMinor: 1000,
+    outgoingMinor: 300,
+  });
+  expect(result.ordinaryRemainderBeforeCommitments.amountMinor).toBe(82700);
+  expect(result.protectedSavings.amountMinor).toBe(38000);
+  expect(result.ordinaryMovementAdjustment.amountMinor).toBe(2000);
+});
+test.each([-1, 0.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])(
+  'rejects invalid carry component %s',
+  (value) => {
+    expect(() =>
+      calculateSavingsAvailability('USD', base, {
+        incomingMinor: value,
+        outgoingMinor: 0,
+      }),
+    ).toThrow();
+    expect(() =>
+      calculateSavingsAvailability('USD', base, {
+        incomingMinor: 0,
+        outgoingMinor: value,
+      }),
+    ).toThrow();
+  },
+);
+test('unsafe carry intermediate sum fails closed rather than rounding', () => {
+  expect(() =>
+    calculateSavingsAvailability('USD', base, {
+      incomingMinor: Number.MAX_SAFE_INTEGER,
+      outgoingMinor: 0,
+    }),
+  ).toThrow();
+});

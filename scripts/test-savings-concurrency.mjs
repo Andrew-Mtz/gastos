@@ -170,7 +170,9 @@ async function scenario(
   } finally {
     // This target is an ephemeral local Supabase container, and these UUIDs were
     // created by this invocation. No production DELETE capability is introduced.
-    await run(`begin;delete from public.budget_period_reopenings where owner_profile_id='${owner}';
+    await run(`begin;delete from public.budget_period_carry_reversals where owner_profile_id='${owner}';
+      delete from public.budget_period_dispositions where owner_profile_id='${owner}';
+      delete from public.budget_period_reopenings where owner_profile_id='${owner}';
       delete from public.budget_period_closures where owner_profile_id='${owner}';
       delete from public.transaction_revisions where owner_profile_id='${owner}';
       delete from public.transactions where owner_profile_id='${owner}';
@@ -813,4 +815,87 @@ await scenario(
     (select closed_state_hash from public.budget_period_reopenings where id='${c.category}'),true);`,
   true,
   (c) => lifecycle(c, 'OPEN:2:1:1'),
+);
+
+// FIN-125: explicit carry conserves ordinary capacity under real owner-lock races.
+const configureCarryDestination = (c) =>
+  `select public.save_budget_allocations('${c.october}','[{"budget_bucket_id":"${c.ordinary}","percentage_basis_points":8000},{"budget_bucket_id":"${c.savings}","percentage_basis_points":2000}]');`;
+const carrySeptember = (c, amount = 800, version = 0, id = c.resolution) =>
+  `select public.close_and_dispose_personal_remainder('${id}','${c.september}',${version},public.get_personal_remainder_context('2026-09-01')->>'preview_hash','CARRY_UNALLOCATED',${amount},'${c.october}',null,true);`;
+const reverseSeptember = (c) =>
+  `select public.reverse_carry_and_reopen_personal_period('${c.category}','${c.resolution}',1,0,public.get_personal_carry_reversal_context('${c.resolution}')->>'preview_hash',true);`;
+const carryConserved = async (c, auth, active = 800) => {
+  const result = await run(`begin;${auth}select
+    (public.get_personal_carry('${c.september}')->>'outgoing_minor')||':'||
+    (public.get_personal_carry('${c.october}')->>'incoming_minor')||':'||
+    public.get_received_income('${c.october}')||':'||
+    (select count(*) from public.budget_period_dispositions where source_period_id='${c.september}');rollback;`);
+  assert.match(result, new RegExp(`(?:^|\\n)${active}:${active}:0:1(?:\\n|$)`));
+};
+await scenario(
+  'carry prevents waiting source expense after close',
+  (c) => configureCarryDestination(c) + carrySeptember(c),
+  (c) => c.expense(1),
+  false,
+  (c, auth) => carryConserved(c, auth),
+  /open|closed/i,
+);
+await scenario(
+  'source expense prevents oversized carry after fresh serialized review',
+  (c) => configureCarryDestination(c) + c.expense(1),
+  (c) => `select public.lock_personal_finance();${carrySeptember(c)}`,
+  false,
+  (c) => lifecycle(c, 'OPEN:0:0:0'),
+  /exceeds net ordinary remainder/,
+);
+await scenario(
+  'incoming carry funds waiting destination contribution exactly once',
+  (c) => configureCarryDestination(c) + carrySeptember(c),
+  (c) => c.move('SAVINGS_CONTRIBUTION', 800, c.october, '2026-10-02'),
+  true,
+  (c, auth) => carryConserved(c, auth),
+);
+await scenario(
+  'duplicate carry replay never credits twice',
+  (c) => configureCarryDestination(c) + carrySeptember(c),
+  (c) =>
+    `select public.lock_personal_finance();select public.close_and_dispose_personal_remainder('${c.resolution}','${c.september}',0,(select request_payload->>'preview_hash' from public.budget_period_dispositions where id='${c.resolution}'),'CARRY_UNALLOCATED',800,'${c.october}',null,true);`,
+  true,
+  (c, auth) => carryConserved(c, auth),
+);
+await scenario(
+  'destination contribution prevents waiting carry reversal and source reopening',
+  (c) =>
+    configureCarryDestination(c) +
+    carrySeptember(c) +
+    c.move('SAVINGS_CONTRIBUTION', 1, c.october, '2026-10-02'),
+  (c) => `select public.lock_personal_finance();${reverseSeptember(c)}`,
+  false,
+  (c, auth) => carryConserved(c, auth),
+  /Reversal needs/,
+);
+await scenario(
+  'reversal removes funding before waiting destination contribution',
+  (c) => configureCarryDestination(c) + carrySeptember(c) + reverseSeptember(c),
+  (c) => c.move('SAVINGS_CONTRIBUTION', 1, c.october, '2026-10-02'),
+  false,
+  async (c, auth) => {
+    await carryConserved(c, auth, 0);
+    await lifecycle(c, 'OPEN:2:1:1');
+  },
+);
+await scenario(
+  'carry reversal replay after a newer close is read-only',
+  (c) =>
+    configureCarryDestination(c) +
+    carrySeptember(c) +
+    reverseSeptember(c) +
+    `select public.close_personal_budget_period('${c.goal}','${c.september}',2,public.get_personal_period_close_context('2026-09-01')->>'snapshot_hash',true);`,
+  (c) =>
+    `select public.lock_personal_finance();select public.reverse_carry_and_reopen_personal_period('${c.category}','${c.resolution}',1,0,(select request_payload->>'preview_hash' from public.budget_period_carry_reversals where id='${c.category}'),true);`,
+  true,
+  async (c, auth) => {
+    await carryConserved(c, auth, 0);
+    await lifecycle(c, 'CLOSED:3:2:1');
+  },
 );

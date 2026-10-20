@@ -34,6 +34,13 @@ const row = {
 const summary = {
   budget_period_id: period.id,
   base_currency: 'USD',
+  snapshot_version: 2 as const,
+  carry: {
+    incoming_minor: 0,
+    outgoing_minor: 0,
+    unallocated_minor: 0,
+    buckets: [] as { budget_bucket_id: string; amount_minor: number }[],
+  },
   opening_protected_minor: 200000,
   allocated_savings_minor: 30000,
   contributions_minor: 10000,

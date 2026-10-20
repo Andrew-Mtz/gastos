@@ -176,7 +176,9 @@ function PersonalSavings({ profile }: { profile: Profile }) {
             {formatMoney(availability.ordinaryRemainderBeforeCommitments)}
           </AppText>
           <AppText>
-            Los aportes son adicionales al porcentaje ya reservado. Los retiros
+            El resto incluye arrastres explícitos recibidos menos enviados, sin
+            convertirlos en ingresos ni ahorrar su porcentaje otra vez. Los
+            aportes son adicionales al porcentaje ya reservado. Los retiros
             devuelven disponibilidad a este mes. No son gastos, ingresos ni
             transferencias bancarias.
           </AppText>

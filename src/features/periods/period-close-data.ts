@@ -5,6 +5,8 @@ import { mapDashboard } from '../dashboard/dashboard-data';
 import { recurringOwnerKey } from '../recurring/recurring-data';
 import { monthSchema } from '../history/history-data';
 
+import type { DisposeRequest, ReverseRequest } from './remainder-data';
+import { dispositionSchema, reversalSchema } from './remainder-schema';
 const version = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 const hash = z.string().regex(/^[a-f0-9]{32}$/);
 const lifecyclePeriod = periodSchema.extend({ lifecycle_version: version });
@@ -15,7 +17,7 @@ const closureSchema = z.object({
   expected_lifecycle_version: version,
   lifecycle_version: version.positive(),
   snapshot_hash: hash,
-  snapshot_version: z.literal(1),
+  snapshot_version: z.union([z.literal(1), z.literal(2)]),
   summary: z.unknown(),
   financial_timezone: z.string().min(1),
   closed_at: z.iso.datetime({ offset: true }),
@@ -48,6 +50,8 @@ const contextSchema = header.extend({
   history: z.object({
     closures: z.array(closureSchema),
     reopenings: z.array(reopeningSchema),
+    dispositions: z.array(dispositionSchema),
+    reversals: z.array(reversalSchema),
   }),
 });
 export type LifecycleHistory = z.infer<typeof contextSchema>['history'];
@@ -77,7 +81,12 @@ export function mapPeriodClose(owner: string, month: string, value: unknown) {
     versions.add(event.lifecycle_version);
   }
   for (const event of row.history.closures) {
-    const facts = mapDashboard(owner, month, event.summary);
+    const facts = mapDashboard(
+      owner,
+      month,
+      event.summary,
+      event.snapshot_version,
+    );
     const original = lifecyclePeriod.parse(
       z.object({ period: z.unknown() }).parse(event.summary).period,
     );
@@ -101,8 +110,55 @@ export function mapPeriodClose(owner: string, month: string, value: unknown) {
     )
       throw new Error('Reopen history link mismatch.');
   }
+  for (const d of row.history.dispositions) {
+    if (
+      d.owner_profile_id !== owner ||
+      d.source_period_id !== period.id ||
+      d.currency !== period.base_currency ||
+      !row.history.closures.some(
+        (c) =>
+          c.id === d.closure_id &&
+          c.expected_lifecycle_version === d.request_payload.version,
+      )
+    )
+      throw new Error('Disposition lifecycle history mismatch.');
+  }
+  for (const r of row.history.reversals) {
+    const d = row.history.dispositions.find((d) => d.id === r.disposition_id);
+    if (
+      r.owner_profile_id !== owner ||
+      !d ||
+      d.action === 'SAVINGS' ||
+      !row.history.reopenings.some(
+        (e) =>
+          e.id === r.reopening_id &&
+          e.closure_id === d.closure_id &&
+          e.expected_lifecycle_version === r.request_payload.source_version,
+      )
+    )
+      throw new Error('Reversal lifecycle history mismatch.');
+  }
+  if (
+    new Set(row.history.dispositions.map((d) => d.id)).size !==
+      row.history.dispositions.length ||
+    new Set(row.history.reversals.map((r) => r.disposition_id)).size !==
+      row.history.reversals.length ||
+    row.history.dispositions.filter(
+      (d) =>
+        d.action !== 'SAVINGS' &&
+        !row.history.reversals.some((r) => r.disposition_id === d.id),
+    ).length > 1
+  )
+    throw new Error('Duplicate disposition history.');
   const summary =
-    row.summary == null ? null : mapDashboard(owner, month, row.summary);
+    row.summary == null
+      ? null
+      : mapDashboard(
+          owner,
+          month,
+          row.summary,
+          row.closure?.snapshot_version ?? 2,
+        );
   if (summary && (!summary.period || summary.period.id !== period.id))
     throw new Error('Close summary mismatch.');
   const closure = row.closure;
@@ -201,7 +257,12 @@ export async function closePeriod(request: CloseRequest) {
     row.snapshot_hash !== request.hash
   )
     throw new Error('Close result does not match request.');
-  const summary = mapDashboard(request.owner, request.month, row.summary);
+  const summary = mapDashboard(
+    request.owner,
+    request.month,
+    row.summary,
+    row.snapshot_version,
+  );
   if (
     !summary.period ||
     summary.period.id !== request.periodId ||
@@ -283,14 +344,17 @@ export function reopenErrorMessage(error: unknown) {
   const code = errorCode(error);
   if (code === '40001' || code === '23505')
     return 'El estado del período cambió. Actualiza y vuelve a revisar antes de reabrir.';
+  if (code === '23514')
+    return 'Primero debes revertir el arrastre activo y reabrir el origen mediante la acción explícita; revisa los fondos y el estado del destino.';
   if (code === '42501')
     return 'No se pudo acceder al período. Revisa tu sesión.';
   return 'No se pudo confirmar la reapertura. Comprueba la misma solicitud antes de intentar otra.';
 }
-export type PendingLifecycle = Readonly<{
-  kind: 'close' | 'reopen';
-  request: CloseRequest;
-  inFlight: boolean;
-}>;
+export type PeriodOperation =
+  | Readonly<{ kind: 'close' | 'reopen'; request: CloseRequest }>
+  | Readonly<{ kind: 'dispose'; request: DisposeRequest }>
+  | Readonly<{ kind: 'reverse'; request: ReverseRequest }>;
+export type PendingLifecycle = PeriodOperation &
+  Readonly<{ inFlight: boolean }>;
 export const pendingLifecycleKey = (owner: string) =>
   ['pending-period-lifecycle', owner] as const;

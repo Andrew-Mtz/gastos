@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { calculateBucketConsumption } from '../../domain/budget/bucket-consumption';
 import { createBudgetAllocationPlan } from '../../domain/budget/budget-allocation';
 import { calculateProtectedBudgetAllocation } from '../../domain/budget/protected-budget-allocation';
-import { createMoney } from '../../domain/money/money';
+import { createMoney, addMoney, subtractMoney } from '../../domain/money/money';
 import { supabase } from '../../infrastructure/supabase/client';
 import {
   allocationSchema,
@@ -53,7 +53,19 @@ const snapshotSchema = envelope.extend({
 });
 
 /** Validate a complete server snapshot, never combine separate query results. */
-export function mapDashboard(owner: string, month: string, data: unknown) {
+export function mapDashboard(
+  owner: string,
+  month: string,
+  data: unknown,
+  snapshotVersion: 1 | 2 = 2,
+) {
+  if (snapshotVersion === 2)
+    z.object({ snapshot_version: z.literal(2) }).parse(data);
+  else if (
+    z.object({ snapshot_version: z.unknown().optional() }).parse(data)
+      .snapshot_version !== undefined
+  )
+    throw new Error('Legacy snapshot version mismatch.');
   const header = envelope.parse(data);
   if (header.owner_profile_id !== owner || header.month !== month)
     throw new Error('Dashboard owner/month mismatch.');
@@ -70,7 +82,11 @@ export function mapDashboard(owner: string, month: string, data: unknown) {
     new Set(row.buckets.map((b) => b.id)).size !== row.buckets.length
   )
     throw new Error('Dashboard component mismatch.');
-  const availability = mapSafeToSpend(period, row.availability);
+  const availability = mapSafeToSpend(
+    period,
+    row.availability,
+    snapshotVersion,
+  );
   const consumption = calculateBucketConsumption(
     period.base_currency,
     row.consumption.buckets.map((b) => ({
@@ -102,19 +118,39 @@ export function mapDashboard(owner: string, month: string, data: unknown) {
       (allocation?.spendableAllocated.amountMinor ?? 0)
   )
     throw new Error('Dashboard totals disagree.');
+  const carry = availability.components.carry;
+  if (
+    carry.buckets.some(
+      (c) =>
+        !consumption.buckets.some(
+          (b) => b.budgetBucketId === c.budget_bucket_id,
+        ),
+    )
+  )
+    throw new Error('Dashboard consumption omits a carried bucket.');
   const usage = consumption.buckets.map((b) => {
     const metadata = row.buckets.find((item) => item.id === b.budgetBucketId);
     if (!metadata || metadata.type !== 'SPENDABLE')
       throw new Error('Dashboard consumption classification mismatch.');
+    const allocatedAmount = allocation
+      ? (allocation.allocations.find(
+          (item) => item.budgetBucketId === b.budgetBucketId,
+        )?.allocatedAmount ?? createMoney(0, period.base_currency))
+      : null;
+    const carriedAmount = createMoney(
+      carry.buckets.find((c) => c.budget_bucket_id === b.budgetBucketId)
+        ?.amount_minor ?? 0,
+      period.base_currency,
+    );
     return {
       ...b,
+      carriedAmount,
+      grossRemainder: allocatedAmount
+        ? subtractMoney(addMoney(allocatedAmount, carriedAmount), b.spentAmount)
+        : null,
       name: metadata.name,
       systemKey: metadata.system_key,
-      allocatedAmount: allocation
-        ? (allocation.allocations.find(
-            (item) => item.budgetBucketId === b.budgetBucketId,
-          )?.allocatedAmount ?? createMoney(0, period.base_currency))
-        : null,
+      allocatedAmount,
     };
   });
   if (

@@ -2379,3 +2379,13 @@ owner-wide financial namespaces and target budget; auth clear removes pending st
 The stable history aggregate has no silent row cap. It is a complete response, not
 pagination; exceptional lifecycle growth may warrant an explicit paginated history
 contract later rather than silently limiting this one.
+
+## FIN-125 bounded carry integration
+
+ADR-077 adds one disposition and one reversal evidence table, not a general ledger.
+Stable aggregate carry components feed the existing savings funding and ordinary
+availability paths. Income percentage splits and protected reserve derivation remain
+independent. Current snapshots explicitly version carry fields; v1 saved closes remain
+readable without silently treating malformed current payloads as zero. The periods
+screen shares the existing auth-cleared pending-operation namespace and owner-wide
+financial invalidation for atomic close/dispose and reverse/reopen confirmations.

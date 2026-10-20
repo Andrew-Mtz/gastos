@@ -375,3 +375,44 @@ credential/security changes are authorized by this log.
 - Revisit: Accepted under delegated authority, pending owner review, not personal
   confirmation. FIN-125 must explicitly decide whether a disposition restricts
   reopening; retention/account deletion remains future policy.
+
+## FIN-125: Net remainder and explicit cash-neutral carry
+
+- Question: Does unused money break 100% income allocation, how much can be moved
+  when some buckets have deficits or savings movements, and can reopening reuse it?
+- Options: sum positive bucket balances (unsafe); implement only savings and defer
+  required carry; or introduce a bounded separate carry credit without resplitting income.
+- Decision: Use the bounded carry. The 10000-basis-point invariant still applies to
+  new received income only. Display income allocation, received carry and gross bucket
+  residual separately. Actions use the one net ordinary-month cap: spendable allocated
+  income plus explicit withdrawals plus incoming carry, minus actual expenses, extra
+  contributions and outgoing carry. Positive bucket residuals are not individually
+  transferable balances. Savings movements have no invented source-bucket attribution.
+  On a completed OPEN month with a complete plan and no selected/prior unresolved
+  obligations, explicitly confirm one amount and close atomically: contribute it to
+  general savings, carry it to an explicitly selected spendable bucket next month, or
+  carry it as a separate unallocated ordinary credit. The next owned month must be
+  OPEN, configured and in the same currency. No implicit destination or redistribution.
+- Reason: This conserves existing money, includes deficits and additional earmarking,
+  preserves protected savings already accumulated, and implements the initial actions
+  without weakening percentage allocation or introducing financial accounts/a ledger.
+- Impact: Carry is neither INCOME nor EXPENSE, never percentage-split, and has zero
+  cash/spending/savings impact. Extra savings uses the existing validated contribution
+  once; no bank transfer occurs. Unused money not explicitly disposed remains historical,
+  not automatically spendable next month. Preview/version are checked before mutation;
+  the immutable close evidence records the post-action snapshot with explicit versioning.
+  New source reopening is blocked while outbound carry is active. A separately reviewed
+  atomic action reverses that carry AND reopens its source, only if the destination is
+  OPEN, has no current/prior unresolved obligations and retains enough live net ordinary
+  funds. Downstream carries may need reversing first. No automatic reversal or backdating.
+  Exact request replay reads the original result even after reversal or later closes.
+  Historical evidence is never rewritten or treated as current spendable authority.
+- Verification: Net/global bounds, bucket deficits, extra contributions/withdrawals,
+  no savings duplication, carry conservation and explicit bucket/unallocated distinction;
+  source/destination lifecycle, correction funding, all historical savings prefixes,
+  immutable audit/replay, actual RLS/grants/forged writes and two-session races; UI
+  confirmation/cancellation/remount/auth/staleness; generated types and exact-head CI.
+- Revisit: Accepted under the owner's delegated implementation authority, not personally
+  reviewed or confirmed by the owner. Review the conservative reversal restrictions and
+  next-month-only horizon on return. Multi-action splits, automatic carry, cross-currency
+  transfer, account balances and allocation of an existing unallocated carry are not added.

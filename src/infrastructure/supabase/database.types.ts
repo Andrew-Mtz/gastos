@@ -98,6 +98,55 @@ export type Database = {
           },
         ];
       };
+      budget_period_carry_reversals: {
+        Row: {
+          disposition_id: string;
+          id: string;
+          owner_profile_id: string;
+          reopening_id: string;
+          request_payload: Json;
+          reversed_at: string;
+        };
+        Insert: {
+          disposition_id: string;
+          id: string;
+          owner_profile_id: string;
+          reopening_id: string;
+          request_payload: Json;
+          reversed_at?: string;
+        };
+        Update: {
+          disposition_id?: string;
+          id?: string;
+          owner_profile_id?: string;
+          reopening_id?: string;
+          request_payload?: Json;
+          reversed_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'budget_period_carry_reversals_disposition_id_fkey';
+            columns: ['disposition_id'];
+            isOneToOne: true;
+            referencedRelation: 'budget_period_dispositions';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'budget_period_carry_reversals_owner_profile_id_fkey';
+            columns: ['owner_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'budget_period_carry_reversals_reopening_id_fkey';
+            columns: ['reopening_id'];
+            isOneToOne: true;
+            referencedRelation: 'budget_period_reopenings';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       budget_period_closures: {
         Row: {
           budget_period_id: string;
@@ -139,6 +188,90 @@ export type Database = {
           {
             foreignKeyName: 'budget_period_closures_budget_period_id_owner_profile_id_fkey';
             columns: ['budget_period_id', 'owner_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'budget_periods';
+            referencedColumns: ['id', 'profile_id'];
+          },
+        ];
+      };
+      budget_period_dispositions: {
+        Row: {
+          action: string;
+          amount_minor: number;
+          closure_id: string;
+          created_at: string;
+          currency: string;
+          destination_bucket_id: string | null;
+          destination_bucket_name: string | null;
+          destination_period_id: string | null;
+          id: string;
+          owner_profile_id: string;
+          request_payload: Json;
+          savings_transaction_id: string | null;
+          source_period_id: string;
+        };
+        Insert: {
+          action: string;
+          amount_minor: number;
+          closure_id: string;
+          created_at?: string;
+          currency: string;
+          destination_bucket_id?: string | null;
+          destination_bucket_name?: string | null;
+          destination_period_id?: string | null;
+          id: string;
+          owner_profile_id: string;
+          request_payload: Json;
+          savings_transaction_id?: string | null;
+          source_period_id: string;
+        };
+        Update: {
+          action?: string;
+          amount_minor?: number;
+          closure_id?: string;
+          created_at?: string;
+          currency?: string;
+          destination_bucket_id?: string | null;
+          destination_bucket_name?: string | null;
+          destination_period_id?: string | null;
+          id?: string;
+          owner_profile_id?: string;
+          request_payload?: Json;
+          savings_transaction_id?: string | null;
+          source_period_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'budget_period_dispositions_closure_id_fkey';
+            columns: ['closure_id'];
+            isOneToOne: true;
+            referencedRelation: 'budget_period_closures';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'budget_period_dispositions_destination_bucket_id_fkey';
+            columns: ['destination_bucket_id'];
+            isOneToOne: false;
+            referencedRelation: 'budget_buckets';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'budget_period_dispositions_destination_period_id_owner_pro_fkey';
+            columns: ['destination_period_id', 'owner_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'budget_periods';
+            referencedColumns: ['id', 'profile_id'];
+          },
+          {
+            foreignKeyName: 'budget_period_dispositions_savings_transaction_id_fkey';
+            columns: ['savings_transaction_id'];
+            isOneToOne: false;
+            referencedRelation: 'transactions';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'budget_period_dispositions_source_period_id_owner_profile__fkey';
+            columns: ['source_period_id', 'owner_profile_id'];
             isOneToOne: false;
             referencedRelation: 'budget_periods';
             referencedColumns: ['id', 'profile_id'];
@@ -585,6 +718,20 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      close_and_dispose_personal_remainder: {
+        Args: {
+          p_action: string;
+          p_amount_minor: number;
+          p_budget_period_id: string;
+          p_confirmed?: boolean;
+          p_destination_bucket_id?: string;
+          p_destination_period_id?: string;
+          p_expected_lifecycle_version: number;
+          p_id: string;
+          p_preview_hash: string;
+        };
+        Returns: Json;
+      };
       close_personal_budget_period: {
         Args: {
           p_budget_period_id: string;
@@ -671,6 +818,14 @@ export type Database = {
         Args: { p_budget_period_id: string };
         Returns: Json;
       };
+      get_personal_carry: {
+        Args: { p_budget_period_id: string };
+        Returns: Json;
+      };
+      get_personal_carry_reversal_context: {
+        Args: { p_disposition_id: string };
+        Returns: Json;
+      };
       get_personal_committed_money: {
         Args: { p_budget_period_id: string };
         Returns: Json;
@@ -681,6 +836,10 @@ export type Database = {
         Returns: Json;
       };
       get_personal_recurring_month: {
+        Args: { p_month: string };
+        Returns: Json;
+      };
+      get_personal_remainder_context: {
         Args: { p_month: string };
         Returns: Json;
       };
@@ -884,6 +1043,17 @@ export type Database = {
           isOneToOne: true;
           isSetofReturn: false;
         };
+      };
+      reverse_carry_and_reopen_personal_period: {
+        Args: {
+          p_confirmed: boolean;
+          p_disposition_id: string;
+          p_expected_destination_version: number;
+          p_expected_source_version: number;
+          p_id: string;
+          p_preview_hash: string;
+        };
+        Returns: Json;
       };
       save_budget_allocations: {
         Args: { p_allocations: Json; p_budget_period_id: string };
