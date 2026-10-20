@@ -276,6 +276,9 @@ credential/security changes are authorized by this log.
   independently racing cards. Expected income and cumulative savings cannot be
   confused with ordinary remaining money. The current-month-only screen keeps
   existing entry/navigation destinations aligned without adding historical UI.
+  Review caught retained historical selections in recurring/history destinations;
+  these links now explicitly carry a validated month and reapply it on focus,
+  while manual month browsing within those screens remains available.
 - Impact: No financial policy, persisted total, transaction, account balance,
   conversion, corrections, closure or rollover. Existing owner-wide invalidation
   also refreshes the dashboard. Navigation/background/authentication/month changes

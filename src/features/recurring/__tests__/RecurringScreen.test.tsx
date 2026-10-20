@@ -6,7 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { randomUUID } from 'expo-crypto';
 import { RecurringScreen } from '../RecurringScreen';
 import {
@@ -30,6 +30,7 @@ jest.mock('../recurring-data', () => ({
 jest.mock('../../../infrastructure/supabase/client', () => ({ supabase: {} }));
 jest.mock('../../auth/AuthProvider', () => ({ useAuth: jest.fn() }));
 jest.mock('expo-router', () => ({
+  useLocalSearchParams: jest.fn(() => ({})),
   useFocusEffect: jest.fn(),
   router: { push: jest.fn() },
 }));
@@ -47,6 +48,7 @@ let focus: (() => void | (() => void)) | undefined, blur: void | (() => void);
 beforeEach(() => {
   jest.useFakeTimers();
   jest.clearAllMocks();
+  jest.mocked(useLocalSearchParams).mockReturnValue({});
   jest.mocked(currentMonth).mockReturnValue(period.starts_on);
   jest.mocked(financialDate).mockReturnValue('2026-10-20');
   let next = 1;
@@ -483,3 +485,46 @@ test('past or future month never pre-fills a fictitious payment date to clear a 
   );
   expect(resolveRecurring).not.toHaveBeenCalled();
 });
+
+test('dashboard month parameter resets retained selection on re-entry without locking manual navigation', async () => {
+  jest
+    .mocked(useLocalSearchParams)
+    .mockReturnValue({ month: period.starts_on });
+  await openScreen();
+  await userEvent
+    .setup()
+    .press(screen.getByRole('button', { name: 'Mes anterior' }));
+  await waitFor(() =>
+    expect(readRecurringMonth).toHaveBeenLastCalledWith(
+      profile.id,
+      '2026-09-01',
+      expect.any(AbortSignal),
+    ),
+  );
+  await act(async () => {
+    if (blur) blur();
+  });
+  await act(async () => {
+    blur = focus?.();
+  });
+  await waitFor(() =>
+    expect(readRecurringMonth).toHaveBeenLastCalledWith(
+      profile.id,
+      '2026-10-01',
+      expect.any(AbortSignal),
+    ),
+  );
+  expect(screen.getByText(/2026-10/)).toBeOnTheScreen();
+});
+test.each(['2026-13-01', '2026-09-02', ['2026-09-01', '2026-10-01']])(
+  'malformed month deep link %s cannot select another period',
+  async (month) => {
+    jest.mocked(useLocalSearchParams).mockReturnValue({ month });
+    await openScreen();
+    expect(readRecurringMonth).toHaveBeenLastCalledWith(
+      profile.id,
+      period.starts_on,
+      expect.any(AbortSignal),
+    );
+  },
+);

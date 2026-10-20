@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { supabase } from '../../infrastructure/supabase/client';
 import { createTransaction } from '../../domain/transaction/transaction';
 
-const monthSchema = z.iso
+export const monthSchema = z.iso
   .date()
   .refine((value) => value >= '0001-01-01' && value.endsWith('-01'));
 export function monthBounds(month: string) {

@@ -105,7 +105,10 @@ test('honest monthly labels, zero estimates, traceable formula and relevant navi
     .press(
       screen.getByRole('button', { name: 'Revisar obligaciones recurrentes' }),
     );
-  expect(router.push).toHaveBeenCalledWith('/recurring');
+  expect(router.push).toHaveBeenCalledWith({
+    pathname: '/recurring',
+    params: { month: period.starts_on },
+  });
 });
 test.each([
   [1, 0, true],

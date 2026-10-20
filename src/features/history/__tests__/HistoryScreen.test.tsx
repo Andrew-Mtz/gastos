@@ -6,7 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { HistoryScreen } from '../HistoryScreen';
 import { readHistory } from '../history-data';
 import { useAuth } from '../../auth/AuthProvider';
@@ -19,7 +19,10 @@ jest.mock('../history-data', () => ({
   readHistory: jest.fn(),
 }));
 jest.mock('../../auth/AuthProvider', () => ({ useAuth: jest.fn() }));
-jest.mock('expo-router', () => ({ useFocusEffect: jest.fn() }));
+jest.mock('expo-router', () => ({
+  useLocalSearchParams: jest.fn(() => ({})),
+  useFocusEffect: jest.fn(),
+}));
 jest.mock('../../budget/budget-setup', () => ({
   ...jest.requireActual('../../budget/budget-setup'),
   currentMonth: jest.fn(),
@@ -58,6 +61,7 @@ function auth(id = profile.id) {
 }
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.mocked(useLocalSearchParams).mockReturnValue({});
   auth();
   jest.mocked(currentMonth).mockReturnValue('2026-10-01');
   jest.mocked(readHistory).mockResolvedValue(page);
@@ -214,3 +218,47 @@ test('failed next page can retry retained history then resume pagination', async
   );
   expect(screen.getAllByText('Lunch')).toHaveLength(1);
 });
+
+test('dashboard month parameter resets retained history on re-entry and allows manual browsing', async () => {
+  jest
+    .mocked(useLocalSearchParams)
+    .mockReturnValue({ month: period.starts_on });
+  await open();
+  await screen.findByText('Lunch');
+  await userEvent
+    .setup()
+    .press(screen.getByRole('button', { name: 'Mes anterior' }));
+  await waitFor(() =>
+    expect(readHistory).toHaveBeenLastCalledWith(
+      profile.id,
+      '2026-09-01',
+      null,
+      expect.any(AbortSignal),
+    ),
+  );
+  await act(async () => {
+    jest.mocked(useFocusEffect).mock.calls.at(-1)?.[0]();
+  });
+  await waitFor(() =>
+    expect(readHistory).toHaveBeenLastCalledWith(
+      profile.id,
+      '2026-10-01',
+      null,
+      expect.any(AbortSignal),
+    ),
+  );
+});
+test.each(['2026-13-01', '2026-09-02', ['2026-09-01', '2026-10-01']])(
+  'invalid history month param %s falls back to current month',
+  async (month) => {
+    jest.mocked(useLocalSearchParams).mockReturnValue({ month });
+    await open();
+    await screen.findByText('Lunch');
+    expect(readHistory).toHaveBeenLastCalledWith(
+      profile.id,
+      period.starts_on,
+      null,
+      expect.any(AbortSignal),
+    );
+  },
+);

@@ -220,7 +220,12 @@ function CurrentDashboard({ profile }: { profile: Profile }) {
         <Button onPress={() => router.push('/expenses')}>
           Registrar gasto
         </Button>
-        <Button variant="secondary" onPress={() => router.push('/history')}>
+        <Button
+          variant="secondary"
+          onPress={() =>
+            router.push({ pathname: '/history', params: { month } })
+          }
+        >
           Ver historial
         </Button>
       </View>
@@ -247,7 +252,12 @@ function CurrentDashboard({ profile }: { profile: Profile }) {
             significa que no existan gastos futuros.
           </AppText>
         )}
-        <Button variant="secondary" onPress={() => router.push('/recurring')}>
+        <Button
+          variant="secondary"
+          onPress={() =>
+            router.push({ pathname: '/recurring', params: { month } })
+          }
+        >
           Ver todas las obligaciones
         </Button>
       </View>

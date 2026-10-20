@@ -137,7 +137,15 @@ export function SafeToSpendSummary({
         consume ahorro automáticamente. No incluye dinero sobrante de otros
         meses ni obligaciones no registradas.
       </AppText>
-      <Button variant="secondary" onPress={() => router.push('/recurring')}>
+      <Button
+        variant="secondary"
+        onPress={() =>
+          router.push({
+            pathname: '/recurring',
+            params: { month: period.starts_on },
+          })
+        }
+      >
         Revisar obligaciones recurrentes
       </Button>
     </>

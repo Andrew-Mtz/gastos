@@ -113,7 +113,11 @@ test('Inicio shows a consistent actionable current month with honest labels and 
     ['Ver todas las obligaciones', '/recurring'],
   ]) {
     await userEvent.setup().press(screen.getByRole('button', { name: label }));
-    expect(router.push).toHaveBeenLastCalledWith(route);
+    expect(router.push).toHaveBeenLastCalledWith(
+      route === '/recurring' || route === '/history'
+        ? { pathname: route, params: { month: period.starts_on } }
+        : route,
+    );
   }
   expect(readDashboard).toHaveBeenCalledWith(
     profile.id,
