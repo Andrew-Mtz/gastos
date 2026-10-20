@@ -10,6 +10,7 @@ create table public.budget_period_dispositions (
   currency text not null check(currency ~ '^[A-Z]{3}$'),
   destination_period_id uuid,
   destination_bucket_id uuid references public.budget_buckets(id) on delete restrict,
+  destination_bucket_name text,
   savings_transaction_id uuid references public.transactions(id) on delete restrict,
   request_payload jsonb not null,
   created_at timestamptz not null default clock_timestamp(),
@@ -293,7 +294,7 @@ begin
       and t.type = 'EXPENSE' and t.deleted_at is null
     group by c.budget_bucket_id
   ), relevant as (
-    select (c->>'budget_bucket_id')::uuid from jsonb_array_elements(public.get_personal_carry(p_budget_period_id)->'buckets') c
+    select (c->>'budget_bucket_id')::uuid as budget_bucket_id from jsonb_array_elements(public.get_personal_carry(p_budget_period_id)->'buckets') c
     union
     select budget_bucket_id from spent
     union
@@ -434,6 +435,65 @@ $$;
 revoke all on function public.reopen_personal_budget_period(uuid,uuid,bigint,text,boolean) from public,anon,authenticated;
 grant execute on function public.reopen_personal_budget_period(uuid,uuid,bigint,text,boolean) to authenticated;
 
+create or replace function public.get_personal_period_close_context(p_month date)
+returns jsonb language plpgsql stable security invoker set search_path='' as $$
+declare
+  v_period public.budget_periods;
+  v_close public.budget_period_closures;
+  v_timezone text;
+  v_current_month date;
+  v_summary jsonb;
+  v_pending numeric;
+  v_prior numeric;
+  v_history jsonb;
+begin
+  if auth.uid() is null then raise exception 'Authentication is required' using errcode='42501'; end if;
+  if p_month is null or extract(day from p_month)<>1
+    or p_month not between date '0001-01-01' and date '9999-12-01' then
+    raise exception 'A valid calendar month is required' using errcode='22023';
+  end if;
+  select timezone into v_timezone from public.profiles where id=auth.uid();
+  if v_timezone is null then raise exception 'An owned profile is required' using errcode='42501'; end if;
+  v_current_month := date_trunc('month',statement_timestamp() at time zone v_timezone)::date;
+  select * into v_period from public.budget_periods where profile_id=auth.uid() and starts_on=p_month;
+  if not found then
+    return jsonb_build_object('owner_profile_id',auth.uid(),'month',p_month,'period',null,
+      'financial_month',v_current_month,'financial_timezone',v_timezone);
+  end if;
+  select jsonb_build_object(
+    'closures',coalesce((select jsonb_agg(to_jsonb(c) order by c.lifecycle_version)
+      from public.budget_period_closures c where c.budget_period_id=v_period.id and c.owner_profile_id=auth.uid()),'[]'::jsonb),
+    'dispositions',coalesce((select jsonb_agg(to_jsonb(d) order by d.created_at,d.id)
+      from public.budget_period_dispositions d where d.source_period_id=v_period.id and d.owner_profile_id=auth.uid()),'[]'::jsonb),
+    'reversals',coalesce((select jsonb_agg(to_jsonb(r) order by r.reversed_at,r.id)
+      from public.budget_period_carry_reversals r where r.owner_profile_id=auth.uid() and exists(
+        select 1 from public.budget_period_dispositions d where d.id=r.disposition_id and d.source_period_id=v_period.id)),'[]'::jsonb),
+    'reopenings',coalesce((select jsonb_agg(to_jsonb(r) order by r.lifecycle_version)
+      from public.budget_period_reopenings r where r.budget_period_id=v_period.id and r.owner_profile_id=auth.uid()),'[]'::jsonb)) into v_history;
+  if v_period.status='CLOSED' then
+    select * into v_close from public.budget_period_closures
+      where owner_profile_id=auth.uid() and budget_period_id=v_period.id and lifecycle_version=v_period.lifecycle_version;
+    -- Never silently recompute historical evidence, including legacy closed rows.
+    return jsonb_build_object('owner_profile_id',auth.uid(),'month',p_month,'period',to_jsonb(v_period),
+      'financial_month',v_current_month,'financial_timezone',v_timezone,
+      'closure',case when v_close.id is null then null else to_jsonb(v_close) end,
+      'summary',v_close.summary,'snapshot_hash',v_close.snapshot_hash,'can_close',false,
+      'history',v_history,'reopen_hash',md5(jsonb_build_object('period_id',v_period.id,
+        'owner',v_period.profile_id,'status',v_period.status,'version',v_period.lifecycle_version,
+        'closed_at',v_period.closed_at,'closure_id',v_close.id)::text));
+  end if;
+  v_summary := public.get_personal_dashboard(p_month);
+  select coalesce(sum((b->>'confirmed_count')::numeric+(b->>'estimated_count')::numeric+(b->>'unknown_count')::numeric),0)
+    into v_pending from jsonb_array_elements(v_summary->'availability'->'commitments'->'buckets') b;
+  v_prior := (v_summary->'availability'->'commitments'->>'prior_unresolved_count')::numeric;
+  return jsonb_build_object('owner_profile_id',auth.uid(),'month',p_month,'period',to_jsonb(v_period),
+    'financial_month',v_current_month,'financial_timezone',v_timezone,'closure',null,'summary',v_summary,
+    'snapshot_hash',md5(jsonb_build_object('summary',v_summary,'timezone',v_timezone)::text),
+    'can_close',p_month<v_current_month and v_pending=0 and v_prior=0,'history',v_history,'reopen_hash',null);
+end;
+$$;
+
+
 -- The close summary is historical when CLOSED; only an OPEN source can dispose.
 -- Destination metadata is not a spendable balance. Reversal has a separate live read.
 create function public.get_personal_remainder_context(p_month date)
@@ -529,9 +589,9 @@ begin
   end if;
   set constraints public.budget_period_dispositions_closure_id_fkey deferred;
   insert into public.budget_period_dispositions(id,owner_profile_id,source_period_id,closure_id,action,amount_minor,currency,
-    destination_period_id,destination_bucket_id,savings_transaction_id,request_payload)
+    destination_period_id,destination_bucket_id,destination_bucket_name,savings_transaction_id,request_payload)
     values(p_id,auth.uid(),v_source.id,p_id,p_action,p_amount_minor,v_source.base_currency,
-      p_destination_period_id,p_destination_bucket_id,case when p_action='SAVINGS' then p_id else null end,v_payload)
+      p_destination_period_id,p_destination_bucket_id,v_bucket.name,case when p_action='SAVINGS' then p_id else null end,v_payload)
     returning * into v_existing;
   -- A separate POST-action fingerprint is used for the child close. The reviewed
   -- PRE-action hash was already checked; it can never authorize a changed summary.
