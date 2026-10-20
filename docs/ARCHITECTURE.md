@@ -1675,6 +1675,13 @@ registration invalidates the owner's income query prefix, including bucket total
 refocus and manual refresh also reload availability. No new tables, persisted
 balances, conversion, spending consumption or savings movements are introduced.
 
+FIN-112 adds a private history route with calendar-month filters and descending
+financial-date/UUID keyset pagination (50 records plus one lookahead). Reads use
+existing transaction/category RLS, exclude soft-deleted rows, preserve archived
+category names and original transaction amounts/currencies, and consume cancellation
+signals. Owner/month Query keys isolate histories; successful income and expense
+registration invalidate history. No totals, schema changes or editing are added.
+
 # 69. AI Architecture
 
 AI is not part of the initial MVP infrastructure.

@@ -46,6 +46,7 @@ const routes = {
   '(app)/index': Home,
   '(app)/transactions': Transactions,
   '(app)/expenses': () => <Text>Gastos personales</Text>,
+  '(app)/history': () => <Text>Historial personal</Text>,
   '(app)/budget': Budget,
   '(app)/household': Household,
   '(app)/settings': Settings,
