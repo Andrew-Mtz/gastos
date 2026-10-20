@@ -9,8 +9,12 @@ import {
 } from '../budget/budget-setup';
 import { validateIncomeForm, type IncomeRequest } from './income-form';
 
+export const incomeOwnerKey = (profileId: string) =>
+  ['income', profileId] as const;
 export const incomeKey = (profileId: string, month: string) =>
-  ['income', profileId, month] as const;
+  [...incomeOwnerKey(profileId), month] as const;
+export const receivedIncomeKey = (profileId: string, periodId: string) =>
+  [...incomeOwnerKey(profileId), 'received', periodId] as const;
 export async function readReceivedIncome(
   periodId: string,
   signal?: AbortSignal,

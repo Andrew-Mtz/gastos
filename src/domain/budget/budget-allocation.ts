@@ -30,7 +30,8 @@ export type BudgetAllocationErrorCode =
   | 'INVALID_BUDGET_ID'
   | 'INVALID_BUDGET_SHARES'
   | 'DUPLICATE_BUDGET_BUCKET'
-  | 'INVALID_EXPECTED_INCOME';
+  | 'INVALID_EXPECTED_INCOME'
+  | 'INVALID_RECEIVED_INCOME';
 
 const messages: Record<BudgetAllocationErrorCode, string> = {
   INVALID_BUDGET_ID: 'Budget period and bucket identifiers must be UUIDs.',
@@ -40,6 +41,8 @@ const messages: Record<BudgetAllocationErrorCode, string> = {
     'Each bucket may occur only once in a period allocation.',
   INVALID_EXPECTED_INCOME:
     'Expected income must be null or nonnegative safe-integer minor units.',
+  INVALID_RECEIVED_INCOME:
+    'Received income must be nonnegative safe-integer minor units.',
 };
 
 export class BudgetAllocationError extends Error {
@@ -149,6 +152,34 @@ export function calculatePlannedBudgetAllocation(
         ...share,
         plannedAmount: amounts === null ? null : amounts[index],
       }),
+    ),
+  );
+}
+
+export type ActualBudgetAllocation = BudgetAllocationShare &
+  Readonly<{ allocatedAmount: Money }>;
+
+/** Allocate the period's total received income once, never its estimate.
+ * These are pre-consumption amounts, not remaining balances or safe-to-spend. */
+export function calculateActualBudgetAllocation(
+  plan: BudgetAllocationPlan,
+  receivedIncomeMinor: number,
+): readonly ActualBudgetAllocation[] {
+  const validated = createBudgetAllocationPlan(
+    plan.budgetPeriodId,
+    plan.baseCurrency,
+    plan.allocations,
+  );
+  if (!Number.isSafeInteger(receivedIncomeMinor) || receivedIncomeMinor < 0) {
+    throw new BudgetAllocationError('INVALID_RECEIVED_INCOME');
+  }
+  const amounts = allocateMoney(
+    createMoney(receivedIncomeMinor, validated.baseCurrency),
+    validated.allocations.map((share) => share.percentageBasisPoints),
+  );
+  return Object.freeze(
+    validated.allocations.map((share, index) =>
+      Object.freeze({ ...share, allocatedAmount: amounts[index] }),
     ),
   );
 }

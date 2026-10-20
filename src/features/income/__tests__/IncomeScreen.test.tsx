@@ -9,7 +9,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
 import { randomUUID } from 'expo-crypto';
 import { IncomeEditor, IncomeScreen } from '../IncomeScreen';
-import { readIncomeMonth, registerIncome } from '../income-data';
+import {
+  readIncomeMonth,
+  registerIncome,
+  receivedIncomeKey,
+} from '../income-data';
 import { useAuth } from '../../auth/AuthProvider';
 import { period, profile, request } from './fixtures';
 import { currentMonth } from '../../budget/budget-setup';
@@ -99,13 +103,18 @@ test('cancel discards unsaved input without writing', async () => {
   expect(registerIncome).not.toHaveBeenCalled();
 });
 test('successful income refreshes totals and returns to summary', async () => {
-  await openScreen();
+  const { client } = await openScreen();
+  const actualKey = receivedIncomeKey(profile.id, period.id);
+  client.setQueryData(actualKey, 100000);
   const user = await beginIncome();
   await user.press(screen.getByRole('button', { name: 'Guardar ingreso' }));
   await screen.findByText(/Recibido:/);
   expect(registerIncome).toHaveBeenCalledTimes(1);
   expect(jest.mocked(registerIncome).mock.calls[0][1].form.amount).toBe(
     '123.45',
+  );
+  await waitFor(() =>
+    expect(client.getQueryState(actualKey)?.isInvalidated).toBe(true),
   );
 });
 test('pending request blocks duplicate taps and survives leave/return', async () => {

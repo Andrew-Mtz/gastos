@@ -824,7 +824,7 @@ Currency conversion remains deferred under ADR-066.
 
 ## FIN-110 — Income-Based Budget Availability
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-109
 
@@ -845,6 +845,20 @@ Savings 20% → USD 286
 ### Requirements
 
 Use shared deterministic allocation logic.
+
+FIN-110 derives pre-consumption bucket amounts from the owned period's received
+income aggregate using the shared exact largest-remainder allocator and stable
+bucket identities. Expected planning stays separate; zero received yields zero.
+Savings is explicitly labeled as allocated to saving, not ordinary spendable cash.
+The budget UI hides actual amounts during loading/error or allocation refresh,
+refreshes on refocus/manual action, and responds to income registration through
+owner-scoped cache invalidation. No database migration, persisted balance, expense
+consumption, commitment, conversion or safe-to-spend calculation is introduced.
+Pure and UI tests cover the 1430 acceptance example, rounding/aggregate behavior,
+safe boundaries, zero, snapshots, owner isolation, cancellation and delayed plan
+refresh. Independent review found no remaining production blocker. Full local
+checks pass with 399 Jest tests; existing PostgreSQL authorization checks remain
+required in CI. Native-device rendering/navigation QA remains unverified.
 
 ---
 
@@ -1713,7 +1727,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-110 — Income-Based Budget Availability
+FIN-111 — Register Personal Expense
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.
