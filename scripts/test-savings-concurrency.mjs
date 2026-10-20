@@ -170,7 +170,8 @@ async function scenario(
   } finally {
     // This target is an ephemeral local Supabase container, and these UUIDs were
     // created by this invocation. No production DELETE capability is introduced.
-    await run(`begin;delete from public.transactions where owner_profile_id='${owner}';
+    await run(`begin;delete from public.transaction_revisions where owner_profile_id='${owner}';
+      delete from public.transactions where owner_profile_id='${owner}';
       delete from public.budget_allocations where budget_period_id in ('${september}','${october}');
       delete from public.savings_goals where owner_profile_id='${owner}';
       delete from public.recurring_expenses where owner_profile_id='${owner}';
@@ -498,4 +499,173 @@ await scenario(
 
 console.log(
   'All eighteen finance concurrency scenarios passed; synthetic fixtures removed.',
+);
+
+// FIN-122: the expected revision is checked after acquiring the shared owner lock.
+const editIncome = (c, amount, revision = 0, request = c.goal) =>
+  `select public.correct_personal_transaction('${request}','${c.income}',${revision},'EDIT',
+    '{"amount_minor":${amount},"transaction_date":"2026-09-01","category_id":null,"description":null}',true);`;
+const deleteIncome = (c, revision = 0) =>
+  `select public.correct_personal_transaction('${c.template}','${c.income}',${revision},'DELETE','{}',true);`;
+await scenario(
+  'stale concurrent income edits cannot overwrite the winning revision',
+  (c) => editIncome(c, 900),
+  (c) => editIncome(c, 800, 0, c.template),
+  false,
+  async (c) => {
+    assert.equal(
+      (
+        await run(
+          `select amount_minor||':'||revision from public.transactions where id='${c.income}';`,
+        )
+      ).trim(),
+      '900:1',
+    );
+    assert.equal(
+      (
+        await run(
+          `select count(*) from public.transaction_revisions where transaction_id='${c.income}';`,
+        )
+      ).trim(),
+      '1',
+    );
+  },
+  /Transaction changed/,
+);
+await scenario(
+  'stale delete cannot remove a concurrently corrected transaction',
+  (c) => editIncome(c, 900),
+  (c) => deleteIncome(c),
+  false,
+  async (c) =>
+    assert.equal(
+      (
+        await run(
+          `select deleted_at is null from public.transactions where id='${c.income}';`,
+        )
+      ).trim(),
+      't',
+    ),
+  /Transaction changed/,
+);
+await scenario(
+  'stale edit cannot resurrect a concurrently deleted transaction',
+  (c) => deleteIncome(c),
+  (c) => editIncome(c, 900),
+  false,
+  async (c) =>
+    assert.equal(
+      (
+        await run(
+          `select deleted_at is not null from public.transactions where id='${c.income}';`,
+        )
+      ).trim(),
+      't',
+    ),
+  /Transaction changed/,
+);
+await scenario(
+  'same correction request replay creates one revision concurrently',
+  (c) => editIncome(c, 900),
+  (c) => editIncome(c, 900),
+  true,
+  async (c) =>
+    assert.equal(
+      (
+        await run(
+          `select revision from public.transactions where id='${c.income}';`,
+        )
+      ).trim(),
+      '1',
+    ),
+);
+await scenario(
+  'withdrawal first prevents concurrent unfunding income correction',
+  (c) => c.move('SAVINGS_WITHDRAWAL', 150),
+  (c) => editIncome(c, 500),
+  false,
+  async (c) =>
+    assert.equal(
+      (
+        await run(
+          `select amount_minor from public.transactions where id='${c.income}';`,
+        )
+      ).trim(),
+      '1000',
+    ),
+  /exceeds/,
+);
+await scenario(
+  'income correction first reduces concurrent withdrawal eligibility',
+  (c) => editIncome(c, 500),
+  (c) => c.move('SAVINGS_WITHDRAWAL', 150),
+  false,
+  (c) => countMovements(c, 0),
+  /exceeds/,
+);
+await scenario(
+  'income correction first reduces concurrent contribution funding',
+  (c) => editIncome(c, 500),
+  (c) => c.move('SAVINGS_CONTRIBUTION', 500),
+  false,
+  (c) => countMovements(c, 0),
+  /Contribution exceeds/,
+);
+await scenario(
+  'recorded replay after later correction returns old result without overwriting',
+  (c) => editIncome(c, 900) + editIncome(c, 800, 1, c.template),
+  (c) => editIncome(c, 900),
+  true,
+  async (c, _auth, output) => {
+    assert.equal(
+      (
+        await run(
+          `select amount_minor||':'||revision from public.transactions where id='${c.income}';`,
+        )
+      ).trim(),
+      '800:2',
+    );
+    const result = JSON.parse(
+      output.split('\n').find((line) => line.startsWith('{')),
+    );
+    assert.equal(result.amount_minor, 900);
+    assert.equal(result.revision, 1);
+  },
+);
+const knownGoalContribution = (c, amount) =>
+  `select public.register_savings_movement('${c.resolution}','${c.september}','SAVINGS_CONTRIBUTION',${amount},'USD','2026-09-02',false,null,'${c.goal}');`;
+const editContribution = (c, amount) =>
+  `select public.correct_personal_transaction('${c.template}','${c.resolution}',0,'EDIT',
+    '{"amount_minor":${amount},"transaction_date":"2026-09-02","category_id":null,"description":null}',true);`;
+await scenario(
+  'goal withdrawal first prevents concurrent unfunding contribution correction',
+  (c) => knownGoalContribution(c, 100) + c.goalMove('SAVINGS_WITHDRAWAL', 75),
+  (c) => editContribution(c, 50),
+  false,
+  async (c) =>
+    assert.equal(
+      (
+        await run(
+          `select amount_minor from public.transactions where id='${c.resolution}';`,
+        )
+      ).trim(),
+      '100',
+    ),
+  /exceeds goal/,
+);
+await scenario(
+  'expense first prevents concurrent increase of a funded contribution',
+  (c) => knownGoalContribution(c, 500) + c.expense(500),
+  (c) => editContribution(c, 600),
+  false,
+  async (c) =>
+    assert.equal(
+      (
+        await run(
+          `select amount_minor from public.transactions where id='${c.resolution}';`,
+        )
+      ).trim(),
+      '500',
+    ),
+  /Contribution exceeds/,
 );

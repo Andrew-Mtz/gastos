@@ -570,8 +570,9 @@ FIN-108 persists only personal INCOME, EXPENSE, SAVINGS_CONTRIBUTION and
 SAVINGS_WITHDRAWAL rows, each belonging to an owned calendar budget period.
 Amounts are positive safe-integer minor units; dates are financial dates rather
 than creation timestamps. Optional category relations enforce the same owner.
-Clients may update descriptions and soft-delete/restore open-period records,
-not reassign the original amount, currency, date, type or category. Deletion
+FIN-108 initially restricted clients to descriptions and soft-delete/restore.
+FIN-122 / ADR-074 adds explicitly reviewed, audited amount/date/category corrections
+through a bounded operation; original currency, identity and scope remain immutable. Deletion
 preserves identity and is excluded by subsequent calculation paths. This schema
 does not implement expense/savings operations or determine their budget effects.
 
@@ -1805,8 +1806,8 @@ The following decisions are intentionally not finalized yet and must not be gues
 7. Exact exchange-rate provider.
 8. Exact behavior when users transact in currencies different from a budget period's base currency.
 9. Exact account-balance model.
-10. Whether soft-deleted financial data is user-restorable through the UI.
-11. Exact audit-log implementation.
+10. Personal transaction restore UI is resolved by ADR-074; other record recovery remains open.
+11. Personal transaction correction audit is resolved by ADR-074; broader audit retention remains open.
 12. Phase 1 safe-to-spend formula and uncertainty treatment: resolved by ADR-073
     under delegated authority, pending owner review; later account/payment models remain open.
 
@@ -1863,3 +1864,23 @@ historical snapshots. FIXED initial confirmation equals the original template am
 and creates one actual expense through the existing resolve path, with ordinary
 cash/spending/budget impact once and no automatic savings withdrawal. Corrections
 remain explicit FIN-122 work; original occurrence identity must survive them.
+
+
+## FIN-122 bounded financial corrections
+
+ADR-074 defines same-month, same-currency corrections with server-owned revisions
+and immutable before/after history. Income corrections affect received allocations;
+expense corrections affect cash/spending/consumption once; savings corrections affect
+only the original general/goal reserve and that month's ordinary adjustment. Nothing
+automatically withdraws savings. Contributions increased by correction require funding
+for the delta, without retroactively forbidding later ordinary overspending. Every
+historical monthly goal and unassigned reserve stays solvent. No edit blesses legacy
+unvalidated funding. Delete/restore removes/reapplies the original type's effects.
+
+Only non-recurring expenses can change category. Recurring actual amounts and dates
+may be deliberately corrected, but the original category/template/month/transaction
+identity stays fixed. Tombstones cancel the monthly obligation and remain recoverable
+after template stop under the same guards; corrected FIXED amounts survive restoration.
+Dates cannot cross the original month or be backdated to clear an older obligation.
+Closed periods deny new corrections. Exact request replay is read-only and returns its
+recorded revision, not a claim that no later correction exists.

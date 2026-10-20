@@ -330,6 +330,53 @@ export type Database = {
           },
         ];
       };
+      transaction_revisions: {
+        Row: {
+          action: string;
+          actor_profile_id: string | null;
+          after_state: Json;
+          before_state: Json;
+          owner_profile_id: string;
+          recorded_at: string;
+          request_id: string | null;
+          request_payload: Json | null;
+          revision: number;
+          transaction_id: string;
+        };
+        Insert: {
+          action: string;
+          actor_profile_id?: string | null;
+          after_state: Json;
+          before_state: Json;
+          owner_profile_id: string;
+          recorded_at?: string;
+          request_id?: string | null;
+          request_payload?: Json | null;
+          revision: number;
+          transaction_id: string;
+        };
+        Update: {
+          action?: string;
+          actor_profile_id?: string | null;
+          after_state?: Json;
+          before_state?: Json;
+          owner_profile_id?: string;
+          recorded_at?: string;
+          request_id?: string | null;
+          request_payload?: Json | null;
+          revision?: number;
+          transaction_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'transaction_revisions_transaction_id_owner_profile_id_fkey';
+            columns: ['transaction_id', 'owner_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'transactions';
+            referencedColumns: ['id', 'owner_profile_id'];
+          },
+        ];
+      };
       transactions: {
         Row: {
           amount_minor: number;
@@ -343,6 +390,7 @@ export type Database = {
           owner_profile_id: string;
           recurring_month: string | null;
           recurring_template_id: string | null;
+          revision: number;
           savings_goal_id: string | null;
           savings_validated: boolean;
           scope: string;
@@ -363,6 +411,7 @@ export type Database = {
           owner_profile_id: string;
           recurring_month?: string | null;
           recurring_template_id?: string | null;
+          revision?: number;
           savings_goal_id?: string | null;
           savings_validated?: boolean;
           scope?: string;
@@ -383,6 +432,7 @@ export type Database = {
           owner_profile_id?: string;
           recurring_month?: string | null;
           recurring_template_id?: string | null;
+          revision?: number;
           savings_goal_id?: string | null;
           savings_validated?: boolean;
           scope?: string;
@@ -434,6 +484,17 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      correct_personal_transaction: {
+        Args: {
+          p_action: string;
+          p_changes: Json;
+          p_confirmed?: boolean;
+          p_expected_revision: number;
+          p_request_id: string;
+          p_transaction_id: string;
+        };
+        Returns: Json;
+      };
       create_personal_recurring_expense: {
         Args: {
           p_active_from: string;
@@ -566,6 +627,7 @@ export type Database = {
           owner_profile_id: string;
           recurring_month: string | null;
           recurring_template_id: string | null;
+          revision: number;
           savings_goal_id: string | null;
           savings_validated: boolean;
           scope: string;
@@ -603,6 +665,7 @@ export type Database = {
           owner_profile_id: string;
           recurring_month: string | null;
           recurring_template_id: string | null;
+          revision: number;
           savings_goal_id: string | null;
           savings_validated: boolean;
           scope: string;
@@ -642,6 +705,7 @@ export type Database = {
           owner_profile_id: string;
           recurring_month: string | null;
           recurring_template_id: string | null;
+          revision: number;
           savings_goal_id: string | null;
           savings_validated: boolean;
           scope: string;
@@ -680,6 +744,7 @@ export type Database = {
           owner_profile_id: string;
           recurring_month: string | null;
           recurring_template_id: string | null;
+          revision: number;
           savings_goal_id: string | null;
           savings_validated: boolean;
           scope: string;

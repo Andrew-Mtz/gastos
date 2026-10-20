@@ -2313,6 +2313,60 @@ retain pending-obligation gates rather than silently rolling commitments forward
 
 ---
 
+# ADR-074 — Bounded Personal Corrections with Revisions and Recoverable History
+
+**Status:** Accepted under delegated implementation authority (2026-10-20),
+pending owner review of `OVERNIGHT_DECISIONS.md`; not personal owner confirmation.
+
+FIN-122 supersedes FIN-108's description-only correction capability, not its identity,
+privacy, denomination or closed-period invariants. A personal transaction keeps its
+ID, owner/scope/type, budget period/currency, goal and recurrence template/month.
+An explicit EDIT changes its positive safe-integer amount, financial date within the
+same month, description, and (only for a non-recurring expense) active spendable
+category. A linked actual retains its original category and occurrence identity;
+a deliberately corrected FIXED amount need not equal its template amount. Initial
+FIXED resolution still must equal that amount. No new resolution/replacement is made.
+
+Every UPDATE increments a server-owned revision and atomically appends immutable
+before/after snapshots. The first revision preserves the original record, including
+pre-migration records; no fictional historical edits are backfilled. Owners can read
+this trail and deleted records. DELETE uses a server timestamp and removes the row
+from normal financial calculations. A recurring deletion explicitly cancels the
+monthly obligation, not just payment. RESTORE reuses the same ID with current guards,
+even after template stop; it cannot reset a corrected actual to template defaults.
+
+Application actions use stable UUIDs, exact action/payload/expected-revision replay,
+and affirmative review confirmation. Identical replay returns the recorded resulting
+revision without mutation, even if a newer revision or closure exists. Reusing a UUID
+with different input conflicts. A new operation with a stale revision conflicts.
+Existing direct description/tombstone grants remain owner/open-period protected and
+are audited, but are not the application's optimistic-concurrency correction path.
+
+Clients retain no monetary/date/category UPDATE grants. A narrowly scoped SECURITY
+DEFINER RPC is required for those fields and atomically associates its request with
+the audit event. It derives ownership from auth.uid(), validates it explicitly, has
+an empty search_path, no dynamic SQL, no owner/scope/identity mutation parameters,
+and authenticated-only EXECUTE. An audit-only definer trigger has no direct EXECUTE
+grant and can only append authoritative OLD/NEW snapshots for transaction UPDATEs.
+Audit rows have owner-only SELECT RLS and no client write/delete permissions. Both
+capabilities require explicit independent security review and negative SQL tests.
+
+Owner finance serialization at READ COMMITTED, OPEN period validation and deferred
+historical goal/unassigned reserve checks remain mandatory. Increasing an existing
+validated contribution requires only its additional amount to fit current ordinary
+remainder before commitments; a reduction must still preserve every savings prefix.
+Editing cannot promote an unvalidated legacy saving into funded money. Restores use
+current full contribution funding checks. Ordinary expense overspending remains
+permitted and never triggers a withdrawal. The app invalidates all owner savings,
+recurring/commitment/availability/dashboard, history and relevant budget/consumption
+queries, and never displays stale financial figures during refresh/error/auth change.
+
+No bank movement, currency conversion, cross-month payment, goal reassignment,
+period closure/reopening, remainder operation or generic event-sourcing framework is
+introduced. Broader audit retention/account-deletion policy remains a future decision.
+
+---
+
 # Superseding Decisions
 
 When replacing an accepted ADR:

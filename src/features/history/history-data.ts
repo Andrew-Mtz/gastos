@@ -23,8 +23,14 @@ export function shiftMonth(month: string, delta: -1 | 1): string {
 }
 export const historyOwnerKey = (profileId: string) =>
   ['history', profileId] as const;
-export const historyKey = (profileId: string, month: string) =>
-  [...historyOwnerKey(profileId), month] as const;
+export const historyKey = (
+  profileId: string,
+  month: string,
+  deleted = false,
+) =>
+  deleted
+    ? ([...historyOwnerKey(profileId), month, 'deleted'] as const)
+    : ([...historyOwnerKey(profileId), month] as const);
 const cursorSchema = z.object({ date: z.iso.date(), id: z.uuid() });
 export type HistoryCursor = z.infer<typeof cursorSchema>;
 const rowSchema = z.object({
@@ -47,6 +53,7 @@ export async function readHistory(
   month: string,
   cursor: HistoryCursor | null,
   signal?: AbortSignal,
+  deleted = false,
 ) {
   const bounds = monthBounds(month);
   let query = supabase
@@ -54,12 +61,14 @@ export async function readHistory(
     .select('*,category:categories!transactions_category_owner_fkey(name)')
     .eq('owner_profile_id', z.uuid().parse(profileId))
     .eq('scope', 'PERSONAL')
-    .is('deleted_at', null)
     .gte('transaction_date', bounds.start)
     .lte('transaction_date', bounds.end)
     .order('transaction_date', { ascending: false })
     .order('id', { ascending: false })
     .limit(pageSize + 1);
+  query = deleted
+    ? query.not('deleted_at', 'is', null)
+    : query.is('deleted_at', null);
   if (cursor) {
     const parsed = cursorSchema.parse(cursor);
     query = query.or(
@@ -69,6 +78,17 @@ export async function readHistory(
   const { data, error } = await (signal ? query.abortSignal(signal) : query);
   if (error) throw error;
   const rows = z.array(rowSchema).parse(data);
+  if (
+    rows.some(
+      (row) =>
+        row.owner_profile_id !== profileId ||
+        row.scope !== 'PERSONAL' ||
+        row.transaction_date < bounds.start ||
+        row.transaction_date > bounds.end ||
+        (row.deleted_at !== null) !== deleted,
+    )
+  )
+    throw new Error('Wrong history page.');
   const items = rows.slice(0, pageSize).map((row) => ({
     transaction: createTransaction({
       id: row.id,

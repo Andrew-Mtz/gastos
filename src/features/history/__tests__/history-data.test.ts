@@ -20,7 +20,7 @@ function row(index: number) {
     deleted_at: null,
   };
 }
-function database(rows = [row(1)]) {
+function database(rows: unknown = [row(1)]) {
   const query = Object.assign(
     Promise.resolve({ data: rows, error: null }),
     Object.fromEntries(
@@ -28,6 +28,7 @@ function database(rows = [row(1)]) {
         'select',
         'eq',
         'is',
+        'not',
         'gte',
         'lte',
         'order',
@@ -108,4 +109,26 @@ test('month shifting respects year and supported date boundaries', () => {
   expect(shiftMonth('9999-12-01', 1)).toBe('9999-12-01');
   expect(() => monthBounds('2026-10-02')).toThrow();
   expect(() => monthBounds('0000-01-01')).toThrow();
+});
+
+test('deleted history has explicit tombstone filtering and remains owner bounded', async () => {
+  const query = database([{ ...row(1), deleted_at: '2026-10-20T00:00:00Z' }]);
+  const page = await readHistory(
+    profile.id,
+    '2026-10-01',
+    null,
+    undefined,
+    true,
+  );
+  expect(query.not).toHaveBeenCalledWith('deleted_at', 'is', null);
+  expect(query.is).not.toHaveBeenCalled();
+  expect(page.items[0].transaction.deletedAt).not.toBeNull();
+});
+test('wrong owner and tombstone appearing in active history fail closed', async () => {
+  database([
+    { ...row(1), owner_profile_id: 'f0050000-0000-4000-8000-000000000002' },
+  ]);
+  await expect(readHistory(profile.id, '2026-10-01', null)).rejects.toThrow();
+  database([{ ...row(1), deleted_at: '2026-10-20T00:00:00Z' }]);
+  await expect(readHistory(profile.id, '2026-10-01', null)).rejects.toThrow();
 });
