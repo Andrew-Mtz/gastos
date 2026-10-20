@@ -89,6 +89,8 @@ select is(current_user::text,'authenticated','Owner closed read role');
 select is(auth.uid(),'f0050000-0000-4000-8000-000000000001'::uuid,'Owner closed read identity');
 select is(public.get_bucket_consumption('f1030000-0000-4000-8000-000000000001')#>>'{buckets,0,spent_minor}','1376','Closed historical consumption remains readable');
 reset role;
+set constraints all immediate;
+set constraints all deferred;
 -- Synthetic legacy rows represent data predating ADR-067. Disable triggers only
 -- inside this rolled-back test fixture; no product validation is weakened.
 alter table public.transactions disable trigger user;

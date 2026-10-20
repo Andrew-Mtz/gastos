@@ -11,6 +11,7 @@ import { TextField } from '../../components/ui/TextField';
 import { LoadingState, ErrorState } from '../../components/ui/StatusState';
 import { useAuth } from '../auth/AuthProvider';
 import { type Profile } from '../auth/auth-data';
+import { savingsOwnerKey } from '../savings/savings-data';
 import { historyOwnerKey } from '../history/history-data';
 import { budgetKey } from '../budget/budget-data';
 import { consumptionOwnerKey } from '../budget/consumption-data';
@@ -121,6 +122,9 @@ function PersonalExpense({ profile }: { profile: Profile }) {
               activeEditor.current = null;
             }
             await Promise.all([
+              client.invalidateQueries({
+                queryKey: savingsOwnerKey(profile.id),
+              }),
               client.invalidateQueries({
                 queryKey: consumptionOwnerKey(profile.id),
               }),

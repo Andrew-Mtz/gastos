@@ -12,6 +12,7 @@ import { LoadingState, ErrorState } from '../../components/ui/StatusState';
 import { createMoney } from '../../domain/money/money';
 import { useAuth } from '../auth/AuthProvider';
 import { type Profile } from '../auth/auth-data';
+import { savingsOwnerKey } from '../savings/savings-data';
 import { historyOwnerKey } from '../history/history-data';
 import { budgetKey } from '../budget/budget-data';
 import {
@@ -121,6 +122,9 @@ function PersonalIncome({ profile }: { profile: Profile }) {
             }
             await Promise.all([
               client.invalidateQueries({
+                queryKey: savingsOwnerKey(profile.id),
+              }),
+              client.invalidateQueries({
                 queryKey: historyOwnerKey(profile.id),
               }),
               client.invalidateQueries({
@@ -183,6 +187,9 @@ function PersonalIncome({ profile }: { profile: Profile }) {
           {pending ? 'Comprobar registro pendiente' : 'Registrar ingreso'}
         </Button>
       )}
+      <Button variant="secondary" onPress={() => router.push('/savings')}>
+        Ahorro personal
+      </Button>
       <Button variant="secondary" onPress={() => router.push('/history')}>
         Historial personal
       </Button>

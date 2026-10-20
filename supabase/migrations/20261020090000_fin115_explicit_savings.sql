@@ -1,7 +1,7 @@
 -- ADR-068: caller confirmation is evidence of an explicit request, not a bank transfer.
 alter table public.transactions add column withdrawal_confirmed boolean not null default false;
 alter table public.transactions add constraint transactions_withdrawal_confirmation
-  check (type <> 'SAVINGS_WITHDRAWAL' or withdrawal_confirmed) not valid;
+  check (type <> 'SAVINGS_WITHDRAWAL' or withdrawal_confirmed or deleted_at is not null) not valid;
 grant insert(withdrawal_confirmed) on public.transactions to authenticated;
 
 -- Statement-level locks run before target row locks. All financial writers for
