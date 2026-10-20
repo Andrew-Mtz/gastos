@@ -516,6 +516,14 @@ identity and focus revision before showing asynchronous results.
 
 ---
 
+FIN-107 categories use owner-only SELECT/INSERT/UPDATE policies, with no anonymous,
+DELETE or TRUNCATE access. Column grants prevent reassigning ownership or the
+historical bucket mapping, forging system provenance or technical timestamps.
+A composite foreign key also enforces same-owner bucket relations independently
+of RLS. New mappings require an active owned bucket. Archive/restore retains
+private history; system categories are read-only to clients. The timestamp trigger
+is SECURITY INVOKER with an empty search path and no direct client EXECUTE grant.
+
 # 22. Avoiding Indirect Privacy Leaks
 
 Authorization must consider derived information, not just raw rows.

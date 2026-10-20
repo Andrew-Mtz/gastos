@@ -712,7 +712,7 @@ remain unverified.
 
 ## FIN-107 — Category Domain and Schema
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-104
 
@@ -730,6 +730,11 @@ A small useful default set may be introduced.
 * category ownership protected by RLS;
 * category/bucket relation explicit;
 * archive rather than destroy historical meaning.
+
+Pure category validation and owner-only schema are implemented with immutable
+same-owner bucket references and recoverable archive state. Local quality checks
+and 327 Jest tests pass; real PostgreSQL authorization tests pass in CI. Generated
+types come verbatim from CI artifact 12238858729. Independent review found no blockers.
 
 ---
 
@@ -1688,7 +1693,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-107 — Category Domain and Schema
+FIN-108 — Transaction Schema
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.
