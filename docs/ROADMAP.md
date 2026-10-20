@@ -740,7 +740,7 @@ types come verbatim from CI artifact 12238858729. Independent review found no bl
 
 ## FIN-108 — Transaction Schema
 
-**Status:** In Progress
+**Status:** Completed
 
 **Depends on:** FIN-101, FIN-005
 
@@ -772,6 +772,13 @@ Do not implement all future transaction types merely because they exist in the d
 * soft deletion;
 * RLS;
 * constraints.
+
+FIN-108 implements the personal-only schema, safe positive minor units, financial
+dates, same-owner references, closed-period protection, soft deletion and narrow
+RLS/grants. ADR-066 records same-currency income and deferred conversion. Local
+checks pass with 348 Jest tests; PostgreSQL CI verifies authorization and bounds.
+Types are copied verbatim from verified artifact 12240080152. Independent review
+found no blockers; date and restoration regressions cover its minor suggestions.
 
 ---
 
@@ -1693,7 +1700,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-108 — Transaction Schema
+FIN-109 — Register Income
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.

@@ -15,7 +15,7 @@ const transactionSchema = z.object({
   type: z.enum(transactionTypes),
   amountMinor: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
   currency: z.string().regex(/^[A-Z]{3}$/),
-  transactionDate: z.iso.date(),
+  transactionDate: z.iso.date().refine((value) => value >= '0001-01-01'),
   categoryId: z.uuid().nullable(),
   description: z.string().nullable(),
   deletedAt: z.iso.datetime({ offset: true }).nullable(),

@@ -220,6 +220,76 @@ export type Database = {
         };
         Relationships: [];
       };
+      transactions: {
+        Row: {
+          amount_minor: number;
+          budget_period_id: string;
+          category_id: string | null;
+          created_at: string;
+          currency: string;
+          deleted_at: string | null;
+          description: string | null;
+          id: string;
+          owner_profile_id: string;
+          scope: string;
+          transaction_date: string;
+          type: string;
+          updated_at: string;
+        };
+        Insert: {
+          amount_minor: number;
+          budget_period_id: string;
+          category_id?: string | null;
+          created_at?: string;
+          currency: string;
+          deleted_at?: string | null;
+          description?: string | null;
+          id?: string;
+          owner_profile_id: string;
+          scope?: string;
+          transaction_date: string;
+          type: string;
+          updated_at?: string;
+        };
+        Update: {
+          amount_minor?: number;
+          budget_period_id?: string;
+          category_id?: string | null;
+          created_at?: string;
+          currency?: string;
+          deleted_at?: string | null;
+          description?: string | null;
+          id?: string;
+          owner_profile_id?: string;
+          scope?: string;
+          transaction_date?: string;
+          type?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'transactions_category_owner_fkey';
+            columns: ['category_id', 'owner_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'categories';
+            referencedColumns: ['id', 'profile_id'];
+          },
+          {
+            foreignKeyName: 'transactions_owner_profile_id_fkey';
+            columns: ['owner_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'transactions_period_owner_fkey';
+            columns: ['budget_period_id', 'owner_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'budget_periods';
+            referencedColumns: ['id', 'profile_id'];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;

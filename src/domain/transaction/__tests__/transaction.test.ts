@@ -46,6 +46,7 @@ test.each([
   { scope: 'HOUSEHOLD' },
   { currency: 'usd' },
   { transactionDate: '2026-02-30' },
+  { transactionDate: '0000-01-01' },
   { transactionDate: '2026-10-20T12:00:00Z' },
   { categoryId: 'bad' },
   { ownerProfileId: null },

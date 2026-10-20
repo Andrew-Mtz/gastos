@@ -61,6 +61,10 @@ select is((select count(*) from public.transactions where deleted_at is null),5:
 select lives_ok($$update public.transactions set deleted_at=null where id='f1080000-0000-4000-8000-000000000001'$$,'Restore reuses same identity');
 select lives_ok($$update public.categories set archived_at=now() where name='Food'$$,'Category archive preserves transaction');
 select is((select count(*) from public.transactions t join public.categories c on c.id=t.category_id),1::bigint,'Archived category remains available to history');
+select lives_ok($$update public.transactions set deleted_at=now() where id='f1080000-0000-4000-8000-000000000001'$$,'Historical archived-category activity may be removed');
+select throws_ok($$update public.transactions set deleted_at=null where id='f1080000-0000-4000-8000-000000000001'$$,'42501',null,'Restoration requires category to be active again');
+select ok((select deleted_at is not null from public.transactions where id='f1080000-0000-4000-8000-000000000001'),'Failed restore preserves deletion');
+
 select throws_ok($$insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,category_id)
 values ('f0050000-0000-4000-8000-000000000001','f1030000-0000-4000-8000-000000000001','EXPENSE',100,'USD','2026-10-01','f1070000-0000-4000-8000-000000000001')$$,'42501',null,'New activity cannot use archived category');
 select throws_ok($$delete from public.transactions$$,'42501','permission denied for table transactions','Physical deletion denied');
