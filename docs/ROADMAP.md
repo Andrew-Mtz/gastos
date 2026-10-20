@@ -620,7 +620,7 @@ Calendar-month periods.
 
 ## FIN-104 — Budget Bucket Schema
 
-**Status:** Not Started
+**Status:** In Progress
 
 **Depends on:** FIN-103
 
@@ -642,6 +642,10 @@ Savings
 * bucket type;
 * RLS;
 * archive support if needed.
+
+Implementation adds personal spendable/savings buckets, archive support,
+owner-only RLS, narrow SQL grants, and transactional security tests. Completion
+still requires generated database types and successful database verification.
 
 ---
 

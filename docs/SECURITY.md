@@ -472,6 +472,15 @@ SQL column grants separately prevent clients from changing ownership, calendar
 boundaries, the historical currency snapshot, lifecycle state, or server-managed
 timestamps. No anonymous access, client DELETE grant, or DELETE policy exists.
 
+FIN-104 budget buckets use the same personal owner boundary for active and
+archived rows. Authenticated clients may insert only `profile_id`, `name`, and
+`type` for themselves. They may update only `name` and `archived_at` on their own
+non-system buckets. Both UPDATE policy clauses validate ownership and non-system
+provenance. The database supplies archive timestamps and preserves them across
+repeated archive requests. Ownership, identity, type, system provenance, and
+creation/update timestamps cannot be forged or reassigned through client column
+grants. No anonymous access, DELETE grant/policy, or TRUNCATE grant exists.
+
 ---
 
 # 22. Avoiding Indirect Privacy Leaks
