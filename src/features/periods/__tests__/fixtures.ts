@@ -21,6 +21,8 @@ export function closeContext() {
     history: {
       closures: [] as LifecycleHistory['closures'],
       reopenings: [] as LifecycleHistory['reopenings'],
+      dispositions: [] as LifecycleHistory['dispositions'],
+      reversals: [] as LifecycleHistory['reversals'],
     },
   };
 }
@@ -33,7 +35,7 @@ export function closure() {
     expected_lifecycle_version: 0,
     lifecycle_version: 1,
     snapshot_hash: row.snapshot_hash,
-    snapshot_version: 1 as const,
+    snapshot_version: 2 as const,
     summary: row.summary,
     financial_timezone: 'UTC',
     closed_at: '2026-11-01T01:00:00Z',
@@ -51,6 +53,8 @@ export function closedContext() {
     history: {
       closures: [saved],
       reopenings: [] as LifecycleHistory['reopenings'],
+      dispositions: [] as LifecycleHistory['dispositions'],
+      reversals: [] as LifecycleHistory['reversals'],
     },
   };
 }

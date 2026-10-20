@@ -217,7 +217,7 @@ test('reopen only builds a request from a current CLOSED state, including legacy
     closure: null,
     summary: null,
     snapshot_hash: null,
-    history: { closures: [], reopenings: [] },
+    history: { closures: [], reopenings: [], dispositions: [], reversals: [] },
   });
   expect(buildReopenRequest(requestId, legacy).version).toBe(1);
 });
@@ -274,7 +274,12 @@ test('history rejects foreign owner, duplicate lifecycle and inconsistent origin
     const data = closeContext();
     data.period.lifecycle_version = 2;
     data.summary.period.lifecycle_version = 2;
-    data.history = { closures: [closure()], reopenings: [reopening()] };
+    data.history = {
+      dispositions: [],
+      reversals: [],
+      closures: [closure()],
+      reopenings: [reopening()],
+    };
     if (change === 'owner')
       data.history.reopenings[0].owner_profile_id = requestId;
     if (change === 'duplicate')

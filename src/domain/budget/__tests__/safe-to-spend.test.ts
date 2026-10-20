@@ -148,3 +148,28 @@ test('duplicate buckets and malformed currency/counts do not yield partial margi
     }),
   ).toThrow();
 });
+test('explicit carry changes confirmed and estimated margins once without weakening uncertainty', () => {
+  const carried = {
+    ...input,
+    carry: { incomingMinor: 500, outgoingMinor: 100 },
+  };
+  const result = calculateSafeToSpend(carried);
+  expect(result.confirmedMargin?.amountMinor).toBe(650);
+  expect(result.estimatedMargin?.amountMinor).toBe(600);
+  expect(result.savings.protectedSavings.amountMinor).toBe(5250);
+  expect(
+    calculateSafeToSpend({
+      ...carried,
+      commitments: { ...input.commitments, priorUnresolvedCount: 1 },
+    }).confirmedMargin,
+  ).toBeNull();
+  expect(
+    calculateSafeToSpend({
+      ...carried,
+      commitments: {
+        ...input.commitments,
+        buckets: [{ ...bucket, unknownCount: 1 }],
+      },
+    }).confirmedMargin,
+  ).toBeNull();
+});

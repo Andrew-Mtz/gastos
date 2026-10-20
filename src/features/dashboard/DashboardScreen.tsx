@@ -205,6 +205,11 @@ function CurrentDashboard({ profile }: { profile: Profile }) {
             gastado {formatMoney(bucket.spentAmount)} · asignado{' '}
             {bucket.allocatedAmount
               ? formatMoney(bucket.allocatedAmount)
+              : 'Sin distribución'}{' '}
+            · arrastre recibido {formatMoney(bucket.carriedAmount)} · remanente
+            bruto{' '}
+            {bucket.grossRemainder
+              ? formatMoney(bucket.grossRemainder)
               : 'Sin distribución'}
           </AppText>
         ))}
@@ -214,8 +219,10 @@ function CurrentDashboard({ profile }: { profile: Profile }) {
           </AppText>
         )}
         <AppText>
-          Comparación de gastos y asignaciones, no disponibilidad por fondo. El
-          margen mensual de arriba incluye ahorro adicional y compromisos.
+          Comparación de asignaciones de ingresos, arrastres y gastos, no
+          disponibilidad transferible por fondo. Los positivos no compensan por
+          sí solos el déficit global. El margen mensual de arriba incluye ahorro
+          adicional y compromisos.
         </AppText>
         <Button onPress={() => router.push('/expenses')}>
           Registrar gasto

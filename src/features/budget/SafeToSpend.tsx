@@ -114,6 +114,15 @@ export function SafeToSpendSummary({
         {money(components.spendable_allocated_minor)}
       </AppText>
       <AppText>
+        Más arrastre recibido: {money(components.carry.incoming_minor)} · menos
+        arrastre enviado: {money(components.carry.outgoing_minor)}
+      </AppText>
+      <AppText>
+        De lo recibido, sin fondo asignado:{' '}
+        {money(components.carry.unallocated_minor)}. No es ingreso nuevo ni se
+        reparte por porcentajes.
+      </AppText>
+      <AppText>
         Menos gastos registrados: {money(components.spent_minor)}
       </AppText>
       <AppText>
@@ -134,8 +143,8 @@ export function SafeToSpendSummary({
       </AppText>
       <AppText>
         Los movimientos de metas ya están incluidos una sola vez. Un déficit no
-        consume ahorro automáticamente. No incluye dinero sobrante de otros
-        meses ni obligaciones no registradas.
+        consume ahorro automáticamente. Solo incluye sobrantes de otros meses
+        arrastrados explícitamente. No incluye obligaciones no registradas.
       </AppText>
       <Button
         variant="secondary"

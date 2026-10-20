@@ -42,6 +42,12 @@ const isCurrentUser = jest.fn(() => true);
 const data = {
   period,
   configured: true,
+  carry: {
+    incoming_minor: 0,
+    outgoing_minor: 0,
+    unallocated_minor: 0,
+    buckets: [],
+  },
   goalReserved: createMoney(0, 'USD'),
   unassignedSavings: createMoney(40000, 'USD'),
   availability: calculateSavingsAvailability('USD', {

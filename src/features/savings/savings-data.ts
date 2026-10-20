@@ -15,7 +15,7 @@ export const savingsOwnerKey = (profileId: string) =>
 export const savingsKey = (profileId: string, month: string) =>
   [...savingsOwnerKey(profileId), month] as const;
 const minor = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
-export const savingsSummarySchema = z.object({
+const legacySavingsSummarySchema = z.object({
   budget_period_id: z.uuid(),
   base_currency: z.string().regex(/^[A-Z]{3}$/),
   opening_protected_minor: minor,
@@ -28,6 +28,49 @@ export const savingsSummarySchema = z.object({
   goal_reserved_minor: minor,
   unassigned_savings_minor: minor,
 });
+export const carrySchema = z.object({
+  incoming_minor: minor,
+  outgoing_minor: minor,
+  unallocated_minor: minor,
+  buckets: z.array(
+    z.object({ budget_bucket_id: z.uuid(), amount_minor: minor.positive() }),
+  ),
+});
+export const savingsSummarySchema = legacySavingsSummarySchema.extend({
+  snapshot_version: z.literal(2),
+  carry: carrySchema,
+});
+export function parseSavingsSummary(data: unknown, snapshotVersion: 1 | 2 = 2) {
+  if (snapshotVersion === 2) {
+    const row = savingsSummarySchema.parse(data);
+    const ids = new Set(row.carry.buckets.map((b) => b.budget_bucket_id));
+    const total = row.carry.buckets.reduce(
+      (sum, b) => sum + b.amount_minor,
+      row.carry.unallocated_minor,
+    );
+    if (
+      ids.size !== row.carry.buckets.length ||
+      !Number.isSafeInteger(total) ||
+      total !== row.carry.incoming_minor
+    )
+      throw new Error(
+        'Carry buckets and unallocated credit must partition incoming carry.',
+      );
+    return row;
+  }
+  // Only explicitly versioned v1 immutable close evidence may lack carry.
+  const row = legacySavingsSummarySchema.strict().parse(data);
+  return {
+    ...row,
+    snapshot_version: 2 as const,
+    carry: {
+      incoming_minor: 0,
+      outgoing_minor: 0,
+      unallocated_minor: 0,
+      buckets: [],
+    },
+  };
+}
 export async function readSavingsMonth(
   profileId: string,
   month: string,
@@ -40,7 +83,7 @@ export async function readSavingsMonth(
   });
   const { data, error } = await (signal ? query.abortSignal(signal) : query);
   if (error) throw error;
-  const row = savingsSummarySchema.parse(data);
+  const row = parseSavingsSummary(data);
   if (
     row.budget_period_id !== period.id ||
     row.base_currency !== period.base_currency
@@ -66,14 +109,22 @@ export async function readSavingsMonth(
     ),
     period,
     configured: row.configured,
-    availability: calculateSavingsAvailability(row.base_currency, {
-      openingProtectedMinor: row.opening_protected_minor,
-      allocatedSavingsMinor: row.allocated_savings_minor,
-      contributionsMinor: row.contributions_minor,
-      withdrawalsMinor: row.withdrawals_minor,
-      spendableAllocatedMinor: row.spendable_allocated_minor,
-      spentMinor: row.spent_minor,
-    }),
+    carry: row.carry,
+    availability: calculateSavingsAvailability(
+      row.base_currency,
+      {
+        openingProtectedMinor: row.opening_protected_minor,
+        allocatedSavingsMinor: row.allocated_savings_minor,
+        contributionsMinor: row.contributions_minor,
+        withdrawalsMinor: row.withdrawals_minor,
+        spendableAllocatedMinor: row.spendable_allocated_minor,
+        spentMinor: row.spent_minor,
+      },
+      {
+        incomingMinor: row.carry.incoming_minor,
+        outgoingMinor: row.carry.outgoing_minor,
+      },
+    ),
   };
 }
 export async function registerSavings(

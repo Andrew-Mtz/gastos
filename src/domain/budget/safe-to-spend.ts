@@ -4,6 +4,7 @@ import { calculateCommittedMoney } from '../recurring/committed-money';
 import {
   calculateSavingsAvailability,
   type SavingsComponents,
+  type OrdinaryCarry,
 } from '../savings/savings-availability';
 
 /** A monthly budget margin, not bank cash or global solvency. All inputs must
@@ -11,6 +12,7 @@ import {
 export function calculateSafeToSpend(input: {
   configured: boolean;
   savings: SavingsComponents;
+  carry?: OrdinaryCarry;
   commitments: Parameters<typeof calculateCommittedMoney>[0];
 }) {
   const configured = z.boolean().parse(input.configured);
@@ -18,6 +20,7 @@ export function calculateSafeToSpend(input: {
   const savings = calculateSavingsAvailability(
     commitments.confirmed.currency,
     input.savings,
+    input.carry,
   );
   const confirmedMargin = subtractMoney(
     savings.ordinaryRemainderBeforeCommitments,

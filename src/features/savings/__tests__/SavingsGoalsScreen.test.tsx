@@ -64,6 +64,12 @@ const goal = {
 const savings = {
   period,
   configured: true,
+  carry: {
+    incoming_minor: 0,
+    outgoing_minor: 0,
+    unallocated_minor: 0,
+    buckets: [],
+  },
   goalReserved: createMoney(10000, 'USD'),
   unassignedSavings: createMoney(30000, 'USD'),
   availability: calculateSavingsAvailability('USD', {

@@ -41,6 +41,7 @@ test('one abortable owner/month RPC; exact existing formula and distinct allocat
 test('missing period is not a zero availability and does not require secondary reads', () => {
   expect(
     map({
+      snapshot_version: 2,
       owner_profile_id: profile.id,
       month: period.starts_on,
       period: null,

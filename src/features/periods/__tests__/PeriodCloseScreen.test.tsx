@@ -1,3 +1,4 @@
+import { recurringOwnerKey } from '../../recurring/recurring-data';
 import { createContext, useContext, useEffect } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import {
@@ -27,7 +28,28 @@ import {
   profile,
   period,
 } from './fixtures';
-import { recurringOwnerKey } from '../../recurring/recurring-data';
+import {
+  readRemainder,
+  readReversal,
+  disposeRemainder,
+  reverseCarry,
+  mapRemainder,
+  mapReversal,
+} from '../remainder-data';
+import {
+  remainderContext,
+  disposedContext,
+  disposition,
+  reversalContext,
+  reversalResult,
+} from './remainder-fixtures';
+jest.mock('../remainder-data', () => ({
+  ...jest.requireActual('../remainder-data'),
+  readRemainder: jest.fn(),
+  readReversal: jest.fn(),
+  disposeRemainder: jest.fn(),
+  reverseCarry: jest.fn(),
+}));
 jest.mock('../period-close-data', () => ({
   ...jest.requireActual('../period-close-data'),
   readPeriodClose: jest.fn(),
@@ -77,6 +99,21 @@ beforeEach(() => {
   });
   jest.mocked(readPeriodClose).mockResolvedValue(mapped());
   jest.mocked(closePeriod).mockResolvedValue(closure());
+  jest
+    .mocked(readRemainder)
+    .mockResolvedValue(
+      mapRemainder(profile.id, period.starts_on, remainderContext()),
+    );
+  jest
+    .mocked(readReversal)
+    .mockResolvedValue(
+      mapReversal(profile.id, disposition().id, reversalContext()),
+    );
+  jest.mocked(disposeRemainder).mockResolvedValue({
+    disposition: disposition(),
+    closure: disposedContext().closure,
+  });
+  jest.mocked(reverseCarry).mockResolvedValue(reversalResult());
   jest.mocked(reopenPeriod).mockResolvedValue(reopening());
 });
 afterEach(() => {
@@ -442,7 +479,12 @@ test('reopened context still presents immutable closure summary and reopen evide
   const data = closeContext();
   data.period.lifecycle_version = 2;
   data.summary.period.lifecycle_version = 2;
-  data.history = { closures: [original], reopenings: [reopening()] };
+  data.history = {
+    dispositions: [],
+    reversals: [],
+    closures: [original],
+    reopenings: [reopening()],
+  };
   jest
     .mocked(readPeriodClose)
     .mockResolvedValue(mapPeriodClose(profile.id, period.starts_on, data));
@@ -468,5 +510,205 @@ test('reopen review clears on month navigation and background', async () => {
   expect(
     screen.queryByRole('button', { name: 'Confirmar reapertura' }),
   ).not.toBeOnTheScreen();
+  expect(reopenPeriod).not.toHaveBeenCalled();
+});
+
+async function reviewDisposition(
+  action = 'Mantener disponible sin asignar el mes siguiente',
+) {
+  const user = userEvent.setup();
+  await user.press(
+    await screen.findByRole('button', { name: 'Gestionar remanente y cerrar' }),
+  );
+  await user.press(await screen.findByRole('button', { name: action }));
+  await user.type(screen.getByLabelText('Importe del remanente'), '1.50');
+  await user.press(
+    screen.getByRole('button', { name: 'Revisar disposición y cierre' }),
+  );
+}
+test('disposition has three explicit choices, a net cap and confirmation of both effects', async () => {
+  const { client } = await open();
+  const invalidate = jest.spyOn(client, 'invalidateQueries');
+  await reviewDisposition();
+  expect(screen.getByText(/Máximo neto del mes/)).toBeOnTheScreen();
+  expect(
+    screen.getByText(/El mes de origen quedará cerrado/),
+  ).toBeOnTheScreen();
+  expect(
+    screen.getByRole('button', { name: 'Aportar a ahorro general' }),
+  ).toBeOnTheScreen();
+  expect(
+    screen.getByRole('button', {
+      name: 'Arrastrar a un fondo del mes siguiente',
+    }),
+  ).toBeOnTheScreen();
+  expect(disposeRemainder).not.toHaveBeenCalled();
+  await userEvent
+    .setup()
+    .press(
+      screen.getByRole('button', { name: 'Confirmar disposición y cierre' }),
+    );
+  expect(
+    await screen.findByText(/Disposición y cierre confirmados/),
+  ).toBeOnTheScreen();
+  expect(disposeRemainder).toHaveBeenCalledWith(
+    expect.objectContaining({
+      action: 'CARRY_UNALLOCATED',
+      amount: 150,
+      destinationBucketId: null,
+      hash: 'c'.repeat(32),
+    }),
+  );
+  expect(invalidate).toHaveBeenCalledWith({
+    queryKey: ['budget-setup', profile.id],
+  });
+  expect(invalidate).toHaveBeenCalledWith({
+    queryKey: recurringOwnerKey(profile.id),
+  });
+});
+test('uncertain disposition survives real remount with identical child identities and amount', async () => {
+  jest.mocked(disposeRemainder).mockRejectedValueOnce(new Error('Offline'));
+  const { tree, unmount } = await open();
+  await reviewDisposition();
+  await userEvent
+    .setup()
+    .press(
+      screen.getByRole('button', { name: 'Confirmar disposición y cierre' }),
+    );
+  await screen.findByRole('button', {
+    name: 'Comprobar disposición pendiente',
+  });
+  const request = jest.mocked(disposeRemainder).mock.calls[0][0];
+  await unmount();
+  await render(tree());
+  await userEvent.setup().press(
+    await screen.findByRole('button', {
+      name: 'Comprobar disposición pendiente',
+    }),
+  );
+  expect(disposeRemainder).toHaveBeenLastCalledWith(request);
+  expect(disposeRemainder).toHaveBeenCalledTimes(2);
+});
+test('changing amount discards the reviewed disposition and cancel never writes', async () => {
+  await open();
+  await reviewDisposition('Aportar a ahorro general');
+  await userEvent
+    .setup()
+    .type(screen.getByLabelText('Importe del remanente'), '0');
+  expect(
+    screen.queryByRole('button', { name: 'Confirmar disposición y cierre' }),
+  ).not.toBeOnTheScreen();
+  await userEvent
+    .setup()
+    .press(screen.getByRole('button', { name: 'Cancelar disposición' }));
+  expect(disposeRemainder).not.toHaveBeenCalled();
+});
+test('reversal explicitly reviews destination debit and source reopening; ordinary reopen stays blocked', async () => {
+  jest
+    .mocked(readPeriodClose)
+    .mockResolvedValue(
+      mapPeriodClose(profile.id, period.starts_on, disposedContext()),
+    );
+  await open();
+  await userEvent.setup().press(
+    await screen.findByRole('button', {
+      name: 'Revisar reversión y reapertura',
+    }),
+  );
+  expect(
+    screen.queryByRole('button', { name: 'Revisar reapertura' }),
+  ).not.toBeOnTheScreen();
+  expect(
+    await screen.findByText(/El origen se reabrirá para correcciones/),
+  ).toBeOnTheScreen();
+  expect(reverseCarry).not.toHaveBeenCalled();
+  await userEvent
+    .setup()
+    .press(
+      screen.getByRole('button', { name: 'Confirmar reversión y reapertura' }),
+    );
+  expect(
+    await screen.findByText(/Reversión y reapertura confirmadas/),
+  ).toBeOnTheScreen();
+  expect(reverseCarry).toHaveBeenCalledWith(
+    expect.objectContaining({
+      dispositionId: disposition().id,
+      version: 1,
+      destinationVersion: 0,
+      hash: 'd'.repeat(32),
+    }),
+  );
+  expect(reopenPeriod).not.toHaveBeenCalled();
+});
+test('reversal blocked by destination state never offers confirmation', async () => {
+  const raw = reversalContext();
+  raw.can_reverse = false;
+  raw.destination.period.status = 'CLOSED';
+  jest
+    .mocked(readPeriodClose)
+    .mockResolvedValue(
+      mapPeriodClose(profile.id, period.starts_on, disposedContext()),
+    );
+  jest
+    .mocked(readReversal)
+    .mockResolvedValue(mapReversal(profile.id, disposition().id, raw));
+  await open();
+  await userEvent.setup().press(
+    await screen.findByRole('button', {
+      name: 'Revisar reversión y reapertura',
+    }),
+  );
+  expect(
+    await screen.findByText(/No se puede revertir ahora/),
+  ).toBeOnTheScreen();
+  expect(
+    screen.queryByRole('button', { name: 'Confirmar reversión y reapertura' }),
+  ).not.toBeOnTheScreen();
+});
+test('failed full remainder read withholds all old disposition amounts', async () => {
+  jest.mocked(readRemainder).mockRejectedValue(new Error('Unavailable'));
+  await open();
+  await userEvent.setup().press(
+    await screen.findByRole('button', {
+      name: 'Gestionar remanente y cerrar',
+    }),
+  );
+  expect(
+    await screen.findByText(/No se pudo revisar el remanente completo/),
+  ).toBeOnTheScreen();
+  expect(
+    screen.queryByRole('button', { name: 'Confirmar disposición y cierre' }),
+  ).not.toBeOnTheScreen();
+  expect(disposeRemainder).not.toHaveBeenCalled();
+});
+test('uncertain combined reversal survives real remount without a new source reopen', async () => {
+  jest
+    .mocked(readPeriodClose)
+    .mockResolvedValue(
+      mapPeriodClose(profile.id, period.starts_on, disposedContext()),
+    );
+  jest.mocked(reverseCarry).mockRejectedValueOnce(new Error('Offline'));
+  const { tree, unmount } = await open();
+  await userEvent.setup().press(
+    await screen.findByRole('button', {
+      name: 'Revisar reversión y reapertura',
+    }),
+  );
+  await userEvent.setup().press(
+    await screen.findByRole('button', {
+      name: 'Confirmar reversión y reapertura',
+    }),
+  );
+  await screen.findByRole('button', { name: 'Comprobar reversión pendiente' });
+  const request = jest.mocked(reverseCarry).mock.calls[0][0];
+  await unmount();
+  await render(tree());
+  await userEvent.setup().press(
+    await screen.findByRole('button', {
+      name: 'Comprobar reversión pendiente',
+    }),
+  );
+  expect(reverseCarry).toHaveBeenLastCalledWith(request);
+  expect(reverseCarry).toHaveBeenCalledTimes(2);
   expect(reopenPeriod).not.toHaveBeenCalled();
 });
