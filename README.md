@@ -75,7 +75,8 @@ from the isolated CI stack when Docker is unavailable locally; commit the exact
 artifact file and rerun CI to verify that there is no remaining type drift.
 
 FIN-005 covers the Profile schema, FIN-103 covers the Budget Period schema, and
-FIN-104 covers Budget Buckets. Focused transactional pgTAP tests exercise grants,
+FIN-104 covers Budget Buckets, and FIN-105 adds period Budget Allocations and an
+atomic complete-set save RPC. Focused transactional pgTAP tests exercise grants,
 RLS, constraints, and timestamps, including bucket archival and A/B/C isolation.
 FIN-010 shares synthetic Auth fixtures and JWT context support through
 `supabase/tests/helpers/auth.sql.inc`. With Docker and the local stack running,
@@ -87,6 +88,7 @@ npm.cmd run db:test
 npm.cmd run db:test -- supabase/tests/profiles.test.sql
 npm.cmd run db:test -- supabase/tests/budget_periods.test.sql
 npm.cmd run db:test -- supabase/tests/budget_buckets.test.sql
+npm.cmd run db:test -- supabase/tests/budget_allocations.test.sql
 ```
 
 The test creates synthetic Auth fixtures inside a rolled-back transaction; no
