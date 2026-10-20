@@ -1598,7 +1598,9 @@ functions with empty search paths and explicit owner lookup. No household access
 service role, definer capability or client privilege over immutable money is added.
 The affirmative withdrawal flag is insert-only evidence of caller intent; it is not
 proof of a human gesture. Direct insert and restore paths enforce it as well.
-Legacy unconfirmed withdrawals remain private/readable and may be soft-deleted,
+A server-managed insert/restore validation marker prevents legacy schema-only
+contributions from creating unfunded savings; clients cannot forge or edit it.
+Legacy unvalidated movements remain private/readable and may be soft-deleted,
 but cannot participate in a trustworthy availability summary or be silently restored.
 
 Owner-scoped advisory locks serialize all transaction and allocation writers at

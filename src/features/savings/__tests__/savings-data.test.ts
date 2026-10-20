@@ -28,6 +28,7 @@ const row = {
   description: 'Salary',
   deleted_at: null,
   withdrawal_confirmed: true,
+  savings_validated: true,
 };
 const summary = {
   budget_period_id: period.id,
@@ -76,6 +77,7 @@ test.each([
   { amount_minor: 99 },
   { type: 'SAVINGS_CONTRIBUTION' },
   { withdrawal_confirmed: false },
+  { savings_validated: false },
   { deleted_at: '2026-10-20' },
 ])('rejects mismatched response %s', async (patch) => {
   jest

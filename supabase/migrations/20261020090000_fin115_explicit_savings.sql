@@ -1,5 +1,8 @@
 -- ADR-068: caller confirmation is evidence of an explicit request, not a bank transfer.
 alter table public.transactions add column withdrawal_confirmed boolean not null default false;
+-- Existing schema-only savings rows never had funding semantics. Do not turn
+-- them into money: only a validated new/restored movement receives this marker.
+alter table public.transactions add column savings_validated boolean not null default false;
 alter table public.transactions add constraint transactions_withdrawal_confirmation
   check (type <> 'SAVINGS_WITHDRAWAL' or withdrawal_confirmed or deleted_at is not null) not valid;
 grant insert(withdrawal_confirmed) on public.transactions to authenticated;
@@ -52,7 +55,8 @@ begin
     if exists(select 1 from public.transactions where budget_period_id = period.id
       and deleted_at is null and type in ('INCOME','SAVINGS_CONTRIBUTION','SAVINGS_WITHDRAWAL')
       and (currency <> period.base_currency or (type <> 'INCOME' and category_id is not null)
-        or (type = 'SAVINGS_WITHDRAWAL' and not withdrawal_confirmed))) then
+        or (type = 'SAVINGS_WITHDRAWAL' and not withdrawal_confirmed)
+        or (type <> 'INCOME' and not savings_validated))) then
       raise exception 'Incompatible historical savings or income requires correction' using errcode = '23514';
     end if;
     select coalesce(sum(amount_minor) filter(where type='INCOME'),0),
@@ -136,6 +140,7 @@ begin
         raise exception 'Contribution exceeds ordinary remainder before commitments' using errcode = '23514';
       end if;
     end if;
+    new.savings_validated := true;
   end if;
   return new;
 end;
@@ -199,7 +204,7 @@ begin
     or result.amount_minor is distinct from p_amount_minor or result.currency is distinct from p_currency
     or result.transaction_date is distinct from p_transaction_date or result.description is distinct from p_description
     or result.withdrawal_confirmed is distinct from p_withdrawal_confirmed
-    or result.category_id is not null or result.deleted_at is not null then
+    or result.category_id is not null or result.deleted_at is not null or not result.savings_validated then
     raise exception 'Operation identity conflicts with an existing registration' using errcode='23505';
   end if;
   return result;

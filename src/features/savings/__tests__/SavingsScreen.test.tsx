@@ -50,7 +50,12 @@ const data = {
     spentMinor: 40000,
   }),
 };
+// Keep Query notification timers within RNTL's controlled async clock.
+afterEach(() => {
+  jest.useRealTimers();
+});
 beforeEach(() => {
+  jest.useFakeTimers();
   jest.clearAllMocks();
   jest.mocked(currentMonth).mockReturnValue('2026-10-01');
   jest.mocked(financialDate).mockReturnValue('2026-10-20');
@@ -195,7 +200,7 @@ test('timeout preserves request id, type and amount across navigation and month 
   await waitFor(() => expect(registerSavings).toHaveBeenCalledTimes(2));
   expect(jest.mocked(registerSavings).mock.calls[1]).toEqual(original);
 });
-test('pending write blocks duplicate taps and late completion never dismisses a newer draft', async () => {
+test('pending write blocks duplicate taps and survives navigation', async () => {
   let resolve!: (value: never) => void;
   jest.mocked(registerSavings).mockImplementationOnce(
     () =>
@@ -274,7 +279,7 @@ test('refocus refresh hides stale financial totals and errors never show a fallb
     screen.queryByText(/Ahorro protegido acumulado/),
   ).not.toBeOnTheScreen();
 });
-test('closed month shows no new actions and null period never claims zero savings', async () => {
+test('closed month shows no new movement actions', async () => {
   jest
     .mocked(readSavingsMonth)
     .mockResolvedValue({ ...data, period: { ...period, status: 'CLOSED' } });

@@ -23,10 +23,14 @@ select is(array_to_string(proconfig,','),'search_path=""','Empty search path') f
 select ok(not has_function_privilege('anon',routine,'EXECUTE'),'Anonymous cannot execute '||routine)
 from unnest(array['public.get_savings_availability(uuid)','public.register_savings_movement(uuid,uuid,text,bigint,text,date,boolean,text)']) routine;
 select ok(not has_column_privilege('authenticated','public.transactions','withdrawal_confirmed','UPDATE'),'Confirmation evidence immutable');
+select ok(not has_column_privilege('authenticated','public.transactions','savings_validated','INSERT'),'Cannot forge validated contribution');
+select ok(not has_column_privilege('authenticated','public.transactions','savings_validated','UPDATE'),'Validation marker immutable');
 set local role authenticated;
 select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000001');
 select is(current_user::text,'authenticated','Owner client role');
 select is(auth.uid(),'f0050000-0000-4000-8000-000000000001'::uuid,'Owner real identity');
+select throws_ok($$insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,savings_validated) values(auth.uid(),'f1150000-0000-4000-8000-000000000002','SAVINGS_CONTRIBUTION',1,'USD','2026-10-01',true)$$,'42501','permission denied for table transactions','Direct insert cannot forge server validation');
+select throws_ok($$update public.transactions set savings_validated=true$$,'42501','permission denied for table transactions','Direct update cannot forge server validation');
 select public.save_budget_allocations(id,'[{"budget_bucket_id":"b1150000-0000-4000-8000-000000000001","percentage_basis_points":8000},{"budget_bucket_id":"b1150000-0000-4000-8000-000000000002","percentage_basis_points":2000}]')
 from public.budget_periods where base_currency='USD';
 select public.register_income('a1150000-0000-4000-8000-000000000001','f1150000-0000-4000-8000-000000000001',1000,'USD','2026-09-01');

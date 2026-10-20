@@ -85,7 +85,11 @@ credential/security changes are authorized by this log.
   ordinary month-end rollover or final safe-to-spend is introduced. Availability is
   month-granular, not an intraday cash ledger. Existing incompatible legacy movements
   remain in history and block a reliable summary until corrected, never silently
-  reclassified. Finite safe-integer bounds apply to components and derived balances.
+  reclassified. A server-managed validation marker is granted only to new/restored
+  movements that pass funding checks; legacy contributions cannot invent money.
+  Multiple incompatible rows require atomic soft-delete cleanup before eligible
+  restoration; closed periods still require reopening. Finite safe-integer bounds
+  apply to components and derived balances.
   FIN-122 must retain correction guards; FIN-125 must not duplicate savings rollover.
 - Verification: Exact domain arithmetic, SQL authorization and direct-write tests,
   historical-prefix/correction tests, concurrent owner-write SQL tests, idempotent

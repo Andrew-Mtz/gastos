@@ -2094,8 +2094,12 @@ Deferred constraints validate final historical prefixes after atomic replacement
 registration checks new/restored contributions under the same lock. Stable operation
 UUIDs return identical existing rows without writing, including closed-period replay.
 Confirmation evidence records the caller's affirmative request, not proof of a
-physical gesture. Existing unconfirmed legacy withdrawals remain visible in history
-but fail savings availability; no legacy financial amounts are rewritten.
+physical gesture. Existing legacy savings rows remain visible in history but fail
+savings availability until removed or explicitly restored under current funding/confirmation
+guards. All incompatible active rows must be soft-deleted atomically before eligible
+restoration; closed periods still require reopening. A
+server-managed validation marker prevents unfunded schema-only contributions from
+becoming withdrawable money. No legacy financial amount is rewritten.
 
 FIN-122 corrections must preserve these constraints; FIN-125 must not double-roll
 protected savings. Goals, accounts, commitments and the final FIN-120 formula remain

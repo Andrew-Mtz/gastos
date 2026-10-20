@@ -91,6 +91,7 @@ export async function registerSavings(
       description: z.string().nullable(),
       deleted_at: z.null(),
       withdrawal_confirmed: z.boolean(),
+      savings_validated: z.literal(true),
     })
     .parse(data);
   if (
