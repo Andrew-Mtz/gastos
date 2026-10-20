@@ -70,6 +70,7 @@ async function scenario(
   verify,
   expectedError = /exceeds|Contribution exceeds/,
   templateMode = 'VARIABLE',
+  snapshotRead = false,
 ) {
   const owner = randomUUID(),
     september = randomUUID(),
@@ -138,7 +139,7 @@ async function scenario(
     let observedWait = false;
     for (let attempt = 0; attempt < 15; attempt += 1) {
       const waiting = await run(
-        `select exists(select 1 from pg_stat_activity where application_name='fin115-second-${owner}' and wait_event_type='Lock' and wait_event='advisory');`,
+        `select exists(select 1 from pg_stat_activity where application_name='fin115-second-${owner}' and ${snapshotRead ? "wait_event='PgSleep'" : "wait_event_type='Lock' and wait_event='advisory'"});`,
       );
       if (waiting.trim() === 't') {
         observedWait = true;
@@ -149,7 +150,7 @@ async function scenario(
     assert.equal(
       observedWait,
       true,
-      `${name}: second session must actually wait on the owner advisory lock`,
+      `${name}: second session must demonstrate ${snapshotRead ? 'the delayed read barrier' : 'the owner advisory lock'}`,
     );
     const [one, two] = await Promise.all([first.result, second.result]);
     assert.equal(one.code, 0, `${name}: first writer failed: ${one.error}`);
@@ -164,7 +165,7 @@ async function scenario(
         expectedError,
         `${name}: expected financial rejection, not deadlock or permission failure`,
       );
-    await verify(ctx, auth);
+    await verify(ctx, auth, two.output);
     console.log(`PASS ${name}`);
   } finally {
     // This target is an ephemeral local Supabase container, and these UUIDs were
@@ -389,6 +390,72 @@ await scenario(
   /eligible occurrence/,
   'FIXED',
 );
+
+// Hold a reader's statement snapshot open across the writer's commit. The
+// materialized delay is observed in pg_stat_activity, not assumed from timing.
+// The actual stable RPC runs AFTER commit but must still return pre-commit inputs.
+await scenario(
+  'safe-to-spend snapshot spans concurrent fixed-payment commit',
+  (c) => c.resolve(),
+  (c) => `with delay as materialized (select pg_sleep(6))
+    select 'SNAPSHOT:'||public.get_personal_safe_to_spend('${c.recurringPeriod}')::text from delay;`,
+  true,
+  async (c, auth, output) => {
+    const before = JSON.parse(
+      output
+        .split('\n')
+        .find((line) => line.startsWith('SNAPSHOT:'))
+        .slice(9),
+    );
+    assert.equal(before.savings.spent_minor, 0);
+    assert.equal(before.commitments.buckets[0].confirmed_minor, 2840);
+    const after = JSON.parse(
+      (
+        await run(
+          `begin;${auth}select public.get_personal_safe_to_spend('${c.recurringPeriod}');commit;`,
+        )
+      )
+        .split('\n')
+        .find((line) => line.startsWith('{')),
+    );
+    assert.equal(after.savings.spent_minor, 2840);
+    assert.deepEqual(after.commitments.buckets, []);
+  },
+  /unused/,
+  'FIXED',
+  true,
+);
+await scenario(
+  'safe-to-spend snapshot spans concurrent contribution commit',
+  (c) => c.move('SAVINGS_CONTRIBUTION', 100),
+  (c) => `with delay as materialized (select pg_sleep(6))
+    select 'SNAPSHOT:'||public.get_personal_safe_to_spend('${c.september}')::text from delay;`,
+  true,
+  async (c, auth, output) => {
+    const before = JSON.parse(
+      output
+        .split('\n')
+        .find((line) => line.startsWith('SNAPSHOT:'))
+        .slice(9),
+    );
+    assert.equal(before.savings.contributions_minor, 0);
+    assert.equal(before.savings.spendable_allocated_minor, 800);
+    const after = JSON.parse(
+      (
+        await run(
+          `begin;${auth}select public.get_personal_safe_to_spend('${c.september}');commit;`,
+        )
+      )
+        .split('\n')
+        .find((line) => line.startsWith('{')),
+    );
+    assert.equal(after.savings.contributions_minor, 100);
+  },
+  /unused/,
+  'VARIABLE',
+  true,
+);
+
 console.log(
-  'All fifteen finance concurrency scenarios passed; synthetic fixtures removed.',
+  'All seventeen finance concurrency scenarios passed; synthetic fixtures removed.',
 );

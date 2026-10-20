@@ -7,7 +7,7 @@ import { recurringMonthSchema } from './recurring-form';
 
 export const commitmentKey = (profileId: string, periodId: string) =>
   [...recurringOwnerKey(profileId), 'commitments', periodId] as const;
-const responseSchema = z.object({
+export const commitmentSnapshotSchema = z.object({
   owner_profile_id: z.uuid(),
   budget_period_id: z.uuid(),
   month: recurringMonthSchema,
@@ -35,7 +35,7 @@ export async function readCommittedMoney(
   });
   const { data, error } = await (signal ? query.abortSignal(signal) : query);
   if (error) throw error;
-  const parsed = responseSchema.parse(data);
+  const parsed = commitmentSnapshotSchema.parse(data);
   if (
     parsed.owner_profile_id !== period.profile_id ||
     parsed.budget_period_id !== id ||

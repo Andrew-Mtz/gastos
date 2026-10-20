@@ -1668,3 +1668,16 @@ unresolved counts are also owner-only and include no other user's financial data
 The fixed-confirmation extension uses the original atomic resolver and owner lock;
 the transaction INSERT trigger enforces the fixed amount even on direct writes.
 No UPDATE privileges, savings guards or closed-period protections are relaxed.
+
+
+## FIN-120 monthly availability reads
+
+The combined STABLE SECURITY INVOKER snapshot adds no table or write privileges.
+Both component RPCs require the selected period to belong to auth.uid(), then read
+existing owner-only RLS data. Anonymous execution is revoked and search_path is empty.
+Wrong owners, malformed legacy currency/mappings and unsafe aggregate arithmetic
+fail the complete response, never yield a partial or default-zero availability.
+A scalar aggregate is complete regardless of Data API row limits. Client caches
+use owner/period keys and existing auth clear/cancellation; refreshing/error states
+hide prior numerical availability. Neither a partner nor an unrelated user receives
+another owner's financial components through this RPC.

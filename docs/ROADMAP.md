@@ -1237,7 +1237,7 @@ UI, safe-to-spend and dashboard remain outside this task.
 
 ## FIN-120 — Safe-to-Spend v1
 
-**Status:** Not Started
+**Status:** In Progress
 
 **Depends on:** FIN-113, FIN-114, FIN-119
 
@@ -1258,7 +1258,13 @@ Estimated commitments displayed separately.
 
 ### Important
 
-Before implementation, confirm the final Phase 1 formula against open domain decisions.
+ADR-073 resolves the complete Phase 1 formula and estimated/unknown obligation
+presentation under delegated authority, pending owner review, not personal confirmation.
+Include additional savings contributions and explicit withdrawals exactly once;
+known estimates remain approximate and unknown/prior unresolved obligations withhold
+a numerical availability claim. The single stable server snapshot, pure domain and
+minimal budget-screen card are implemented; independent review and exact-head full
+CI/generated types remain required before completion. FIN-121 dashboard is separate.
 
 ---
 
