@@ -18,7 +18,8 @@ insert into public.categories(id,profile_id,name,budget_bucket_id) values
 ('f1070000-0000-4000-8000-000000000001','f0050000-0000-4000-8000-000000000001','Food','f1040000-0000-4000-8000-000000000001'),
 ('f1070000-0000-4000-8000-000000000002','f0050000-0000-4000-8000-000000000001','Rent','f1040000-0000-4000-8000-000000000001'),
 ('f1070000-0000-4000-8000-000000000003','f0050000-0000-4000-8000-000000000001','Saving','f1040000-0000-4000-8000-000000000003'),
-('f1070000-0000-4000-8000-000000000004','f0050000-0000-4000-8000-000000000001','Unmapped',null);
+('f1070000-0000-4000-8000-000000000004','f0050000-0000-4000-8000-000000000001','Unmapped',null),
+('f1070000-0000-4000-8000-000000000005','f0050000-0000-4000-8000-000000000001','Games','f1040000-0000-4000-8000-000000000002');
 select is((select prosecdef from pg_proc where oid='public.get_bucket_consumption(uuid)'::regprocedure),false,'Consumption is invoker');
 select is((select provolatile::text from pg_proc where oid='public.get_bucket_consumption(uuid)'::regprocedure),'s','Stable read snapshot');
 select is((select array_to_string(proconfig,',') from pg_proc where oid='public.get_bucket_consumption(uuid)'::regprocedure),'search_path=""','Empty search path');
@@ -47,8 +48,6 @@ update public.transactions set deleted_at=null where id='f1130000-0000-4000-8000
 insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,category_id)
 select auth.uid(),'f1030000-0000-4000-8000-000000000001','EXPENSE',1,'USD','2026-10-03','f1070000-0000-4000-8000-000000000001' from generate_series(1,1001);
 select is(public.get_bucket_consumption('f1030000-0000-4000-8000-000000000001')#>>'{buckets,0,spent_minor}','1376','Full aggregate exceeds both history and Data API transaction page sizes');
-insert into public.categories(id,profile_id,name,budget_bucket_id) values
-('f1070000-0000-4000-8000-000000000005',auth.uid(),'Games','f1040000-0000-4000-8000-000000000002');
 insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,category_id) values
 (auth.uid(),'f1030000-0000-4000-8000-000000000001','EXPENSE',25,'USD','2026-10-03','f1070000-0000-4000-8000-000000000005');
 select is(public.get_bucket_consumption('f1030000-0000-4000-8000-000000000001')#>>'{buckets,1,spent_minor}','25','Second spendable bucket remains a separate SQL group');
