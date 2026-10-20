@@ -1345,7 +1345,7 @@ are recorded for owner review, not claimed as personal confirmation.
 
 ## FIN-122 — Edit and Soft Delete Personal Transaction
 
-**Status:** In Progress
+**Status:** Completed
 
 **Depends on:** FIN-111
 
@@ -1359,6 +1359,39 @@ Allow mistakes to be corrected.
 * soft delete;
 * calculations update correctly;
 * ownership/RLS preserved.
+
+### Implementation evidence
+
+History supports bounded amount/date/description corrections and non-recurring
+expense category changes, explicit review/confirmation, soft deletion, deleted
+history and same-ID restoration. Linked deletion clearly cancels that monthly
+obligation; corrected FIXED actuals retain their corrected amount through recovery,
+including after template stop. Identity, currency, month, goal and recurrence links
+remain immutable. Closed periods deny new changes while exact prior request replay
+returns only its recorded result and never overwrites a newer revision.
+
+ADR-074 documents the narrow owner-locked definer RPC and audit-only definer trigger.
+Monetary UPDATE grants remain unavailable; every update, including existing safe
+note/tombstone writes, advances a server revision and appends private before/after
+snapshots. Owner RLS/grants, incremental contribution funding, legacy provenance,
+all historical goal/general reserve prefixes and ordinary overspending semantics
+are preserved. Every correction invalidates owner-wide derived financial queries;
+uncertain requests retain the same UUID and payload across in-session navigation,
+while auth changes and late responses cannot affect another user's UI/cache.
+
+One bounded independent review found no remaining actionable P1/P2 finding. The
+first disposable SQL run exposed an ambiguous PL/pgSQL description variable; it
+was renamed, independently rechecked and rerun successfully. Full local checks pass
+938 Jest tests in 51 suites, typecheck, lint and formatting. Disposable CI passed
+1,577 SQL assertions in 25 files and 28 real concurrent-session scenarios, including
+stale edit/edit/delete conflicts, exact replay after later changes, and funding
+corrections racing withdrawals/contributions. Generated types were copied verbatim
+from artifact 12257056532, verifying source head 4b6789d429a51b29fee6e611e13941ab8a8da32d
+and ZIP SHA256 5f839e1aedd882938ee99bfc13816729aa9475b7eac83c420e1c2f133922fa02.
+Final exact-head quality/database/type-drift CI gates merge. No production database
+change/deployment, native/device QA, FIN-123 close/reopen/remainder behavior or
+unrelated dependency change is included. Decisions remain pending owner review,
+not claimed as personal approval.
 
 ---
 
@@ -1952,7 +1985,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-122 — Edit and Soft Delete Personal Transaction
+FIN-123 — Close Budget Period
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.
