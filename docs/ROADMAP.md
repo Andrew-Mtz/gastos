@@ -1678,7 +1678,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-105 — Budget Allocation Schema and Domain
+FIN-106 — Initial Budget Setup
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.
