@@ -215,3 +215,31 @@ test.each([
     readRecurringMonth(profile.id, period.starts_on),
   ).rejects.toThrow();
 });
+
+test('fixed confirmation uses the identical resolver with exact amount, never an automatic expense', async () => {
+  response({ ...actualRow, amount_minor: 100 });
+  const fixed = {
+    ...template,
+    amountMode: 'FIXED' as const,
+    defaultAmountMinor: 100,
+  };
+  await resolveRecurring(period, fixed, {
+    ...resolveRequest,
+    form: { ...resolveRequest.form, amount: '1.00' },
+  });
+  expect(supabase.rpc).toHaveBeenCalledWith(
+    'resolve_personal_recurring_expense',
+    expect.objectContaining({ p_amount_minor: 100 }),
+  );
+});
+test('fixed changed amount is rejected before the write', async () => {
+  const fixed = {
+    ...template,
+    amountMode: 'FIXED' as const,
+    defaultAmountMinor: 100,
+  };
+  await expect(resolveRecurring(period, fixed, resolveRequest)).rejects.toThrow(
+    'original amount',
+  );
+  expect(supabase.rpc).not.toHaveBeenCalled();
+});

@@ -19,6 +19,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { currentMonth } from '../../budget/budget-setup';
 import { financialDate } from '../../income/income-form';
 import { period, profile, screenData, template } from './fixtures';
+jest.mock('../CommittedMoney', () => ({ CommittedMoney: () => null }));
 jest.mock('../recurring-data', () => ({
   ...jest.requireActual('../recurring-data'),
   readRecurringMonth: jest.fn(),
@@ -142,6 +143,7 @@ test('actual resolution invalidates owner-wide savings/history/consumption and m
     ['bucket-consumption', profile.id, '2026-10-01'],
     ['budget-setup', profile.id, '2026-10-01'],
     ['expenses', profile.id, '2026-11-01'],
+    ['recurring', profile.id, 'commitments', period.id],
   ];
   keys.forEach((k) => client.setQueryData(k, {}));
   const user = await beginResolve();
@@ -302,7 +304,7 @@ test('cancelled stopped history is visible and cannot be re-resolved', async () 
     screen.queryByRole('button', { name: 'Confirmar Electricidad' }),
   ).not.toBeOnTheScreen();
 });
-test('fixed template has no actual confirmation action', async () => {
+test('fixed template requires explicit confirmation of its readonly exact amount', async () => {
   jest.mocked(readRecurringMonth).mockResolvedValue({
     ...screenData,
     items: [
@@ -317,10 +319,30 @@ test('fixed template has no actual confirmation action', async () => {
     ],
   });
   await openScreen();
-  expect(screen.getByText(/Fijo pendiente/)).toBeOnTheScreen();
+  expect(screen.getByText(/Fijo confirmado como obligación/)).toBeOnTheScreen();
+  const user = userEvent.setup();
+  await user.press(
+    screen.getByRole('button', { name: 'Confirmar Electricidad' }),
+  );
+  expect(screen.getByLabelText('Importe real (USD)')).toHaveDisplayValue(
+    '1.00',
+  );
+  expect(screen.getByLabelText('Importe real (USD)')).toBeDisabled();
   expect(
-    screen.queryByRole('button', { name: 'Confirmar Electricidad' }),
-  ).not.toBeOnTheScreen();
+    screen.getByText(/Si cambió, no confirmes un importe incorrecto/),
+  ).toBeOnTheScreen();
+  expect(resolveRecurring).not.toHaveBeenCalled();
+  await user.press(
+    screen.getByRole('button', { name: 'Confirmar importe real' }),
+  );
+  await screen.findByText('Electricidad');
+  expect(resolveRecurring).toHaveBeenCalledWith(
+    period,
+    expect.objectContaining({ amountMode: 'FIXED' }),
+    expect.objectContaining({
+      form: expect.objectContaining({ amount: '1.00' }),
+    }),
+  );
 });
 test('duplicate taps blocked and late completion cannot repopulate a logged-out session', async () => {
   let done!: (value: never) => void;
@@ -436,4 +458,28 @@ test('a direct account switch discards pending identity and old completion canno
   });
   expect(screen.getByLabelText('Nombre')).toHaveDisplayValue('Nueva plantilla');
   expect(invalidate).not.toHaveBeenCalled();
+});
+
+test('past or future month never pre-fills a fictitious payment date to clear a commitment', async () => {
+  const past = { ...period, starts_on: '2026-09-01', ends_on: '2026-09-30' };
+  jest.mocked(currentMonth).mockReturnValue(past.starts_on);
+  jest
+    .mocked(readRecurringMonth)
+    .mockResolvedValue({ ...screenData, period: past });
+  await openScreen();
+  const user = userEvent.setup();
+  await user.press(
+    screen.getByRole('button', { name: 'Confirmar Electricidad' }),
+  );
+  expect(screen.getByLabelText('Fecha real (AAAA-MM-DD)')).toHaveDisplayValue(
+    '',
+  );
+  expect(
+    screen.getByText(/No lo registres con una fecha anterior/),
+  ).toBeOnTheScreen();
+  await user.type(screen.getByLabelText('Importe real (USD)'), '1');
+  await user.press(
+    screen.getByRole('button', { name: 'Confirmar importe real' }),
+  );
+  expect(resolveRecurring).not.toHaveBeenCalled();
 });

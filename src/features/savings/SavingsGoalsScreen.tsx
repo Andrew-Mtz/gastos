@@ -9,6 +9,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
+import { recurringOwnerKey } from '../recurring/recurring-data';
 import { AppText } from '../../components/ui/AppText';
 import { Button } from '../../components/ui/Button';
 import { Screen, FormScreen } from '../../components/ui/Screen';
@@ -135,6 +136,9 @@ function PersonalGoals({ profile }: { profile: Profile }) {
         client.invalidateQueries({ queryKey: savingsOwnerKey(profile.id) }),
         ...(operation.kind === 'movement'
           ? [
+              client.invalidateQueries({
+                queryKey: recurringOwnerKey(profile.id),
+              }),
               client.invalidateQueries({
                 queryKey: historyOwnerKey(profile.id),
               }),

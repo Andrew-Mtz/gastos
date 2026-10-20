@@ -234,6 +234,7 @@ test('funding keeps goal identity and invalidates all owner savings months plus 
   const keys = [
     goalsKey(profile.id, '2026-11-01'),
     savingsKey(profile.id, '2026-11-01'),
+    ['recurring', profile.id, 'commitments', period.id],
     ['history', profile.id, '2026-10-01'],
     budgetKey(profile.id, '2026-10-01'),
   ];

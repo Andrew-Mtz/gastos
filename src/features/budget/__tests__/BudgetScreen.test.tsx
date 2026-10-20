@@ -381,7 +381,9 @@ test('late save success refreshes data without dismissing a newer draft', async 
   await act(async () => {
     finish();
   });
-  await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(5));
+  for (const prefix of ['recurring', 'savings', 'income', 'bucket-consumption'])
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: [prefix, profile.id] });
   expect(screen.getByRole('button', { name: 'Ahorrador' })).toBeSelected();
   expect(screen.getByRole('button', { name: 'Cancelar' })).toBeOnTheScreen();
 });

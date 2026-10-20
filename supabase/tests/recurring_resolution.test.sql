@@ -51,7 +51,7 @@ select throws_ok($$select pg_temp.resolve('f1180000-0000-4000-8000-000000000002'
 select is((select count(*) from public.transactions),1::bigint,'Conflict creates no orphan actual');
 select throws_ok(format($$select pg_temp.resolve('f1180000-0000-4000-8000-000000000001',%L::jsonb)$$,v),'23505',null,'Changed replay rejected: '||v::text)
 from unnest(array['{"amount":1}','{"currency":"EUR"}','{"description":"Changed"}','{"template":"f1170000-0000-4000-8000-000000000002"}','{"period":"f1030000-0000-4000-8000-000000000002"}']::jsonb[]) v;
-select throws_ok($$select pg_temp.resolve(gen_random_uuid(),'{"template":"f1170000-0000-4000-8000-000000000002"}')$$,'23514',null,'Fixed resolution not implemented');
+select throws_ok($$select pg_temp.resolve(gen_random_uuid(),'{"template":"f1170000-0000-4000-8000-000000000002"}')$$,'23514',null,'Fixed resolution requires exact fixed amount');
 select throws_ok($$select pg_temp.resolve(gen_random_uuid(),'{"template":"f1170000-0000-4000-8000-000000000003"}')$$,'23514',null,'Before activation rejected');
 select throws_ok($$select pg_temp.resolve(gen_random_uuid(),jsonb_build_object('month',pg_temp.month()+1))$$,'23514',null,'Noncanonical month rejected');
 select throws_ok($$select pg_temp.resolve(gen_random_uuid(),jsonb_build_object('date',pg_temp.month(1)))$$,'23514',null,'Actual date outside month rejected');
@@ -66,7 +66,7 @@ select throws_ok($$insert into public.transactions(owner_profile_id,budget_perio
 select throws_ok($$insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,category_id,recurring_template_id,recurring_month)
  values(auth.uid(),'f1030000-0000-4000-8000-000000000002','EXPENSE',1,'EUR',pg_temp.month(1),'f1070000-0000-4000-8000-000000000001','f1170000-0000-4000-8000-000000000003',pg_temp.month(1))$$,'23514',null,'Direct link requires original currency');
 select throws_ok($$insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,category_id,recurring_template_id,recurring_month)
- values(auth.uid(),'f1030000-0000-4000-8000-000000000002','EXPENSE',1,'USD',pg_temp.month(1),'f1070000-0000-4000-8000-000000000001','f1170000-0000-4000-8000-000000000002',pg_temp.month(1))$$,'23514',null,'Direct link cannot resolve a fixed definition');
+ values(auth.uid(),'f1030000-0000-4000-8000-000000000002','EXPENSE',1,'USD',pg_temp.month(1),'f1070000-0000-4000-8000-000000000001','f1170000-0000-4000-8000-000000000002',pg_temp.month(1))$$,'23514',null,'Direct fixed link requires exact amount');
 select throws_ok($$insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,category_id,recurring_month)
  values(auth.uid(),'f1030000-0000-4000-8000-000000000002','EXPENSE',1,'USD',pg_temp.month(1),'f1070000-0000-4000-8000-000000000001',pg_temp.month(1))$$,'23514',null,'Direct occurrence month requires template');
 select throws_ok($$insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,category_id,recurring_template_id)

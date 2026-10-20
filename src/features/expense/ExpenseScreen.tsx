@@ -4,6 +4,7 @@ import { randomUUID } from 'expo-crypto';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { recurringOwnerKey } from '../recurring/recurring-data';
 import { AppText } from '../../components/ui/AppText';
 import { Button } from '../../components/ui/Button';
 import { Screen, FormScreen } from '../../components/ui/Screen';
@@ -123,6 +124,9 @@ function PersonalExpense({ profile }: { profile: Profile }) {
             }
             await Promise.all([
               client.invalidateQueries({
+                queryKey: recurringOwnerKey(profile.id),
+              }),
+              client.invalidateQueries({
                 queryKey: savingsOwnerKey(profile.id),
               }),
               client.invalidateQueries({
@@ -169,9 +173,14 @@ function PersonalExpense({ profile }: { profile: Profile }) {
           isCurrent={() => active.current && auth.isCurrentUser(profile.id)}
           onCreated={async () => {
             if (auth.isCurrentUser(profile.id))
-              await client.invalidateQueries({
-                queryKey: expenseOwnerKey(profile.id),
-              });
+              await Promise.all([
+                client.invalidateQueries({
+                  queryKey: expenseOwnerKey(profile.id),
+                }),
+                client.invalidateQueries({
+                  queryKey: recurringOwnerKey(profile.id),
+                }),
+              ]);
           }}
         />
       )}

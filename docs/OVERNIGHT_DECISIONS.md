@@ -193,3 +193,39 @@ credential/security changes are authorized by this log.
 - Revisit: Pending owner review. FIN-119 consumes this identity; FIN-122 may extend
   corrections without rewriting recurrence linkage. Process-restart pending-request
   recovery and native/device runtime remain unverified, as in prior entry flows.
+
+
+## FIN-119: Monthly commitments, unknown amounts and fixed confirmation
+
+- Question: What is committed rather than spent, and can old obligations be carried
+  forward without a cross-period payment model?
+- Options: total a UI page; carry every unpaid historical occurrence as current debt;
+  derive a complete monthly aggregate and explicitly flag older unresolved items.
+- Decision: Use a complete server aggregate of the selected month's unresolved
+  occurrences, including due dates already passed within that month. FIXED amounts
+  are confirmed commitments, not payments; VARIABLE amounts are estimates, with null
+  counted separately as unknown and zero retained as a known estimate. Separately
+  count older unresolved occurrences without adding them to this month's amounts.
+  This is current planning state through the selected month, not a historical snapshot,
+  bank balance, cumulative payable ledger or money available to spend.
+- Reason: Existing resolution records an actual expense only in the occurrence month.
+  Carrying obligations forward then resolving into the past would misstate later
+  availability. A late payment in another month needs a future explicit payment/date
+  model; users must not backdate a payment merely to dismiss an old obligation.
+- Impact: Monthly totals include archived and unallocated spendable mappings. Invalid
+  mappings or another currency in that month's unresolved obligations block the
+  entire total; no conversion or partial total is inferred. Prior unresolved counts
+  span currencies and are not money. FIN-120 must withhold a numerical safe-to-spend
+  claim while older unresolved items remain, and FIN-123/125 must surface unresolved
+  obligations before closing/remainder actions rather than silently cancelling them.
+  A minimal prerequisite enables explicit FIXED payment confirmation through the
+  existing unique linked EXPENSE. Initial actual must exactly equal the fixed amount;
+  differing bills require a deliberate correction flow in FIN-122, preserving linkage.
+  No automatic transaction, second expense model, template mutation or implicit
+  savings withdrawal is introduced. Cancellation/restore rules stay ADR-071.
+- Verification: Complete aggregates beyond row caps, safe-integer amount/count bounds,
+  negative authorization, due/activation/stop boundaries, unknown versus zero,
+  archival/unallocated mappings, no double counting, fixed exact amount/direct-write
+  guards, lifecycle/cache tests, independent review and exact-head full CI/types.
+- Revisit: Pending owner review. Cross-period settlement semantics are intentionally
+  unresolved; FIN-120/123/125 must honor this limitation rather than invent rollover.

@@ -4,6 +4,7 @@ import { randomUUID } from 'expo-crypto';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { recurringOwnerKey } from '../recurring/recurring-data';
 import { AppText } from '../../components/ui/AppText';
 import { Button } from '../../components/ui/Button';
 import { Screen, FormScreen } from '../../components/ui/Screen';
@@ -121,6 +122,9 @@ function PersonalIncome({ profile }: { profile: Profile }) {
               activeEditor.current = null;
             }
             await Promise.all([
+              client.invalidateQueries({
+                queryKey: recurringOwnerKey(profile.id),
+              }),
               client.invalidateQueries({
                 queryKey: savingsOwnerKey(profile.id),
               }),

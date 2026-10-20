@@ -48,6 +48,7 @@ const routes = {
   '(app)/expenses': () => <Text>Gastos personales</Text>,
   '(app)/history': () => <Text>Historial personal</Text>,
   '(app)/savings': () => <Text>Ahorro personal</Text>,
+  '(app)/recurring': () => <Text>Gastos recurrentes</Text>,
   '(app)/savings-goals': () => <Text>Metas personales</Text>,
   '(app)/budget': Budget,
   '(app)/household': Household,

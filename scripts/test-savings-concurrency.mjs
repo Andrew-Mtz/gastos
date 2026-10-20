@@ -69,6 +69,7 @@ async function scenario(
   expectedSecondSuccess,
   verify,
   expectedError = /exceeds|Contribution exceeds/,
+  templateMode = 'VARIABLE',
 ) {
   const owner = randomUUID(),
     september = randomUUID(),
@@ -121,7 +122,7 @@ async function scenario(
       insert into public.budget_periods(id,profile_id,starts_on,ends_on,base_currency)
         values('${recurringPeriod}','${owner}',${month},(${month}+interval '1 month -1 day')::date,'USD');
       ${auth}
-      select public.create_personal_recurring_expense('${template}','Electricity','${category}','VARIABLE','USD',31,${month});
+      select public.create_personal_recurring_expense('${template}','Electricity','${category}','${templateMode}','USD',31,${month},null,${templateMode === 'FIXED' ? 2840 : 'null'});
       select public.create_personal_savings_goal('${goal}','Synthetic goal',100,'USD');
       select public.save_budget_allocations('${september}','[{"budget_bucket_id":"${ordinary}","percentage_basis_points":8000},{"budget_bucket_id":"${savings}","percentage_basis_points":2000}]');
       select public.register_income('${income}','${september}',1000,'USD','2026-09-01');commit;`);
@@ -319,7 +320,7 @@ await scenario(
       ).trim(),
       '0',
     ),
-  /eligible variable occurrence/,
+  /eligible occurrence/,
 );
 await scenario(
   'resolution first remains actual after concurrent stop',
@@ -336,6 +337,58 @@ await scenario(
       '1',
     ),
 );
+await scenario(
+  'fixed duplicate confirmation creates one actual and no commitment',
+  (c) => c.resolve(),
+  (c) => c.resolve(randomUUID()),
+  false,
+  async ({ owner, recurringPeriod }, auth) => {
+    assert.equal(
+      (
+        await run(
+          `select count(*) from public.transactions where owner_profile_id='${owner}' and recurring_template_id is not null;`,
+        )
+      ).trim(),
+      '1',
+    );
+    assert.equal(
+      (
+        await run(
+          `begin;${auth} select public.get_personal_committed_money('${recurringPeriod}')->'buckets';commit;`,
+        )
+      ).includes('[]'),
+      true,
+    );
+  },
+  /transactions_recurring_occurrence_key/,
+  'FIXED',
+);
+await scenario(
+  'fixed stop first prevents payment and commitment',
+  (c) => c.stop,
+  (c) => c.resolve(),
+  false,
+  async ({ owner, recurringPeriod }, auth) => {
+    assert.equal(
+      (
+        await run(
+          `select count(*) from public.transactions where owner_profile_id='${owner}' and recurring_template_id is not null;`,
+        )
+      ).trim(),
+      '0',
+    );
+    assert.equal(
+      (
+        await run(
+          `begin;${auth} select public.get_personal_committed_money('${recurringPeriod}')->'buckets';commit;`,
+        )
+      ).includes('[]'),
+      true,
+    );
+  },
+  /eligible occurrence/,
+  'FIXED',
+);
 console.log(
-  'All thirteen finance concurrency scenarios passed; synthetic fixtures removed.',
+  'All fifteen finance concurrency scenarios passed; synthetic fixtures removed.',
 );

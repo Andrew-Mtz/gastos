@@ -2290,3 +2290,15 @@ actual resolution additionally invalidates owner-wide savings/history/consumptio
 expense queries and its monthly budget. FIN-119 must attach commitment invalidation
 to recurring changes; FIN-122 corrections must invalidate owner recurring data too.
 Process termination recovery and native/device runtime remain unverified.
+
+
+## FIN-119 committed money
+
+A complete scalar monthly commitment RPC returns per-bucket sums and counts plus
+an older-unresolved count. SQL aggregates before the API row cap; no transaction
+history page or client template list is a financial source. Pure domain validation
+checks safe money/count sums and unique bucket identities. The recurring route shows
+confirmed, estimated and unknown obligations separately and blocks stale/error
+figures. Its query lives under `recurringOwnerKey`, so every template/actual mutation
+invalidates commitments along with recurring state. No realtime, dependency,
+occurrence ledger, available-balance formula or dashboard is introduced.

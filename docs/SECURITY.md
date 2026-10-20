@@ -1656,3 +1656,15 @@ The owner lock serializes stop versus resolution and duplicate requests. Snapsho
 isolation is rejected. Scalar owner-only reads retain cancelled/stopped history without
 exposing another owner's templates or transactions. Real PostgreSQL tests distinguish
 RLS filtering from column/function privilege denial and forged-write rejection.
+
+
+## FIN-119 commitment enforcement
+
+A stable invoker RPC validates the owned budget period and derives all monthly
+commitments in one read snapshot under existing owner RLS. There is no caller owner
+parameter, service role, definer capability or new table. It rejects incompatible
+currency/mapping and unsafe sums rather than returning partial totals. Prior-month
+unresolved counts are also owner-only and include no other user's financial data.
+The fixed-confirmation extension uses the original atomic resolver and owner lock;
+the transaction INSERT trigger enforces the fixed amount even on direct writes.
+No UPDATE privileges, savings guards or closed-period protections are relaxed.

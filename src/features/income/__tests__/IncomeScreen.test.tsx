@@ -303,3 +303,16 @@ test('uncertain request keeps its original period across month rollover', async 
   await screen.findByText(/Configura el presupuesto/);
   expect(jest.mocked(registerIncome).mock.calls[1]).toEqual(first);
 });
+
+test('actual registration invalidates owner commitments without another owner', async () => {
+  const { client } = await openScreen();
+  const own = ['recurring', profile.id, 'commitments', period.id];
+  const other = ['recurring', 'other-owner', 'commitments', period.id];
+  client.setQueryData(own, {});
+  client.setQueryData(other, {});
+  const user = await beginIncome();
+  await user.press(screen.getByRole('button', { name: 'Guardar ingreso' }));
+  await screen.findByText(/Recibido:/);
+  expect(client.getQueryState(own)?.isInvalidated).toBe(true);
+  expect(client.getQueryState(other)?.isInvalidated).toBe(false);
+});

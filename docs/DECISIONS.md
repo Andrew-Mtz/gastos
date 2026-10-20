@@ -2227,6 +2227,49 @@ commitment totals and final availability remain outside FIN-118.
 
 ---
 
+# ADR-072 — Bounded Monthly Commitments and Explicit Fixed Confirmation
+
+**Status:** Accepted under delegated implementation authority (2026-10-20),
+pending owner review of `OVERNIGHT_DECISIONS.md`.
+
+Commitments are derived planning data, never actual spending. Every unresolved
+eligible occurrence in the selected month participates, even if its due day has
+passed. A FIXED template contributes its exact confirmed obligation amount; a
+VARIABLE template contributes only a labeled estimate, or a separately counted
+unknown amount. A known zero estimate is not unknown. Any linked actual, active or
+soft-deleted, excludes that occurrence according to ADR-071. A stop excludes its
+month and later, not earlier unresolved history. No transaction is auto-generated.
+
+Use one stable authenticated invoker scalar JSON RPC with complete per-bucket sums,
+not UI rows or paginated history. Original category/bucket mappings, including
+archived or unallocated ones, remain relevant. Invalid spendable mappings or a
+monthly obligation in a different currency fail explicitly, including a foreign
+unknown or zero estimate. Money and counts remain safe integers; no exchange rate,
+partial total, persisted balance or privileged capability is introduced.
+
+The monetary horizon is one selected owned budget period. Older unresolved monthly
+occurrences are counted separately across denominations, not added as current debt.
+Reads reflect current resolution/cancellation status, not historical point-in-time
+snapshots. The UI explains this and does not present a final available balance.
+Resolution still requires the true financial date in the occurrence's open month.
+A payment actually made in a later month is not supported; do not backdate it merely
+to clear an earlier obligation. Before supporting that flow, define a coherent
+cross-period liability/payment model. FIN-120 must block numerical safe-to-spend
+while older unresolved obligations remain. FIN-123/125 must expose unresolved
+obligations rather than silently roll them forward or treat them as free remainder.
+
+Explicit fixed payment confirmation is a minimal FIN-119 correctness prerequisite:
+otherwise paid fixed obligations could never leave the commitment calculation.
+Reuse the same stable transaction UUID, atomic resolution RPC, unique recurrence
+identity, owner lock, RLS and ordinary expense guards. Initial fixed actual amount
+must equal the immutable fixed template amount; variable actuals remain independent
+of their estimates. Incorrect fixed actuals/differing bills require FIN-122's explicit
+correction path without relinking or re-resolving. No additional UPDATE privilege or
+correction UI is added here. Exact retries, tombstones, stop, restoration and closed
+period rules remain unchanged. Fixed automatic generation remains an open decision.
+
+---
+
 # Superseding Decisions
 
 When replacing an accepted ADR:

@@ -223,14 +223,15 @@ export async function resolveRecurring(
     id = z.uuid().parse(request.id);
   if (
     template.ownerProfileId !== period.profile_id ||
-    template.currency !== period.base_currency ||
-    template.amountMode !== 'VARIABLE'
+    template.currency !== period.base_currency
   )
     throw new Error('Invalid resolution target.');
   const amount = parseDecimal(
     form.amount,
     currencyDigits(period.base_currency),
   )!;
+  if (template.amountMode === 'FIXED' && amount !== template.defaultAmountMinor)
+    throw new Error('Fixed confirmation requires the original amount.');
   const { data, error } = await supabase.rpc(
     'resolve_personal_recurring_expense',
     {
