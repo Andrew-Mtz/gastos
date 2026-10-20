@@ -1644,3 +1644,15 @@ Exact replay reads the original row, including after stop, archival or closure.
 Template and period writes share owner serialization; template mutations reject
 snapshot isolation. Household access is never included. SQL tests distinguish RLS
 filtering, rejected forged writes and absent column/table/function privileges.
+
+## FIN-118 resolution enforcement
+
+No new table, definer function or broader UPDATE privilege is introduced. Transactions
+carry an insert-only composite-owner recurring-template FK and canonical month, with
+unique owner/template/month identity including deleted actuals. Direct INSERT validates
+the same variable-template schedule, category, currency and budget month as the invoker
+resolution RPC; existing RLS/open-period/expense and savings guards remain mandatory.
+The owner lock serializes stop versus resolution and duplicate requests. Snapshot
+isolation is rejected. Scalar owner-only reads retain cancelled/stopped history without
+exposing another owner's templates or transactions. Real PostgreSQL tests distinguish
+RLS filtering from column/function privilege denial and forged-write rejection.

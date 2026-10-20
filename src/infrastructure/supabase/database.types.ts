@@ -341,6 +341,8 @@ export type Database = {
           description: string | null;
           id: string;
           owner_profile_id: string;
+          recurring_month: string | null;
+          recurring_template_id: string | null;
           savings_goal_id: string | null;
           savings_validated: boolean;
           scope: string;
@@ -359,6 +361,8 @@ export type Database = {
           description?: string | null;
           id?: string;
           owner_profile_id: string;
+          recurring_month?: string | null;
+          recurring_template_id?: string | null;
           savings_goal_id?: string | null;
           savings_validated?: boolean;
           scope?: string;
@@ -377,6 +381,8 @@ export type Database = {
           description?: string | null;
           id?: string;
           owner_profile_id?: string;
+          recurring_month?: string | null;
+          recurring_template_id?: string | null;
           savings_goal_id?: string | null;
           savings_validated?: boolean;
           scope?: string;
@@ -413,6 +419,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'budget_periods';
             referencedColumns: ['id', 'profile_id'];
+          },
+          {
+            foreignKeyName: 'transactions_recurring_owner_fkey';
+            columns: ['recurring_template_id', 'owner_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'recurring_expenses';
+            referencedColumns: ['id', 'owner_profile_id'];
           },
         ];
       };
@@ -486,6 +499,10 @@ export type Database = {
         Args: { p_budget_period_id: string };
         Returns: Json;
       };
+      get_personal_recurring_month: {
+        Args: { p_month: string };
+        Returns: Json;
+      };
       get_personal_savings_goals: {
         Args: { p_through_month: string };
         Returns: Json;
@@ -538,6 +555,8 @@ export type Database = {
           description: string | null;
           id: string;
           owner_profile_id: string;
+          recurring_month: string | null;
+          recurring_template_id: string | null;
           savings_goal_id: string | null;
           savings_validated: boolean;
           scope: string;
@@ -573,6 +592,8 @@ export type Database = {
           description: string | null;
           id: string;
           owner_profile_id: string;
+          recurring_month: string | null;
+          recurring_template_id: string | null;
           savings_goal_id: string | null;
           savings_validated: boolean;
           scope: string;
@@ -610,6 +631,46 @@ export type Database = {
           description: string | null;
           id: string;
           owner_profile_id: string;
+          recurring_month: string | null;
+          recurring_template_id: string | null;
+          savings_goal_id: string | null;
+          savings_validated: boolean;
+          scope: string;
+          transaction_date: string;
+          type: string;
+          updated_at: string;
+          withdrawal_confirmed: boolean;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'transactions';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      resolve_personal_recurring_expense: {
+        Args: {
+          p_amount_minor: number;
+          p_budget_period_id: string;
+          p_currency: string;
+          p_description?: string;
+          p_month: string;
+          p_template_id: string;
+          p_transaction_date: string;
+          p_transaction_id: string;
+        };
+        Returns: {
+          amount_minor: number;
+          budget_period_id: string;
+          category_id: string | null;
+          created_at: string;
+          currency: string;
+          deleted_at: string | null;
+          description: string | null;
+          id: string;
+          owner_profile_id: string;
+          recurring_month: string | null;
+          recurring_template_id: string | null;
           savings_goal_id: string | null;
           savings_validated: boolean;
           scope: string;

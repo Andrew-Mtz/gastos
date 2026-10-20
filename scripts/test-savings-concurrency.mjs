@@ -68,6 +68,7 @@ async function scenario(
   secondAction,
   expectedSecondSuccess,
   verify,
+  expectedError = /exceeds|Contribution exceeds/,
 ) {
   const owner = randomUUID(),
     september = randomUUID(),
@@ -76,7 +77,10 @@ async function scenario(
     savings = randomUUID(),
     category = randomUUID(),
     income = randomUUID(),
-    goal = randomUUID();
+    goal = randomUUID(),
+    recurringPeriod = randomUUID(),
+    template = randomUUID(),
+    resolution = randomUUID();
   const ids = {
     owner,
     september,
@@ -86,6 +90,9 @@ async function scenario(
     category,
     income,
     goal,
+    recurringPeriod,
+    template,
+    resolution,
   };
   const auth = `set local role authenticated;
     set local request.jwt.claim.sub='${owner}';
@@ -97,7 +104,12 @@ async function scenario(
     `select public.register_personal_expense('${randomUUID()}','${september}',${amount},'USD','2026-09-02','${category}');`;
   const goalMove = (type, amount, period = september, date = '2026-09-02') =>
     `select public.register_savings_movement('${randomUUID()}','${period}','${type}',${amount},'USD','${date}',${type === 'SAVINGS_WITHDRAWAL'},null,'${goal}');`;
-  const ctx = { ...ids, move, expense, goalMove };
+  const month =
+    "(date_trunc('month',statement_timestamp() at time zone 'UTC')+interval '120 months')::date";
+  const resolve = (id = resolution) =>
+    `select public.resolve_personal_recurring_expense('${id}','${template}','${recurringPeriod}',${month},2840,'USD',${month});`;
+  const stop = `select public.stop_personal_recurring_expense('${template}',${month});`;
+  const ctx = { ...ids, move, expense, goalMove, resolve, stop, month };
   try {
     await run(`begin;
       insert into auth.users(id,email) values('${owner}','fin115-${owner}@example.invalid');
@@ -106,7 +118,10 @@ async function scenario(
         ('${september}','${owner}','2026-09-01','2026-09-30','USD'),('${october}','${owner}','2026-10-01','2026-10-31','USD');
       insert into public.budget_buckets(id,profile_id,name,type) values('${ordinary}','${owner}','Ordinary','SPENDABLE'),('${savings}','${owner}','Savings','SAVINGS');
       insert into public.categories(id,profile_id,name,budget_bucket_id) values('${category}','${owner}','Food','${ordinary}');
+      insert into public.budget_periods(id,profile_id,starts_on,ends_on,base_currency)
+        values('${recurringPeriod}','${owner}',${month},(${month}+interval '1 month -1 day')::date,'USD');
       ${auth}
+      select public.create_personal_recurring_expense('${template}','Electricity','${category}','VARIABLE','USD',31,${month});
       select public.create_personal_savings_goal('${goal}','Synthetic goal',100,'USD');
       select public.save_budget_allocations('${september}','[{"budget_bucket_id":"${ordinary}","percentage_basis_points":8000},{"budget_bucket_id":"${savings}","percentage_basis_points":2000}]');
       select public.register_income('${income}','${september}',1000,'USD','2026-09-01');commit;`);
@@ -145,7 +160,7 @@ async function scenario(
     if (!expectedSecondSuccess)
       assert.match(
         two.error,
-        /exceeds|Contribution exceeds/,
+        expectedError,
         `${name}: expected financial rejection, not deadlock or permission failure`,
       );
     await verify(ctx, auth);
@@ -156,6 +171,7 @@ async function scenario(
     await run(`begin;delete from public.transactions where owner_profile_id='${owner}';
       delete from public.budget_allocations where budget_period_id in ('${september}','${october}');
       delete from public.savings_goals where owner_profile_id='${owner}';
+      delete from public.recurring_expenses where owner_profile_id='${owner}';
       delete from public.categories where profile_id='${owner}';delete from public.budget_buckets where profile_id='${owner}';
       delete from public.budget_periods where profile_id='${owner}';delete from public.profiles where id='${owner}';delete from auth.users where id='${owner}';commit;`);
     assert.equal(
@@ -258,6 +274,68 @@ await scenario(
   },
 );
 
+await scenario(
+  'same resolution UUID is exactly idempotent concurrently',
+  (c) => c.resolve(),
+  (c) => c.resolve(),
+  true,
+  async ({ owner }) =>
+    assert.equal(
+      (
+        await run(
+          `select count(*) from public.transactions where owner_profile_id='${owner}' and recurring_template_id is not null;`,
+        )
+      ).trim(),
+      '1',
+    ),
+);
+await scenario(
+  'different resolution UUIDs cannot duplicate a monthly obligation',
+  (c) => c.resolve(),
+  (c) => c.resolve(randomUUID()),
+  false,
+  async ({ owner }) =>
+    assert.equal(
+      (
+        await run(
+          `select count(*) from public.transactions where owner_profile_id='${owner}' and recurring_template_id is not null;`,
+        )
+      ).trim(),
+      '1',
+    ),
+  /transactions_recurring_occurrence_key/,
+);
+await scenario(
+  'stop first prevents concurrent new resolution',
+  (c) => c.stop,
+  (c) => c.resolve(),
+  false,
+  async ({ owner }) =>
+    assert.equal(
+      (
+        await run(
+          `select count(*) from public.transactions where owner_profile_id='${owner}' and recurring_template_id is not null;`,
+        )
+      ).trim(),
+      '0',
+    ),
+  /eligible variable occurrence/,
+);
+await scenario(
+  'resolution first remains actual after concurrent stop',
+  (c) => c.resolve(),
+  (c) => c.stop,
+  true,
+  async ({ owner }) =>
+    assert.equal(
+      (
+        await run(
+          `select count(*) from public.transactions where owner_profile_id='${owner}' and recurring_template_id is not null and deleted_at is null;`,
+        )
+      ).trim(),
+      '1',
+    ),
+);
 console.log(
-  'All nine savings concurrency scenarios passed; synthetic fixtures removed.',
+  'All thirteen finance concurrency scenarios passed; synthetic fixtures removed.',
 );

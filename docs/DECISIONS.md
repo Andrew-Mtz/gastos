@@ -2194,6 +2194,39 @@ Fixed recurring automatic transaction generation remains intentionally undecided
 
 ---
 
+# ADR-071 — Monthly Resolution Uses the Actual Transaction Identity
+
+**Status:** Accepted under delegated implementation authority (2026-10-20),
+pending owner review of `OVERNIGHT_DECISIONS.md`.
+
+FIN-118 projects pending obligations from immutable templates and the selected
+canonical month. One actual EXPENSE may carry an insert-only recurring-template
+reference and recurring month. A unique owner/template/month constraint includes
+soft-deleted rows; transaction ID is both stable resolution request ID and immutable
+actual linkage. No separate occurrence table or duplicated financial amounts are
+needed. The immutable original template preserves obligation terms and due-day rules.
+
+Resolution is explicit and atomic, same-owner/category/currency and open-period
+validated under the existing owner finance lock. The financial date belongs to the
+obligation month. An identical active request returns its original row even after
+stop, archival or closure; a changed payload, deleted row or different request for
+that occurrence conflicts. A stop that wins serialization prevents new resolution;
+a later stop never erases or changes an already linked actual.
+
+Soft deletion cancels the established occurrence, removes its actual financial impact
+and does not turn it back into pending or create a new commitment. Restore reuses the
+same actual identity, respects current ordinary restoration guards and does not
+recheck a later stop. FIN-119 must exclude both active and cancelled linked occurrences
+from additional commitments. FIN-122 corrections must preserve recurrence/actual
+identity; registration cannot serve as a replacement or restoration operation.
+
+The existing EXPENSE paths apply the actual amount once to cash, spending and budget
+consumption, without savings withdrawal. Minimal template creation/list/stop UI is a
+prerequisite for useful resolution. Fixed actual confirmation, automatic generation,
+commitment totals and final availability remain outside FIN-118.
+
+---
+
 # Superseding Decisions
 
 When replacing an accepted ADR:

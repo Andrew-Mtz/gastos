@@ -1135,7 +1135,7 @@ No commitments, safe-to-spend, scheduler, automatic fixed generation or broad ed
 
 ## FIN-118 — Resolve Variable Recurring Expense
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-117, FIN-111
 
@@ -1153,6 +1153,32 @@ UYU 2840
 →
 actual expense
 ```
+
+---
+
+### Implementation evidence
+
+Variable monthly obligations now resolve explicitly to one actual personal expense
+with a stable request UUID and immutable owner/template/month linkage. Original
+category/currency/month eligibility, owner RLS, open periods and existing savings
+guards apply to direct writes as well as atomic invoker RPCs. Unique identity includes
+soft-deleted actuals. ADR-071 defines visible cancellation rather than automatic
+reopening; later template stop preserves both confirmed and cancelled history.
+
+Minimal template create/list/stop and variable-resolution UI is included as the
+approved prerequisite. Complete scalar reads cannot truncate at Data API row caps.
+Unknown estimates remain distinct from zero and never become actual amounts. Pending
+requests preserve identity/payload across navigation, failed refresh and month change;
+owner-wide financial caches refresh after actual resolution. Creation/stop are neutral.
+
+Independent implementation and regression review found no blocking issue. Automated
+coverage includes form/data boundaries, cancellation, retry, logout/direct account
+switch and SQL privacy/corrections, plus thirteen real multi-session finance scenarios.
+Generated types are copied verbatim from matching-head CI artifact 12248519615 after
+verifying workflow SHA and ZIP digest. Local full quality and final exact-head
+PostgreSQL/type-drift CI gate merge. Native/device runtime and process-restart recovery
+remain unverified. Fixed actual confirmation/automatic generation, commitment totals,
+safe-to-spend and later roadmap behavior remain out of scope.
 
 ---
 
@@ -1842,7 +1868,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-118 — Resolve Variable Recurring Expense
+FIN-119 — Committed Money
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.
