@@ -137,6 +137,8 @@ test('confirmed withdrawal is recorded once and invalidates all owner months and
   const { client } = await openScreen();
   const future = savingsKey(profile.id, '2026-11-01');
   client.setQueryData(future, data);
+  const commitments = ['recurring', profile.id, 'commitments', period.id];
+  client.setQueryData(commitments, {});
   client.setQueryData(['history', profile.id, '2026-10-01'], {});
   const user = await begin(true);
   await user.press(screen.getByRole('button', { name: 'Revisar retiro' }));
@@ -152,6 +154,7 @@ test('confirmed withdrawal is recorded once and invalidates all owner months and
   await waitFor(() =>
     expect(client.getQueryState(future)?.isInvalidated).toBe(true),
   );
+  expect(client.getQueryState(commitments)?.isInvalidated).toBe(true);
 });
 test('contribution does not require withdrawal confirmation and cancel discards draft', async () => {
   await openScreen();

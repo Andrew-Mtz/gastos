@@ -9,7 +9,11 @@ import { FormScreen } from '../../components/ui/Screen';
 import { TextField } from '../../components/ui/TextField';
 import { CurrencySelect } from '../auth/CurrencySelect';
 import { type ExpenseCategory } from '../expense/expense-data';
-import { type BudgetPeriod } from '../budget/budget-setup';
+import {
+  currencyDigits,
+  decimalText,
+  type BudgetPeriod,
+} from '../budget/budget-setup';
 import {
   isRejectedIncome,
   validateIncomeForm,
@@ -201,6 +205,7 @@ export function TemplateEditor({
 export function ResolveEditor({
   id,
   name,
+  fixedAmountMinor,
   period,
   date,
   pending,
@@ -209,6 +214,7 @@ export function ResolveEditor({
 }: {
   id: string;
   name: string;
+  fixedAmountMinor: number | null;
   period: BudgetPeriod;
   date: string;
   pending: IncomeRequest | null;
@@ -224,7 +230,14 @@ export function ResolveEditor({
     formState: { errors },
   } = useForm<IncomeForm>({
     resolver: zodResolver(validateIncomeForm(period)),
-    defaultValues: pending?.form ?? { amount: '', date, description: '' },
+    defaultValues: pending?.form ?? {
+      amount:
+        fixedAmountMinor === null
+          ? ''
+          : decimalText(fixedAmountMinor, currencyDigits(period.base_currency)),
+      date,
+      description: '',
+    },
   });
   const locked = mutation.isPending || pending !== null;
   return (
@@ -233,8 +246,17 @@ export function ResolveEditor({
       <AppText>
         Registrarás un único gasto real de {period.starts_on.slice(0, 7)} en{' '}
         {period.base_currency}. La estimación no se usa como importe real ni se
-        retira ahorro.
+        retira ahorro. La fecha debe ser la real de ese mes; un pago realizado
+        en otro mes todavía no está soportado. No lo registres con una fecha
+        anterior.
       </AppText>
+      {fixedAmountMinor !== null && (
+        <AppText>
+          El importe fijo debe coincidir con lo pagado. Si cambió, no confirmes
+          un importe incorrecto: la corrección explícita se incorporará por
+          separado.
+        </AppText>
+      )}
       {(
         [
           ['amount', `Importe real (${period.base_currency})`],
@@ -253,7 +275,9 @@ export function ResolveEditor({
               onChangeText={field.onChange}
               onBlur={field.onBlur}
               ref={field.ref}
-              editable={!locked}
+              editable={
+                !locked && !(name === 'amount' && fixedAmountMinor !== null)
+              }
               error={errors[name]?.message}
               keyboardType={name === 'amount' ? 'decimal-pad' : 'default'}
             />

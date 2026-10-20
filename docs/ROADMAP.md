@@ -1184,7 +1184,7 @@ safe-to-spend and later roadmap behavior remain out of scope.
 
 ## FIN-119 — Committed Money
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-117
 
@@ -1202,6 +1202,36 @@ estimated
 ### Requirements
 
 Estimated values must not be presented as exact.
+
+---
+
+### Implementation evidence
+
+Owner-only stable scalar aggregation derives complete monthly confirmed FIXED,
+known VARIABLE estimates and unknown variable counts. Past due days within the month
+stay included; any linked actual, even cancelled, is excluded. Historical archived
+or unallocated spendable mappings remain visible. Mixed monthly denominations or
+invalid mapping fail explicitly, and safe-integer overflow cannot produce a rounded
+or partial total. The recurring screen labels estimates and unknowns without any
+available-balance claim and refreshes under the owner recurring cache namespace.
+
+ADR-072 bounds monetary totals to the selected month. Earlier unresolved occurrences
+are counted separately with month-span arithmetic, not carried as payable money.
+Warnings remain even when all known monthly amounts are zero. Cross-month payments
+are unsupported: never backdate a payment to clear an older obligation. FIN-120 must
+withhold a numerical safe-to-spend claim while those older obligations remain;
+FIN-123/125 must surface unresolved obligations before closing/remainder actions.
+Explicit fixed confirmation is the documented minimum prerequisite, using the existing
+one-actual resolver and exact fixed amount, never automatic generation or a new ledger.
+
+Independent bounded review found no blocker on implementation head 0e14efb. Local full
+quality verification includes 800 Jest tests in 44 suites. Disposable PostgreSQL CI
+passed 1,330 assertions in 21 files and all fifteen real concurrent-write cases.
+Generated types are copied verbatim from matching-head artifact 12250224275 after
+verifying its workflow SHA and ZIP digest. Final exact-head full quality/database/
+type-drift CI gates merge. No production database/deployment or native/device runtime
+verification is included. Process-restart recovery, cross-month payments, correction
+UI, safe-to-spend and dashboard remain outside this task.
 
 ---
 
@@ -1868,7 +1898,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-119 — Committed Money
+FIN-120 — Safe-to-Spend v1
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.

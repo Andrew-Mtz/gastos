@@ -4,6 +4,8 @@ import { useFocusEffect } from 'expo-router';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { recurringOwnerKey } from '../recurring/recurring-data';
+import { savingsOwnerKey } from '../savings/savings-data';
 import { AppText } from '../../components/ui/AppText';
 import { Button } from '../../components/ui/Button';
 import { FormScreen, Screen } from '../../components/ui/Screen';
@@ -112,7 +114,21 @@ function PersonalBudget({ profile }: { profile: Profile }) {
           const revision = focusRevision.current;
           await saveInitialBudget(month, currency, buckets, form);
           if (auth.isCurrentUser(profile.id)) {
-            await refresh();
+            await Promise.all([
+              refresh(),
+              queryClient.invalidateQueries({
+                queryKey: recurringOwnerKey(profile.id),
+              }),
+              queryClient.invalidateQueries({
+                queryKey: savingsOwnerKey(profile.id),
+              }),
+              queryClient.invalidateQueries({
+                queryKey: incomeOwnerKey(profile.id),
+              }),
+              queryClient.invalidateQueries({
+                queryKey: consumptionOwnerKey(profile.id),
+              }),
+            ]);
             if (
               active.current &&
               revision === focusRevision.current &&

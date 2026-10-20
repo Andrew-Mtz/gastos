@@ -34,6 +34,7 @@ import {
   stopTemplate,
 } from './recurring-data';
 import { recurringErrorMessage, type TemplateRequest } from './recurring-form';
+import { CommittedMoney } from './CommittedMoney';
 import { TemplateEditor, ResolveEditor, StopEditor } from './RecurringEditors';
 
 type Editor =
@@ -180,6 +181,11 @@ function PersonalRecurring({ profile }: { profile: Profile }) {
         key={editor.id}
         id={editor.id}
         name={editor.template.name}
+        fixedAmountMinor={
+          editor.template.amountMode === 'FIXED'
+            ? editor.template.defaultAmountMinor
+            : null
+        }
         period={editor.period}
         date={editor.date}
         pending={pending?.kind === 'resolve' ? pending.request : null}
@@ -205,8 +211,8 @@ function PersonalRecurring({ profile }: { profile: Profile }) {
       <AppText variant="title">Gastos recurrentes</AppText>
       <AppText variant="section">Obligaciones · {month.slice(0, 7)}</AppText>
       <AppText>
-        Las plantillas y estimaciones no son gastos reales. Solo confirmar un
-        importe variable crea un gasto.
+        Las plantillas y estimaciones no son gastos reales. Confirmar
+        explícitamente un pago fijo o importe variable crea un único gasto.
       </AppText>
       <Button
         variant="secondary"
@@ -242,6 +248,7 @@ function PersonalRecurring({ profile }: { profile: Profile }) {
         />
       ) : (
         <>
+          {query.data.period && <CommittedMoney period={query.data.period} />}
           {!pending && (
             <Button
               disabled={query.data.categories.length === 0}
@@ -288,7 +295,6 @@ function PersonalRecurring({ profile }: { profile: Profile }) {
               canResolve={
                 !pending &&
                 status === 'PENDING' &&
-                template.amountMode === 'VARIABLE' &&
                 query.data.period?.status === 'OPEN' &&
                 query.data.period.base_currency === template.currency &&
                 query.data.categories.some((c) => c.id === template.categoryId)
@@ -305,7 +311,7 @@ function PersonalRecurring({ profile }: { profile: Profile }) {
                     date:
                       today >= period.starts_on && today <= period.ends_on
                         ? today
-                        : (dueDate ?? period.starts_on),
+                        : '',
                   });
                 }
               }}
@@ -330,7 +336,9 @@ function PersonalRecurring({ profile }: { profile: Profile }) {
         variant="secondary"
         disabled={query.isFetching}
         onPress={() => {
-          void query.refetch();
+          void client.invalidateQueries({
+            queryKey: recurringOwnerKey(profile.id),
+          });
         }}
       >
         Actualizar obligaciones
@@ -392,26 +400,24 @@ function RecurringCard({
           {status === 'INACTIVE'
             ? 'No vigente en este mes'
             : template.amountMode === 'FIXED'
-              ? 'Fijo pendiente; confirmación aún no disponible.'
+              ? 'Fijo confirmado como obligación, pendiente de pago.'
               : 'Pendiente de importe real.'}{' '}
           {template.defaultAmountMinor === null
             ? 'Estimación desconocida.'
             : `Referencia, no gasto: ${formatMoney(createMoney(template.defaultAmountMinor, template.currency))}`}
         </AppText>
       )}
-      {status === 'PENDING' && template.amountMode === 'VARIABLE' && (
+      {status === 'PENDING' && (
         <Button disabled={!canResolve} onPress={onResolve}>
           {'Confirmar ' + template.name}
         </Button>
       )}
-      {status === 'PENDING' &&
-        template.amountMode === 'VARIABLE' &&
-        !canResolve && (
-          <AppText>
-            Para confirmar se necesita un mes abierto, la misma moneda y una
-            categoría activa disponible.
-          </AppText>
-        )}
+      {status === 'PENDING' && !canResolve && (
+        <AppText>
+          Para confirmar se necesita un mes abierto, la misma moneda y una
+          categoría activa disponible.
+        </AppText>
+      )}
       {canStop && (
         <Button variant="secondary" onPress={onStop}>
           {'Detener ' + template.name}

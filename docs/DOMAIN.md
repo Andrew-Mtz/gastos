@@ -1829,3 +1829,23 @@ again. FIN-119 must exclude linked tombstones as well as active actuals from fur
 commitments. Restore reuses the same ID with ordinary restoration validation, even
 after a later stop. FIN-122 delete confirmation must explain this cancellation effect;
 correction cannot relink or silently create another actual for that occurrence.
+
+
+## FIN-119 monthly commitments
+
+ADR-072 defines confirmed FIXED obligations separately from known VARIABLE estimates
+and unknown variable amounts. These are not actual expenses or available cash.
+The selected month's total includes all unresolved occurrences, even past due days;
+any linked transaction (including cancelled/soft-deleted) excludes the occurrence.
+Archived and unallocated historical spendable mappings remain included. Unsupported
+currency or invalid monthly mappings fail the calculation, never imply extra money.
+
+Earlier unresolved occurrences have a separate count and warning, not a carried
+monetary total. Cross-period payments remain unsupported: the actual payment date
+must belong to its original month; never backdate a later payment to clear a warning.
+FIN-120 must withhold numerical safe-to-spend with older unresolved obligations;
+FIN-123/125 must explicitly surface unresolved obligations. Current reads are not
+historical snapshots. FIXED initial confirmation equals the original template amount
+and creates one actual expense through the existing resolve path, with ordinary
+cash/spending/budget impact once and no automatic savings withdrawal. Corrections
+remain explicit FIN-122 work; original occurrence identity must survive them.
