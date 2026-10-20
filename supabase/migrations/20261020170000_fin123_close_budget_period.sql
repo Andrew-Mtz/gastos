@@ -56,7 +56,8 @@ begin
       where owner_profile_id=auth.uid() and budget_period_id=v_period.id and lifecycle_version=v_period.lifecycle_version;
     -- Never silently recompute historical evidence, including legacy closed rows.
     return jsonb_build_object('owner_profile_id',auth.uid(),'month',p_month,'period',to_jsonb(v_period),
-      'financial_month',v_current_month,'financial_timezone',v_timezone,'closure',to_jsonb(v_close),
+      'financial_month',v_current_month,'financial_timezone',v_timezone,
+      'closure',case when v_close.id is null then null else to_jsonb(v_close) end,
       'summary',v_close.summary,'snapshot_hash',v_close.snapshot_hash,'can_close',false);
   end if;
   v_summary := public.get_personal_dashboard(p_month);

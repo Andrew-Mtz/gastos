@@ -9,7 +9,8 @@ select id,'Synthetic close','USD','Pacific/Kiritimati' from auth.users where id:
 create function pg_temp.month(n integer default 0) returns date language sql stable as $$select (date_trunc('month',statement_timestamp() at time zone 'Pacific/Kiritimati')+make_interval(months=>n))::date$$;
 create function pg_temp.id(n integer) returns uuid language sql immutable as $$select ('f1230000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid$$;
 insert into public.budget_periods(id,profile_id,starts_on,ends_on,base_currency)
-select pg_temp.id(n+10),'f0050000-0000-4000-8000-000000000001',pg_temp.month(n),(pg_temp.month(n)+interval '1 month -1 day')::date,'USD' from generate_series(-3,1) n;
+select pg_temp.id(n+10),'f0050000-0000-4000-8000-000000000001',pg_temp.month(n),(pg_temp.month(n)+interval '1 month -1 day')::date,'USD' from generate_series(-4,1) n;
+update public.budget_periods set status='CLOSED',closed_at=now() where id=pg_temp.id(6);
 insert into public.budget_periods(id,profile_id,starts_on,ends_on,base_currency)
 values(pg_temp.id(20),'f0050000-0000-4000-8000-000000000002',pg_temp.month(-1),(pg_temp.month(-1)+interval '1 month -1 day')::date,'USD');
 insert into public.budget_buckets(id,profile_id,name,type) values
@@ -35,6 +36,9 @@ select is(auth.uid(),'f0050000-0000-4000-8000-000000000001'::uuid,'Owner identit
 select is(pg_temp.context(-1)->>'financial_month',pg_temp.month()::text,'Eligibility uses persisted financial timezone on server');
 select is(pg_temp.context(-1)->>'financial_timezone','Pacific/Kiritimati','Server timezone shown');
 select is(pg_temp.context(-1)->>'snapshot_hash',pg_temp.context(-1)->>'snapshot_hash','Repeated preview deterministic');
+select is(pg_temp.context(-4)->'closure','null'::jsonb,'Legacy CLOSED/version-zero period has JSON null evidence, not an all-null row');
+select is(pg_temp.context(-4)->'summary','null'::jsonb,'Legacy closed period never fabricates a live summary');
+select is(pg_temp.context(-4)->>'can_close','false','Legacy closed period remains read-only');
 select is(pg_temp.context(0)->>'can_close','false','Current month incomplete');
 select is(pg_temp.context(1)->>'can_close','false','Future month incomplete');
 select throws_ok($$select pg_temp.close(0)$$,'23514',null,'Cannot close current month even with client confirmation');
