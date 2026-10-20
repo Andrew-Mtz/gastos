@@ -695,6 +695,26 @@ A `SAVINGS_WITHDRAWAL` represents explicit removal of money from protected savin
 
 ---
 
+FIN-115 / ADR-068 defines the protected reserve cumulatively per currency through
+one month: independently rounded monthly savings allocations plus additional active
+contributions minus active withdrawals. Contributions do not duplicate percentage
+allocation. They require sufficient current-month ordinary remainder before
+commitments when created/restored. Withdrawals require affirmative confirmation and
+must preserve every historical cumulative monthly prefix, including after corrections.
+They return money to ordinary availability only in the withdrawal's month. Both
+movements have zero cash impact and zero spending/expense-consumption impact.
+
+Ordinary remainder before commitments equals spendable allocated received income
+minus expenses minus additional contributions plus withdrawals. It may be negative
+following ordinary overspending; protected savings remains unchanged. This is not
+safe-to-spend. No ordinary remainder rollover, currency conversion, opening account
+balance or savings goal is implied. Unconfigured periods add no allocated savings;
+new contributions require a configured complete plan. Invalid legacy records block
+availability rather than yielding a partial result. Corrections remain recoverable
+and cannot retroactively overdraw protected savings; closed-period guards still apply.
+
+---
+
 # 19. FinancialAccount
 
 A `FinancialAccount` represents where money is held or owed.

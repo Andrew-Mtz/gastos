@@ -29,8 +29,14 @@ set local role authenticated;
 select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000001');
 select is(current_user::text,'authenticated','A client role');
 select is(auth.uid(),'f0050000-0000-4000-8000-000000000001'::uuid,'A subject');
-select lives_ok($$insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,category_id)
-select 'f0050000-0000-4000-8000-000000000001','f1030000-0000-4000-8000-000000000001',t,10000,'USD','2026-10-01',case when t='EXPENSE' then 'f1070000-0000-4000-8000-000000000001'::uuid end from unnest(array['INCOME','EXPENSE','SAVINGS_CONTRIBUTION','SAVINGS_WITHDRAWAL']) t$$,'Four Phase 1 types persist separately');
+-- FIN-115 adds explicit savings eligibility and confirmation to these fixtures.
+select public.save_budget_allocations('f1030000-0000-4000-8000-000000000001',
+ '[{"budget_bucket_id":"f1040000-0000-4000-8000-000000000001","percentage_basis_points":10000}]');
+select lives_ok($$insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,category_id,withdrawal_confirmed)
+select auth.uid(),'f1030000-0000-4000-8000-000000000001',t,
+ case when t='INCOME' then 30000 else 10000 end,'USD','2026-10-01',
+ case when t='EXPENSE' then 'f1070000-0000-4000-8000-000000000001'::uuid end,
+ t='SAVINGS_WITHDRAWAL' from unnest(array['INCOME','EXPENSE','SAVINGS_CONTRIBUTION','SAVINGS_WITHDRAWAL']) t$$,'Four Phase 1 types persist separately');
 select is((select count(*) from public.transactions),4::bigint,'A reads own records');
 select ok((select bool_and(scope='PERSONAL' and deleted_at is null and created_at is not null) from public.transactions),'Personal active defaults and technical timestamps');
 select throws_ok($$insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date)

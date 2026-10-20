@@ -9,6 +9,10 @@ select id,'Synthetic','USD','UTC' from auth.users where id::text like 'f0050000%
 insert into public.budget_periods(id,profile_id,starts_on,ends_on,base_currency,expected_income_minor) values
  ('f1030000-0000-4000-8000-000000000001','f0050000-0000-4000-8000-000000000001','2026-10-01','2026-10-31','USD',150000),
  ('f1030000-0000-4000-8000-000000000002','f0050000-0000-4000-8000-000000000002','2026-10-01','2026-10-31','USD',999999);
+insert into public.budget_buckets(id,profile_id,name,type) values
+('f1040000-0000-4000-8000-000000000001','f0050000-0000-4000-8000-000000000001','Needs','SPENDABLE');
+insert into public.budget_allocations(budget_period_id,budget_bucket_id,percentage_basis_points) values
+('f1030000-0000-4000-8000-000000000001','f1040000-0000-4000-8000-000000000001',10000);
 select is((select prosecdef from pg_proc where oid='public.register_income(uuid,uuid,bigint,text,date,text)'::regprocedure),false,'Registration is invoker');
 select is((select prosecdef from pg_proc where oid='public.get_received_income(uuid)'::regprocedure),false,'Aggregate is invoker');
 select ok(not has_function_privilege('anon','public.get_received_income(uuid)','EXECUTE'),'Anonymous aggregate denied');
