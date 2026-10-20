@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,6 +21,14 @@ const clients = [],
   owners = [];
 let step = 'local-only target preflight';
 let localVerified = false;
+let fixtureDirectory = null;
+const snapshots = [];
+const snapshotRpcs = new Set([
+  'get_personal_dashboard',
+  'get_personal_period_close_context',
+  'get_personal_remainder_context',
+  'get_personal_carry_reversal_context',
+]);
 function command(binary, args, input) {
   const result = spawnSync(binary, args, {
     cwd: root,
@@ -67,7 +76,9 @@ function denied(result, code) {
   );
 }
 async function rpc(client, name, args) {
-  return success(await client.rpc(name, args));
+  const data = success(await client.rpc(name, args));
+  if (snapshotRpcs.has(name)) snapshots.push({ kind: name, data });
+  return data;
 }
 function passed(label) {
   console.log(`PASS ${label}`);
@@ -862,8 +873,35 @@ try {
   passed(
     'real HTTP owner isolation, forged/replayed writes denied, fresh-client read and local logout',
   );
+  step = 'real HTTP snapshots through current application parsers';
+  fixtureDirectory = mkdtempSync(path.join(tmpdir(), 'gastos-fin126-'));
+  const fixturePath = path.join(fixtureDirectory, 'synthetic-snapshots.json');
+  // Whitelisted financial responses only, never Auth/session/key payloads. No
+  // fixture is committed or uploaded; finally removes this private temp directory.
+  writeFileSync(fixturePath, JSON.stringify(snapshots), { mode: 0o600 });
+  const contract = spawnSync(
+    process.execPath,
+    [
+      require.resolve('jest/bin/jest'),
+      '--runInBand',
+      '--runTestsByPath',
+      'scripts/__tests__/personal-finance-contract.test.ts',
+      '--testMatch',
+      '**/scripts/__tests__/personal-finance-contract.test.ts',
+    ],
+    {
+      cwd: root,
+      env: { ...process.env, FIN126_SYNTHETIC_SNAPSHOTS: fixturePath },
+      stdio: 'inherit',
+      timeout: 120000,
+    },
+  );
+  assert(
+    !contract.error && contract.status === 0,
+    'Real HTTP application-contract suite failed.',
+  );
   console.log(
-    'FIN-126 authenticated HTTP flow passed. Native UI/device execution was not performed.',
+    'FIN-126 authenticated HTTP and application-parser flow passed. Native UI/device execution was not performed.',
   );
 } catch {
   // No SDK errors, request/session objects, keys, passwords or raw CLI output.
@@ -872,6 +910,14 @@ try {
   );
   process.exitCode = 1;
 } finally {
+  if (fixtureDirectory) {
+    try {
+      rmSync(fixtureDirectory, { recursive: true, force: true });
+    } catch {
+      console.error('FAIL removing synthetic snapshot temp directory.');
+      process.exitCode = 1;
+    }
+  }
   await Promise.all(clients.map((value) => value.auth.stopAutoRefresh()));
   if (localVerified && owners.length) {
     try {

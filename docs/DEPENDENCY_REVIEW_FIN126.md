@@ -53,3 +53,16 @@ proofs of exploitability. Framework/major upgrades belong to separately reviewed
 work, not incidental FIN-126 churn. The local npm `http-proxy` configuration warning
 comes from the execution environment; repository quality checks treat lint warnings
 as errors and do not suppress application warnings.
+
+## Expo patch recommendation (not silently applied)
+
+An online `expo install --check` returned exit1 and recommends newer SDK57 patches:
+expo57.0.23→~57.0.30, expo-constants57.0.18→~57.0.22,
+expo-crypto57.0.3→~57.0.4, expo-linking57.0.10→~57.0.13,
+expo-router57.0.21→~57.0.28 and jest-expo57.0.5→~57.0.6. The offline check had said
+up-to-date while explicitly warning that offline validation is unreliable.
+This recommendation is an open maintenance/compatibility residual, not evidence
+that the current code has a demonstrated runtime incompatibility or the cause of a
+particular user's error. Full local quality and iOS/Android exports passed against
+the current pinned baseline. Framework patch refreshes are not mixed into the three
+targeted advisory fixes; they need their own bounded review and device validation.

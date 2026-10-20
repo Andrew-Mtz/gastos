@@ -72,4 +72,20 @@ accepts only loopback port54321, rejects remote Docker overrides, creates random
 synthetic identities and removes only those identities/rows in `finally`. CI always
 attempts stack shutdown. Neither local keys nor sessions are logged or committed.
 
-Final exact-head CI and review results will be recorded before readiness/merge.
+The integrated HTTP job also passes its actual, whitelisted synthetic financial JSON
+through the current `mapDashboard`, `mapSafeToSpend`, `mapPeriodClose`, `mapRemainder`
+and `mapReversal` application parsers. Two explicitly invoked Jest contract tests
+assert numerical margins, unknown/prior withholding, estimates, v2 carry and histories.
+They fail if the required live fixture is absent; they are not an optional skipped
+unit suite. Only the unused global network client is mocked. Snapshots never contain
+Auth responses and are kept in a private temporary directory removed in `finally`,
+not committed, uploaded or treated as user data. This bridges API-to-application
+contract compatibility without claiming native UI execution.
+
+Local verification passed: clean npm ci; typecheck/lint/format; 1021 Jest tests in
+54 suites; installed Router parser probe; iOS Hermes export (4.4 MB) and Android
+Hermes export (4.7 MB), both compile-only. The initial offline Expo package check
+reported that offline validation is unreliable, so it is not standalone compatibility
+proof. The subsequent online check returned exit1 with newer SDK57 patch recommendations,
+recorded in the dependency review; no framework upgrade was silently applied.
+Final exact-head integrated CI and review results will be recorded before readiness/merge.
