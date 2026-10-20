@@ -295,6 +295,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      get_bucket_consumption: {
+        Args: { p_budget_period_id: string };
+        Returns: Json;
+      };
       get_received_income: {
         Args: { p_budget_period_id: string };
         Returns: number;

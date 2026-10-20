@@ -624,7 +624,16 @@ read their existing active record; conflicting or deleted registrations cannot b
 silently overwritten or revived. New/restored expenses require an active owned
 category mapped to an active SPENDABLE bucket. The immutable mapping preserves
 historical bucket meaning. Cash, spending and budget consumption each reflect the
-expense amount; savings are unchanged. Consumption totals belong to FIN-113.
+expense amount; savings are unchanged. FIN-113 derives consumption from all active personal EXPENSE rows in a period,
+aggregating their immutable category-to-bucket mappings. Deleted rows and all
+other movement types contribute zero spending. Archived category/bucket mappings
+remain valid for history. A legacy expense with no spendable mapping or a currency
+different from the period fails the entire calculation explicitly (ADR-067),
+rather than disappearing from an understated total. Configured spendable buckets
+with no expenses show zero; buckets with expenses remain visible even without an
+active allocation. Exact aggregate sums must remain safe integers. Consumption
+creates no cash movement, savings movement, remaining balance or safe-to-spend
+value, and no derived totals are persisted.
 
 # 16. Transfer
 

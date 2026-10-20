@@ -16,6 +16,15 @@ import {
 import { useAuth } from '../../auth/AuthProvider';
 import { buckets } from './fixtures';
 import { readReceivedIncome } from '../../income/income-data';
+import {
+  readBucketConsumption,
+  consumptionOwnerKey,
+} from '../consumption-data';
+import { createMoney } from '../../../domain/money/money';
+jest.mock('../consumption-data', () => ({
+  ...jest.requireActual('../consumption-data'),
+  readBucketConsumption: jest.fn(),
+}));
 jest.mock('../budget-data', () => ({
   ...jest.requireActual('../budget-data'),
   readBudget: jest.fn(),
@@ -45,6 +54,9 @@ const isCurrentUser = jest.fn(() => true);
 beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(readReceivedIncome).mockResolvedValue(143000);
+  jest
+    .mocked(readBucketConsumption)
+    .mockResolvedValue({ totalSpent: createMoney(0, 'USD'), buckets: [] });
   save.mockResolvedValue(undefined);
   isCurrentUser.mockReturnValue(true);
   jest.mocked(readBudget).mockResolvedValue(emptyBudget);
@@ -416,7 +428,7 @@ test('refocus reloads period allocations before showing actual bucket amounts', 
   await act(async () => {
     rootFocus?.();
   });
-  await screen.findByRole('progressbar');
+  await screen.findAllByRole('progressbar');
   expect(screen.queryByText(/Total recibido:/)).not.toBeOnTheScreen();
   await act(async () => {
     finish({
@@ -503,4 +515,36 @@ test('first expected-income digit, saving and reopening render without NumberFor
       descriptor,
     );
   }
+});
+
+test('a period without active allocations still shows spending and manual refresh invalidates consumption', async () => {
+  jest.mocked(readBudget).mockResolvedValue({
+    period: {
+      id: 'f1030000-0000-4000-8000-000000000001',
+      profile_id: profile.id,
+      starts_on: '2026-10-01',
+      ends_on: '2026-10-31',
+      status: 'OPEN',
+      base_currency: 'USD',
+      expected_income_minor: null,
+    },
+    buckets,
+    allocations: [],
+  });
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+  });
+  const invalidate = jest.spyOn(client, 'invalidateQueries');
+  await render(
+    <QueryClientProvider client={client}>
+      <BudgetScreen />
+    </QueryClientProvider>,
+  );
+  expect(await screen.findByText(/Total gastado:/)).toBeOnTheScreen();
+  await userEvent
+    .setup()
+    .press(screen.getByRole('button', { name: 'Actualizar' }));
+  expect(invalidate).toHaveBeenCalledWith({
+    queryKey: consumptionOwnerKey(profile.id),
+  });
 });

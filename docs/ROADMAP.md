@@ -941,7 +941,7 @@ quality and existing database authorization CI are required before merge.
 
 ## FIN-113 — Bucket Consumption
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-111
 
@@ -957,6 +957,21 @@ Calculation must exclude:
 
 * deleted transactions;
 * non-expense movement types.
+
+---
+
+FIN-113 derives complete owner-only bucket consumption through a stable invoker
+aggregate and pure safe-integer Money calculations. Archived and unallocated
+spending remains visible; deleted/non-expense rows are excluded. Invalid legacy
+currency/category mappings fail explicitly rather than produce partial totals.
+Presupuesto shows spending separately, refreshes on focus/manual action, hides
+stale/error figures and responds to expense registration invalidation. No totals
+are persisted and no remaining/safe-to-spend or savings movement is introduced.
+Independent review found no blockers; its multi-bucket/allocation-removal test
+suggestion is covered. Generated types come verbatim from verified CI artifact
+12243801256. Local typecheck, lint, formatting and 532 Jest tests pass. Exact-head
+quality and PostgreSQL CI are required before merge. Native-device
+rendering/navigation remains unverified.
 
 ---
 
@@ -1755,7 +1770,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-113 — Bucket Consumption
+FIN-114 — Protected Savings
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.
