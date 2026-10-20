@@ -84,6 +84,8 @@ select public.register_personal_expense('f1110000-0000-4000-8000-000000000002','
 select throws_ok($$select pg_temp.snapshot()$$,'22003',null,'Final confirmed margin overflow fails closed');
 update public.transactions set deleted_at=now() where id='f1110000-0000-4000-8000-000000000002';
 -- Invalid legacy actual currency must not disappear from a partial total.
+-- Drain validated deferred financial guards before altering this test-only fixture.
+set constraints all immediate;
 reset role;
 alter table public.transactions disable trigger user;
 update public.transactions set currency='EUR' where id='f1110000-0000-4000-8000-000000000001';
