@@ -289,3 +289,38 @@ credential/security changes are authorized by this log.
   lifecycle/navigation tests, generated types, bounded review and exact-head CI.
 - Revisit: Pending owner review of presentation. Historical dashboard navigation,
   category charts and cross-period payments remain outside FIN-121.
+
+## FIN-122: Bounded, audited corrections and recovery
+
+- Question: How can a mistaken amount/date/category be corrected without silently
+  destroying original history, relinking a recurring payment, or manufacturing savings?
+- Options: description-only edits; replacement transactions; broad client monetary
+  UPDATE; a bounded revision-checked correction operation with an append-only audit.
+- Decision: Use the bounded operation. EDIT changes positive safe minor amounts,
+  dates inside the original month, descriptions, and the active spendable category
+  of non-recurring expenses. Currency, owner, scope, type, period, goal, recurring
+  template/month and creation identity never change. DELETE removes financial impact;
+  a linked actual also explicitly cancels its monthly obligation. RESTORE reactivates
+  the same ID under current open-period/funding/category guards, including after stop.
+  The UI provides deleted history, explicit review/confirmation and correction history.
+- Reason: Replacement risks double resolution and lost original meaning. A revision
+  and immutable before/after snapshots preserve the initial record and every correction.
+  A request UUID replays its exact recorded result even after later edits or closure;
+  a stale expected revision or changed payload conflicts, never overwrites newer data.
+- Impact: Monetary UPDATE stays unavailable to clients. A narrowly scoped definer RPC
+  validates auth.uid(), owner, action, complete bounded payload, OPEN month, expected
+  revision and existing financial guards under the owner lock. An audit-only definer
+  trigger appends authoritative row snapshots for every UPDATE, including existing
+  direct description/tombstone paths; callers cannot write or erase audit rows.
+  Direct legacy-safe updates remain audited, while application corrections always use
+  optimistic concurrency. Increased contributions require incremental ordinary funding;
+  decreases and every other correction preserve all goal/general historical prefixes.
+  Legacy savings provenance is never promoted by editing. No cash transfer, conversion,
+  implicit withdrawal, cross-month payment, period lifecycle or remainder operation.
+- Verification: Independent bounded security review of both definer capabilities;
+  negative grant/RLS/auth and immutable-field tests, exact replay/audit/conflict tests,
+  full derived-calculation and real concurrent funding/edit/delete tests; UI validation,
+  confirmation/cancel/navigation/auth/late-response/cache coverage and exact-head CI.
+- Revisit: Accepted under delegated authority, not personally approved by the owner.
+  Pending owner review. Audit retention/account deletion and cross-month correction
+  remain separate future decisions; process-termination request recovery is not added.

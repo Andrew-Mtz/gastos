@@ -1345,7 +1345,7 @@ are recorded for owner review, not claimed as personal confirmation.
 
 ## FIN-122 — Edit and Soft Delete Personal Transaction
 
-**Status:** Not Started
+**Status:** In Progress
 
 **Depends on:** FIN-111
 

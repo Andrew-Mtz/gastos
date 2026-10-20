@@ -2331,3 +2331,22 @@ aggregate source. The current-month-only UI uses profile timezone, owner/month c
 keys under the existing recurring invalidation family, cancellation on blur and
 background, and refetch on focus/resume/manual refresh. Financial figures are hidden
 while loading/refetching, after errors and without a valid current snapshot.
+
+## FIN-122 correction boundary
+
+History opens an owner-scoped, cancellable transaction detail with revision-keyset
+before/after audit pages. Active and deleted month histories have separate keys.
+The shared correction application module validates exact decimal input, request
+identity, immutable references and resulting revision; the UI only reviews and
+confirms that operation. A pending uncertain request survives tab/month navigation
+and is reconciled unchanged, without automatic mutation retries. Auth changes discard
+private state; late results cannot reopen an obsolete selection or affect another
+owner's cache. Process-termination recovery remains outside this task.
+
+ADR-074 documents the two narrow definer capabilities: bounded revision-checked
+transaction correction and trigger-only append audit. No client monetary UPDATE
+permission is added. Financial calculations remain derived from current active
+transactions with original immutable relations. Owner-wide savings, recurring
+(commitment/availability/dashboard), history, income, expense and consumption queries,
+plus the affected monthly budget, are invalidated after confirmed correction. An old
+exact replay result is never installed as current transaction or dashboard state.

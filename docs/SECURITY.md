@@ -1690,3 +1690,27 @@ path, authenticated-only EXECUTE and stable invoker semantics apply to the compl
 snapshot, including the bounded preview. No table or write grant changes. An absent
 owned period returns an explicit missing-period state, never another owner's period
 or a zero financial balance. Existing auth cache clearing remains mandatory.
+
+
+## FIN-122 correction and audit capability
+
+ADR-074 retains all transaction column grants: clients cannot directly update money,
+date, category, owner/scope/type/period/currency, goal, recurrence identity or revision.
+A bounded authenticated-only definer RPC is the sole new monetary correction path.
+It checks non-null auth.uid(), explicitly selects only that owner's personal row,
+requires READ COMMITTED and the owner finance lock before period/row locks, verifies
+OPEN state and expected revision, validates complete action payload and confirmation,
+and updates only permitted columns. No dynamic SQL, caller-supplied owner, service
+credential or general update interface is exposed; search_path is empty. Existing
+row triggers and deferred reserve guards run for its writes. Audit replay is scoped
+to auth.uid() and exact payload and cannot disclose another owner's record.
+
+The second definer capability is a non-callable AFTER UPDATE trigger that appends
+OLD/NEW snapshots under their database row owner. Its binding to transactions UPDATE
+(not caller data) is the authority; it performs no financial mutation. It checks its
+trigger context and immutable owner/identity. Trusted migrations/synthetic tests may
+have no actor, but ordinary client writes still require RLS/authentication. Audit rows
+have owner-only SELECT and no client INSERT/UPDATE/DELETE/TRUNCATE grants. Revisions
+are server-managed; every existing direct description/delete/restore also leaves a
+trail. Independent review and actual PostgreSQL privacy/grant/forgery tests cover both
+definer functions. No household-membership shortcut or production change is allowed.
