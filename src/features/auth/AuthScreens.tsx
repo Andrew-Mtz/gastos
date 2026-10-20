@@ -9,12 +9,13 @@ import { Link } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { useAuth } from './AuthProvider';
+import { CurrencySelect } from './CurrencySelect';
 import {
   authErrorMessage,
   createProfile,
   isTimezone,
   profileKey,
-  profileSchema,
+  profileSetupSchema,
   signInSchema,
   signUpSchema,
   type ProfileInput,
@@ -195,7 +196,7 @@ export function ProfileSetupScreen() {
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<ProfileInput>({
-    resolver: zodResolver(profileSchema),
+    resolver: zodResolver(profileSetupSchema),
     defaultValues: {
       display_name: '',
       base_currency: '',
@@ -211,29 +212,38 @@ export function ProfileSetupScreen() {
           name === 'display_name'
             ? 'Nombre'
             : name === 'base_currency'
-              ? 'Moneda (UYU, USD, EUR...)'
+              ? 'Moneda'
               : 'Zona horaria';
         return (
           <Controller
             key={name}
             control={control}
             name={name}
-            render={({ field }) => (
-              <TextField
-                error={errors[name]?.message}
-                label={label}
-                placeholder={label}
-                value={field.value}
-                onChangeText={field.onChange}
-                onBlur={field.onBlur}
-                ref={field.ref}
-                autoCapitalize={
-                  name === 'base_currency' ? 'characters' : 'none'
-                }
-                autoCorrect={false}
-                editable={!isSubmitting}
-              />
-            )}
+            render={({ field }) =>
+              name === 'base_currency' ? (
+                <CurrencySelect
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  ref={field.ref}
+                  error={errors.base_currency?.message}
+                  disabled={isSubmitting}
+                />
+              ) : (
+                <TextField
+                  error={errors[name]?.message}
+                  label={label}
+                  placeholder={label}
+                  value={field.value}
+                  onChangeText={field.onChange}
+                  onBlur={field.onBlur}
+                  ref={field.ref}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!isSubmitting}
+                />
+              )
+            }
           />
         );
       })}

@@ -342,6 +342,73 @@ test('signup without session shows confirmation pending and does not query/creat
   expect(readProfile).not.toHaveBeenCalled();
   expect(createProfile).not.toHaveBeenCalled();
 });
+test('Profile Setup requires an explicit currency choice before saving', async () => {
+  jest.mocked(supabase.auth.getSession).mockResolvedValue({
+    data: { session: session(a) },
+    error: null,
+  });
+  await mount(<ProfileSetupScreen />);
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText('Nombre'), 'Ana');
+  await user.clear(screen.getByLabelText('Zona horaria'));
+  await user.type(screen.getByLabelText('Zona horaria'), 'UTC');
+  await user.press(screen.getByRole('button', { name: 'Guardar perfil' }));
+  expect(await screen.findByText('Selecciona una moneda.')).toBeOnTheScreen();
+  expect(createProfile).not.toHaveBeenCalled();
+});
+test.each([
+  ['UYU', 'Peso uruguayo (UYU)'],
+  ['USD', 'Dólar estadounidense (USD)'],
+  ['EUR', 'Euro (EUR)'],
+  ['BRL', 'Real brasileño (BRL)'],
+  ['ARS', 'Peso argentino (ARS)'],
+])('Profile Setup saves the selected %s code', async (code, label) => {
+  jest.mocked(supabase.auth.getSession).mockResolvedValue({
+    data: { session: session(a) },
+    error: null,
+  });
+  const saved = { ...profileA, base_currency: code };
+  jest.mocked(createProfile).mockResolvedValue(saved);
+  await mount(<ProfileSetupScreen />);
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText('Nombre'), 'Ana');
+  await user.press(screen.getByRole('combobox', { name: 'Moneda' }));
+  await user.press(screen.getByRole('radio', { name: label }));
+  await user.clear(screen.getByLabelText('Zona horaria'));
+  await user.type(screen.getByLabelText('Zona horaria'), 'UTC');
+  await user.press(screen.getByRole('button', { name: 'Guardar perfil' }));
+  expect(createProfile).toHaveBeenCalledWith(a, {
+    display_name: 'Ana',
+    base_currency: code,
+    timezone: 'UTC',
+  });
+  expect(queryClient.getQueryData(profileKey(a))).toEqual(saved);
+});
+test('Profile Setup locks the selector and prevents repeated submission while saving', async () => {
+  const pending = deferred<typeof profileA>();
+  jest.mocked(supabase.auth.getSession).mockResolvedValue({
+    data: { session: session(a) },
+    error: null,
+  });
+  jest.mocked(createProfile).mockReturnValue(pending.promise);
+  await mount(<ProfileSetupScreen />);
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText('Nombre'), 'Ana');
+  await user.press(screen.getByRole('combobox', { name: 'Moneda' }));
+  await user.press(screen.getByRole('radio', { name: 'Peso uruguayo (UYU)' }));
+  await user.clear(screen.getByLabelText('Zona horaria'));
+  await user.type(screen.getByLabelText('Zona horaria'), 'UTC');
+  await user.press(screen.getByRole('button', { name: 'Guardar perfil' }));
+  expect(screen.getByRole('combobox', { name: 'Moneda' })).toBeDisabled();
+  await user.press(screen.getByRole('combobox', { name: 'Moneda' }));
+  expect(screen.queryByText('Seleccionar moneda')).not.toBeOnTheScreen();
+  await user.press(screen.getByRole('button', { name: 'Guardar perfil' }));
+  expect(createProfile).toHaveBeenCalledTimes(1);
+  pending.resolve(profileA);
+  await waitFor(() =>
+    expect(screen.getByRole('combobox', { name: 'Moneda' })).toBeEnabled(),
+  );
+});
 test('Profile validation/network error preserves input and allows retry', async () => {
   jest
     .mocked(supabase.auth.getSession)
@@ -353,7 +420,8 @@ test('Profile validation/network error preserves input and allows retry', async 
   await mount(<ProfileSetupScreen />);
   const user = userEvent.setup();
   await user.type(screen.getByLabelText('Nombre'), 'Ana');
-  await user.type(screen.getByLabelText('Moneda (UYU, USD, EUR...)'), 'UYU');
+  await user.press(screen.getByRole('combobox', { name: 'Moneda' }));
+  await user.press(screen.getByRole('radio', { name: 'Peso uruguayo (UYU)' }));
   await user.clear(screen.getByLabelText('Zona horaria'));
   await user.type(screen.getByLabelText('Zona horaria'), 'UTC');
   await user.press(screen.getByRole('button', { name: 'Guardar perfil' }));
@@ -361,6 +429,11 @@ test('Profile validation/network error preserves input and allows retry', async 
     await screen.findByText('Revisa el nombre, la moneda y la zona horaria.'),
   ).toBeOnTheScreen();
   expect(screen.getByLabelText('Nombre')).toHaveDisplayValue('Ana');
+  expect(
+    screen.getByRole('combobox', { name: 'Moneda' }),
+  ).toHaveAccessibilityValue({
+    text: 'Peso uruguayo (UYU)',
+  });
   await user.press(
     screen.getByRole('button', { name: 'Reintentar guardar perfil' }),
   );
@@ -391,7 +464,8 @@ test('late Profile creation after identity change cannot refill User A cache', a
   await screen.findByText('route:profile-setup');
   const user = userEvent.setup();
   await user.type(screen.getByLabelText('Nombre'), 'Ana');
-  await user.type(screen.getByLabelText('Moneda (UYU, USD, EUR...)'), 'UYU');
+  await user.press(screen.getByRole('combobox', { name: 'Moneda' }));
+  await user.press(screen.getByRole('radio', { name: 'Peso uruguayo (UYU)' }));
   await user.clear(screen.getByLabelText('Zona horaria'));
   await user.type(screen.getByLabelText('Zona horaria'), 'UTC');
   await user.press(screen.getByRole('button', { name: 'Guardar perfil' }));

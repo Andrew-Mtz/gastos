@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { supabase } from '../../infrastructure/supabase/client';
+import { profileCurrencyOptions } from './profile-currencies';
 
 export const signInSchema = z.object({
   email: z.string().trim().pipe(z.email('Ingresa un correo válido.')),
@@ -44,6 +45,16 @@ export const profileSchema = z.object({
     .refine(
       isTimezone,
       'Ingresa una zona válida, por ejemplo America/Montevideo.',
+    ),
+});
+// Only new-profile UI choices are restricted. The persisted schema remains
+// compatible with currencies saved before the selector was introduced.
+export const profileSetupSchema = profileSchema.extend({
+  base_currency: z
+    .string()
+    .refine(
+      (value) => profileCurrencyOptions.some((option) => option.code === value),
+      'Selecciona una moneda.',
     ),
 });
 const profileRowSchema = profileSchema.extend({
