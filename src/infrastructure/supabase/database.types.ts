@@ -507,6 +507,10 @@ export type Database = {
         Args: { p_month: string };
         Returns: Json;
       };
+      get_personal_safe_to_spend: {
+        Args: { p_budget_period_id: string };
+        Returns: Json;
+      };
       get_personal_savings_goals: {
         Args: { p_through_month: string };
         Returns: Json;
