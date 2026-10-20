@@ -89,3 +89,7 @@ reported that offline validation is unreliable, so it is not standalone compatib
 proof. The subsequent online check returned exit1 with newer SDK57 patch recommendations,
 recorded in the dependency review; no framework upgrade was silently applied.
 Final exact-head integrated CI and review results will be recorded before readiness/merge.
+
+The bounded [Inicio stabilization](HOME_STABILIZATION_FIN126.md) follows this review:
+clearer margin/action hierarchy and sanitized read diagnostics, with unchanged
+financial semantics and a separately pending native checklist.

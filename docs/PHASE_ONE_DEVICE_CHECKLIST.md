@@ -81,3 +81,30 @@ or synthetic-only screenshot when useful. Never report NOT EXERCISED as passed. 
 only redacted, relevant error text, not complete logs. A failed finance/privacy step
 blocks that acceptance branch until diagnosed; an unavailable historical fixture is
 an evidence limitation, not permission to bypass domain rules.
+
+## FIN-121 / FIN-126 Inicio stabilization regression
+
+Use the same safe preflight and synthetic accounts above. This section is a manual
+checklist, not a claim it has been executed.
+
+- At normal and largest practical system text size, read the margin and find Registrar
+  gasto / Registrar ingreso before secondary details. Check narrow-screen wrapping,
+  vertical scrolling, contrast and no clipped currency/sign or truncated warnings.
+- With VoiceOver, verify the margin has its full descriptive label and currency,
+  the calculation button announces collapsed/expanded, and disabled closed-period
+  actions are distinguishable. Expand, collapse, then repeat without a financial write.
+- Check expected income and cumulative protected savings remain visibly distinct from
+  received/spendable money. Unknown or prior obligations and missing-plan guidance must
+  stay visible when the calculation is collapsed. Negative and estimated margins must
+  remain explicit, including a known zero estimate.
+- Open the calculation, refresh, leave Inicio and return, then background/foreground.
+  Old figures and the expanded old calculation must not remain visible while loading
+  or after an error. Return from history/recurring after browsing another month and
+  confirm Inicio links target its displayed current month.
+- If a connection failure occurs naturally in this synthetic environment, verify the
+  entire financial snapshot is hidden, the error has a static MARGEN reference, and
+  Reintentar restores only a validated current snapshot. Do not deliberately damage
+  records, change schema or point the app at another project to provoke other errors.
+- Record only the static reference, tested commit/app version, whether retry recovered,
+  and a redacted symptom. A reference distinguishes failure stages, not their root
+  cause. Do not paste raw provider responses, logs, credentials or personal figures.

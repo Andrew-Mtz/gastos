@@ -416,3 +416,20 @@ credential/security changes are authorized by this log.
   reviewed or confirmed by the owner. Review the conservative reversal restrictions and
   next-month-only horizon on return. Multi-action splits, automatic carry, cross-currency
   transfer, account balances and allocation of an existing unallocated carry are not added.
+
+## FIN-121 / FIN-126: Bounded Inicio stabilization
+
+- Decision: Give the current margin and expense/income actions visual priority. Only
+  Inicio collapses the calculation; incomplete-data, prior-obligation and deficit
+  warnings plus approximate estimates remain visible. Budget keeps the expanded
+  breakdown. Reuse existing components/tokens and do not add a redesign framework.
+- Decision: Replace raw read failures at the Dashboard and margin boundaries with
+  fixed transport/RPC/invalid-contract categories and three recognized SQL-code
+  cases. Display static references and recovery guidance, not provider payloads.
+  A validation failure does not prove a migration mismatch; the user's actual
+  environment and prior margin symptom remain undiagnosed.
+- Impact: No money calculation, source-of-truth, DB, RLS, dependency, auth or cache
+  policy change. Closed-period entry buttons reflect existing mutation restrictions.
+  Details and device checks are in `HOME_STABILIZATION_FIN126.md`.
+- Revisit: These are reversible delegated presentation choices. Current physical
+  font scaling, VoiceOver and runtime/device acceptance remain pending owner testing.

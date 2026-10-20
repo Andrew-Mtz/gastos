@@ -5,6 +5,9 @@ import { commitmentSnapshotSchema } from '../recurring/commitment-data';
 import { recurringOwnerKey } from '../recurring/recurring-data';
 import { parseSavingsSummary } from '../savings/savings-data';
 import { type BudgetPeriod } from './budget-setup';
+import { MarginReadError, marginRpcError } from './margin-read-error';
+
+export { safeToSpendErrorMessage } from './margin-read-error';
 
 // Every relevant mutation already invalidates this owner-wide financial family,
 // including template-only changes and cross-month savings/goal corrections.
@@ -18,12 +21,22 @@ export async function readSafeToSpend(
   period: BudgetPeriod,
   signal?: AbortSignal,
 ) {
-  const query = supabase.rpc('get_personal_safe_to_spend', {
-    p_budget_period_id: z.uuid().parse(period.id),
-  });
-  const { data, error } = await (signal ? query.abortSignal(signal) : query);
-  if (error) throw error;
-  return mapSafeToSpend(period, data);
+  const periodId = z.uuid().parse(period.id);
+  let response;
+  try {
+    const query = supabase.rpc('get_personal_safe_to_spend', {
+      p_budget_period_id: periodId,
+    });
+    response = await (signal ? query.abortSignal(signal) : query);
+  } catch {
+    throw new MarginReadError('TRANSPORT');
+  }
+  if (response.error) throw marginRpcError(response.error, response.status);
+  try {
+    return mapSafeToSpend(period, response.data);
+  } catch {
+    throw new MarginReadError('INVALID_CONTRACT');
+  }
 }
 export function mapSafeToSpend(
   period: BudgetPeriod,
@@ -75,17 +88,4 @@ export function mapSafeToSpend(
   )
     throw new Error('Goal reserves must partition protected savings.');
   return { ...result, components: s };
-}
-export function safeToSpendErrorMessage(error: unknown) {
-  const code =
-    typeof error === 'object' && error !== null && 'code' in error
-      ? error.code
-      : null;
-  if (code === '23514')
-    return 'Hay datos incompatibles de moneda, fondos o ahorro. No se mostrará un margen parcial; revisa los registros.';
-  if (code === '22003')
-    return 'El margen supera los importes que pueden calcularse con precisión. No se mostrará una aproximación.';
-  if (code === '42501')
-    return 'No se pudo acceder a este período. Revisa tu sesión.';
-  return 'No se pudo calcular el margen. No se considerarán cero los gastos ni compromisos; intenta nuevamente.';
 }

@@ -117,7 +117,9 @@ test('infrastructure errors are not zero and sanitized by category', async () =>
   jest
     .mocked(supabase.rpc)
     .mockResolvedValue({ data: null, error: { code: '23514' } } as never);
-  await expect(readSafeToSpend(period)).rejects.toEqual({ code: '23514' });
+  await expect(readSafeToSpend(period)).rejects.toMatchObject({
+    reason: 'INCOMPATIBLE_DATA',
+  });
   expect(safeToSpendErrorMessage({ code: '23514' })).toContain(
     'margen parcial',
   );

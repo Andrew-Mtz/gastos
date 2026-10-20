@@ -255,7 +255,9 @@ test('infrastructure errors and bad requests never become an empty dashboard', a
   jest
     .mocked(supabase.rpc)
     .mockResolvedValue({ data: null, error: { code: '23514' } } as never);
-  await expect(readDashboard(profile.id, period.starts_on)).rejects.toEqual({
-    code: '23514',
+  await expect(
+    readDashboard(profile.id, period.starts_on),
+  ).rejects.toMatchObject({
+    reason: 'INCOMPATIBLE_DATA',
   });
 });
