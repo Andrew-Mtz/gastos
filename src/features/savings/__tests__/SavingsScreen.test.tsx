@@ -66,17 +66,15 @@ beforeEach(() => {
   jest.mocked(useFocusEffect).mockImplementation((cb) => {
     focus = cb;
   });
-  jest
-    .mocked(useAuth)
-    .mockReturnValue({
-      state: { status: 'AUTHENTICATED_READY', userId: profile.id, profile },
-      isCurrentUser,
-      signIn: jest.fn(),
-      signUp: jest.fn(),
-      signOut: jest.fn(),
-      retry: jest.fn(),
-      warning: null,
-    });
+  jest.mocked(useAuth).mockReturnValue({
+    state: { status: 'AUTHENTICATED_READY', userId: profile.id, profile },
+    isCurrentUser,
+    signIn: jest.fn(),
+    signUp: jest.fn(),
+    signOut: jest.fn(),
+    retry: jest.fn(),
+    warning: null,
+  });
 });
 async function openScreen() {
   const client = new QueryClient({
@@ -173,17 +171,15 @@ test('timeout preserves request id, type and amount across navigation and month 
     blur?.();
   });
   jest.mocked(currentMonth).mockReturnValue('2026-11-01');
-  jest
-    .mocked(readSavingsMonth)
-    .mockResolvedValue({
-      ...data,
-      period: {
-        ...period,
-        id: 'f1030000-0000-4000-8000-000000000003',
-        starts_on: '2026-11-01',
-        ends_on: '2026-11-30',
-      },
-    });
+  jest.mocked(readSavingsMonth).mockResolvedValue({
+    ...data,
+    period: {
+      ...period,
+      id: 'f1030000-0000-4000-8000-000000000003',
+      starts_on: '2026-11-01',
+      ends_on: '2026-11-30',
+    },
+  });
   await act(async () => {
     blur = focus?.();
   });
@@ -239,12 +235,10 @@ test('auth change discards private UI and late write cannot invalidate a new own
   await user.press(screen.getByRole('button', { name: 'Guardar aporte' }));
   invalidate.mockClear();
   isCurrentUser.mockReturnValue(false);
-  jest
-    .mocked(useAuth)
-    .mockReturnValue({
-      ...jest.mocked(useAuth)(),
-      state: { status: 'UNAUTHENTICATED' },
-    } as never);
+  jest.mocked(useAuth).mockReturnValue({
+    ...jest.mocked(useAuth)(),
+    state: { status: 'UNAUTHENTICATED' },
+  } as never);
   await rerender(
     <QueryClientProvider client={client}>
       <SavingsScreen />
@@ -291,4 +285,45 @@ test('closed month shows no new actions and null period never claims zero saving
   expect(
     screen.queryByRole('button', { name: 'Retirar de ahorro' }),
   ).not.toBeOnTheScreen();
+});
+
+test('an older replay completion cannot dismiss a newly opened draft', async () => {
+  const resolvers: ((value: never) => void)[] = [];
+  jest.mocked(registerSavings).mockImplementation(
+    () =>
+      new Promise((done) => {
+        resolvers.push(done);
+      }),
+  );
+  await openScreen();
+  const user = await begin();
+  await user.press(screen.getByRole('button', { name: 'Guardar aporte' }));
+  await act(async () => {
+    blur?.();
+    blur = focus?.();
+  });
+  await user.press(
+    await screen.findByRole('button', {
+      name: 'Comprobar movimiento pendiente',
+    }),
+  );
+  await user.press(
+    screen.getByRole('button', { name: 'Comprobar mismo movimiento' }),
+  );
+  await waitFor(() => expect(registerSavings).toHaveBeenCalledTimes(2));
+  expect(jest.mocked(registerSavings).mock.calls[1]).toEqual(
+    jest.mocked(registerSavings).mock.calls[0],
+  );
+  await act(async () => {
+    resolvers[0]({} as never);
+  });
+  await screen.findByText(/Ahorro protegido acumulado/);
+  await begin(true);
+  await act(async () => {
+    resolvers[1]({} as never);
+  });
+  expect(screen.getByLabelText('Importe (USD)')).toHaveDisplayValue('25.50');
+  expect(
+    screen.getByRole('button', { name: 'Revisar retiro' }),
+  ).toBeOnTheScreen();
 });

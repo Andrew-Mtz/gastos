@@ -1590,3 +1590,29 @@ Before implementing security-sensitive functionality, consult:
 * `AGENTS.md` — implementation rules.
 
 Security must not be relaxed silently because another document is ambiguous.
+
+## FIN-115 savings enforcement
+
+Savings registration and availability are authenticated-only SECURITY INVOKER
+functions with empty search paths and explicit owner lookup. No household access,
+service role, definer capability or client privilege over immutable money is added.
+The affirmative withdrawal flag is insert-only evidence of caller intent; it is not
+proof of a human gesture. Direct insert and restore paths enforce it as well.
+Legacy unconfirmed withdrawals remain private/readable and may be soft-deleted,
+but cannot participate in a trustworthy availability summary or be silently restored.
+
+Owner-scoped advisory locks serialize all transaction and allocation writers at
+READ COMMITTED, before their period locks. Deferred integrity checks protect every
+historical currency/month savings prefix against income deletion, allocation changes
+and movement deletion/restoration. Contribution eligibility is checked only on
+creation/restoration, so later ordinary overspending cannot implicitly consume savings.
+Future lifecycle/correction RPCs must acquire the owner lock before period/row locks.
+
+Transactional pgTAP tests cover actual grants, RLS, direct writes, safe bounds,
+legacy correction, historical-prefix integrity and snapshot-isolation rejection.
+A separate local-only Node harness executes real concurrent PostgreSQL sessions,
+observes the second writer waiting on the advisory lock, then verifies rejected
+financial conflicts versus allowed ordinary overspending. Cross-session fixtures
+must be committed to be visible; unlike single-session pgTAP fixtures, this harness
+uses fresh UUIDs and removes only those synthetic rows in a finally block. It can
+only target the named local Supabase Docker container, never a supplied hosted URL.

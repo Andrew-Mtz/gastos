@@ -235,6 +235,7 @@ export type Database = {
           transaction_date: string;
           type: string;
           updated_at: string;
+          withdrawal_confirmed: boolean;
         };
         Insert: {
           amount_minor: number;
@@ -250,6 +251,7 @@ export type Database = {
           transaction_date: string;
           type: string;
           updated_at?: string;
+          withdrawal_confirmed?: boolean;
         };
         Update: {
           amount_minor?: number;
@@ -265,6 +267,7 @@ export type Database = {
           transaction_date?: string;
           type?: string;
           updated_at?: string;
+          withdrawal_confirmed?: boolean;
         };
         Relationships: [
           {
@@ -303,6 +306,11 @@ export type Database = {
         Args: { p_budget_period_id: string };
         Returns: number;
       };
+      get_savings_availability: {
+        Args: { p_budget_period_id: string };
+        Returns: Json;
+      };
+      lock_personal_finance: { Args: never; Returns: undefined };
       prepare_initial_budget_buckets: {
         Args: never;
         Returns: {
@@ -346,6 +354,7 @@ export type Database = {
           transaction_date: string;
           type: string;
           updated_at: string;
+          withdrawal_confirmed: boolean;
         };
         SetofOptions: {
           from: '*';
@@ -378,6 +387,41 @@ export type Database = {
           transaction_date: string;
           type: string;
           updated_at: string;
+          withdrawal_confirmed: boolean;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'transactions';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      register_savings_movement: {
+        Args: {
+          p_amount_minor: number;
+          p_budget_period_id: string;
+          p_currency: string;
+          p_description?: string;
+          p_transaction_date: string;
+          p_transaction_id: string;
+          p_type: string;
+          p_withdrawal_confirmed?: boolean;
+        };
+        Returns: {
+          amount_minor: number;
+          budget_period_id: string;
+          category_id: string | null;
+          created_at: string;
+          currency: string;
+          deleted_at: string | null;
+          description: string | null;
+          id: string;
+          owner_profile_id: string;
+          scope: string;
+          transaction_date: string;
+          type: string;
+          updated_at: string;
+          withdrawal_confirmed: boolean;
         };
         SetofOptions: {
           from: '*';

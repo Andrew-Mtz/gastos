@@ -76,6 +76,9 @@ jobs:
       - name: Test database authorization
         run: npm run db:test
 
+      - name: Test savings write concurrency
+        run: node scripts/test-savings-concurrency.mjs
+
       - name: Generate database types
         run: npm run db:types
 

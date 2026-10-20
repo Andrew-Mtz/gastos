@@ -111,12 +111,10 @@ test.each([
   { spent_minor: Number.MAX_SAFE_INTEGER + 1 },
   { withdrawals_minor: 999999 },
 ])('rejects invalid summary %s', async (patch) => {
-  jest
-    .mocked(supabase.rpc)
-    .mockResolvedValue({
-      data: { ...summary, ...patch },
-      error: null,
-    } as never);
+  jest.mocked(supabase.rpc).mockResolvedValue({
+    data: { ...summary, ...patch },
+    error: null,
+  } as never);
   await expect(
     readSavingsMonth(period.profile_id, period.starts_on),
   ).rejects.toThrow();
