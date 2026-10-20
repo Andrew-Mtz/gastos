@@ -2389,3 +2389,26 @@ independent. Current snapshots explicitly version carry fields; v1 saved closes 
 readable without silently treating malformed current payloads as zero. The periods
 screen shares the existing auth-cleared pending-operation namespace and owner-wide
 financial invalidation for atomic close/dispose and reverse/reopen confirmations.
+
+## FIN-201 closed household foundation
+
+ADR-078 stages `public.households` and `public.household_members` without opening
+any client API. Household identity includes name, currency and immutable creator
+audit; a separate membership collection carries structural role and join/departure
+metadata. Restricted foreign keys preserve Profile and household attribution;
+the unique household/Profile pair prevents duplicate membership identities.
+The pair index supports household lookups and a separate Profile index supports
+future membership lookup. No fixed member count or active-household count is encoded.
+
+Invoker-only empty-search-path update triggers protect household identity/creator
+and membership identity/household/Profile/join time. Household creation time is
+preserved and its update time is database-managed. Both tables enable default-deny
+RLS and revoke all client privileges, with no policies, RPC, definer function,
+Profile projection, financial scope change or application module.
+
+FIN-202 must introduce reviewed active-membership authorization separately.
+FIN-203 invitation semantics require an explicit owner decision; FIN-205 owns
+default split storage. Types must come from the exact disposable Supabase CI
+artifact, not a hand-edited approximation. Foundation SQL tests independently
+exercise constraints, SQL grants, default-deny RLS and actual member personal
+isolation; they do not replace FIN-204 or claim native/production validation.

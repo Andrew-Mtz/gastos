@@ -125,6 +125,12 @@ Household
 
 A household does not own or expose its members' personal finances.
 
+FIN-201 / ADR-078 persists this identity with a nonblank name of at most 100
+characters, a three-uppercase-ASCII-letter currency shape, a restricted creator
+Profile reference, and server-maintained update timestamps. `createdBy` is
+immutable audit provenance, not ownership or membership. No client operation or
+household read access exists in this schema-only stage.
+
 ---
 
 # 5. HouseholdMember
@@ -160,6 +166,21 @@ Initial versions may keep permissions simple.
 * Membership never grants access to another member's personal data.
 * A member may leave a household without deleting historical household activity.
 * Historical shared transactions remain attributable to the original member.
+
+FIN-201 persists one identity per household/Profile pair, restricted references,
+an explicit `OWNER` or `MEMBER` label, a finite join timestamp, and an optional
+finite departure timestamp no earlier than joining. Identity, household, Profile,
+and original join time cannot be reassigned. The structural collection has no
+two-person cap, owner-count rule, or single-active-household constraint. This does
+not resolve the still-open MVP cardinality or detailed role policy: the client
+surface remains closed until FIN-202 defines authorization. A creator need not
+have an ownership membership; no role is inferred or automatically inserted.
+
+Default split weight is deferred to FIN-205. Leaving, rejoining, role changes,
+invitation state, and former-member visibility are not implemented or implicitly
+decided by these fields. Any later rejoin operation must explicitly preserve its
+history rather than rewriting the original join time or silently removing a
+departure marker. FIN-201 creates no financial activity or personal-budget impact.
 
 ---
 

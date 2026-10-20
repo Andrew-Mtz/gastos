@@ -2588,3 +2588,63 @@ explicit owner/reference checks, READ COMMITTED, and owner finance lock before r
 Carry/evidence tables are owner-only SELECT; no household, anon or arbitrary writes.
 The read path is one stable complete scalar snapshot, not paginated client totals.
 No generic ledger, new dependency, automatic action, bank model or later-phase work.
+
+---
+
+# ADR-078 — Closed Household Schema Before Membership Authorization
+
+**Status:** Accepted for FIN-201 implementation under delegated authority,
+pending owner review. Recorded before implementation; not personal owner confirmation.
+
+## Context
+
+FIN-201 introduces household identity and membership structure. FIN-202 separately
+implements active-membership authorization, while FIN-203 requires an explicit
+decision about invitations. Multiple active households in the MVP, detailed role
+permissions, and former-member historical visibility remain open decisions.
+
+## Decision
+
+Persist `households` with an identity, bounded nonblank name, default currency,
+creator Profile reference, and creation/update timestamps. Persist
+`household_members` as a collection with its own identity, household/Profile
+references, `OWNER` or `MEMBER` role label, join timestamp, and optional departure
+timestamp. Require one membership identity per household/Profile pair and a
+departure timestamp no earlier than joining. All references restrict deletion
+rather than cascading away identity or future historical attribution.
+
+`created_by` is immutable creation provenance, not household ownership or access.
+Ownership is represented by an `OWNER` membership label, never inferred from the
+creator. Role labels are structural vocabulary only in FIN-201: no client can use
+them to gain access or mutate membership. Do not add an owner-count constraint,
+role-change operation, or an implicit requirement that the creator is an owner.
+Those behavior decisions belong before the relevant FIN-202 authorization code.
+
+Do not enforce a two-member limit or a single-active-household index. This keeps
+the model compatible with ADR-057 and preserves the still-open MVP cardinality
+decision; it does not authorize the client to create or join multiple households.
+One stable household/Profile pair does not define rejoining or erase membership
+history: any later lifecycle operation must define its audit/history requirements
+before changing a departure marker or adding a lifecycle/history model.
+
+Enable RLS on both tables, create no client policies, and revoke all table
+privileges from PUBLIC, anon, and authenticated. Keep the client surface closed
+even for creators or seeded members. Add no client RPC, household-visible Profile
+projection, invitations, role management, departure/rejoin operation, default
+split, financial scope change, or production data. Active access and its narrow
+grants are a separate reviewed migration in FIN-202.
+
+## Consequences and verification
+
+The schema alone is not a usable household feature. Only disposable synthetic
+fixtures exercise it until an authorized operation exists. Existing personal
+policies remain unchanged; membership never widens personal access. There is no
+cash, budget, spending, or savings impact and no new dependency.
+
+The first PR must test real PostgreSQL constraints, client privilege denials,
+default-deny RLS independently of grants, and actual same-household members'
+isolation from each other's personal rows. Test-only grants roll back and are not
+production permissions. FIN-204 remains the comprehensive household privacy
+suite after FIN-202/203; these foundation tests do not replace it. Commit database
+types only from the exact disposable CI schema artifact, then require reviewed
+exact-head quality and SQL CI before merging.

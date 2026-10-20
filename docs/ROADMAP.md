@@ -1602,7 +1602,36 @@ Allow two users to manage household finances together without exposing their per
 
 ## FIN-201 — Household Schema
 
+**Status:** In Progress — local schema/tests independently reviewed; real SQL CI,
+generated types and final-head verification pending
+
 Create household entities and ownership/membership foundation.
+
+ADR-078 records the closed staging model before implementation. Household creator
+audit is distinct from ownership; memberships are a collection with unique
+household/Profile identity, explicit structural OWNER/MEMBER labels and valid
+join/departure timestamps. Restricted references and immutable attribution guards
+preserve future history. No exactly-two cap, owner-count policy or single-active-
+household assumption is encoded.
+
+Both tables enable RLS with no policies and no client grants. No real households,
+membership UI, RPC, invitation, default split or personal-finance policy change is
+included. FIN-202 owns active access; open cardinality/role/lifecycle decisions must
+be resolved before relevant operations. FIN-203 invitations require an explicit
+owner decision.
+
+The new transactional SQL suite covers constraints, client privilege denial,
+default-deny RLS independent of grants, and actual A/B same-household personal
+isolation against each other and unrelated C. Local Docker/PostgreSQL are unavailable;
+real SQL and generated types await the existing disposable CI workflow. Do not mark
+complete until exact-schema types, independent review and all final-head checks pass.
+Phase 1 current-device acceptance and the earlier margin error remain separate.
+
+Local verification after incorporating Inicio main `0988321`, on pinned Node
+24.14.0 / npm 11.9.0, passed typecheck, lint with Expo telemetry disabled,
+formatting, all 1049 Jest tests in 55 suites, the installed Router parser regression,
+and whitespace checks. These application checks do not execute or validate the
+new PostgreSQL migration/RLS tests.
 
 ---
 
@@ -2086,11 +2115,21 @@ If a completed implementation no longer matches the desired product, create a ne
 
 # 19. Current Next Task
 
-The current next implementation task is:
+The current authorized implementation sequence is:
 
 ```text
-FIN-126 — Phase 1 Review
+FIN-201 — Household Schema
+FIN-202 — Household Membership, after FIN-201 review and passing CI
 ```
 
-Phase 0 foundation review has passed; Phase 1 financial implementation may begin.
+The owner explicitly authorized these independent household foundations while
+FIN-126 current-device acceptance remains open. Automated personal-finance checks
+and the merged Inicio stabilization do not constitute physical acceptance or
+diagnose the previously reported margin error. Do not mark FIN-126 complete.
+
+FIN-203 invitation behavior still requires an explicit owner decision before
+implementation. This authorization does not skip FIN-204 privacy verification or
+include later shared-expense functionality. Resolve the still-open membership
+cardinality and role policy before FIN-202 operations depend on them.
+
 FIN-011 remains explicitly deferred by ADR-065.

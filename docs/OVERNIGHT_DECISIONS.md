@@ -433,3 +433,25 @@ credential/security changes are authorized by this log.
   Details and device checks are in `HOME_STABILIZATION_FIN126.md`.
 - Revisit: These are reversible delegated presentation choices. Current physical
   font scaling, VoiceOver and runtime/device acceptance remain pending owner testing.
+
+## FIN-201: Closed household identity and membership foundation
+
+- Question: How can the first household schema preserve privacy without silently
+  deciding invitations, multiple active households, role powers, or departure access?
+- Decision: ADR-078 records a closed schema before implementation. Households carry
+  creator audit metadata; collection-based memberships carry OWNER/MEMBER labels
+  and join/departure timestamps with one identity per household/Profile pair.
+  All references restrict deletion. No client grants, RLS policies, or RPCs exist.
+- Reason: Structure can be reviewed and tested independently before FIN-202 opens
+  active-member access. Creator provenance is not ownership; no two-person cap,
+  owner-count rule, or single-active-household limit silently fixes an open policy.
+- Impact: No UI, real household/member creation, invitations, role/lifecycle
+  operations, default split, personal-policy change, financial effect, or deployment.
+  Rejoin/history semantics and MVP cardinality remain open until needed. FIN-203
+  invitation behavior requires an explicit owner decision, not a delegated guess.
+- Verification: Real SQL constraints, actual client-grant denial and independent
+  default-deny RLS, A/B same-household personal isolation, generated types from
+  exact CI schema, independent review and final-head CI are required before merge.
+- Revisit: Reversible schema-staging choices accepted under delegated authority,
+  pending owner review. Phase 1 physical acceptance and the prior margin error
+  remain separate and unresolved; this work neither diagnoses nor closes them.
