@@ -41,7 +41,7 @@ jest.mock('../../income/income-form', () => ({
   ...jest.requireActual('../../income/income-form'),
   financialDate: jest.fn(),
 }));
-const isCurrentUser = jest.fn(() => true);
+const isCurrentUser = jest.fn((_id: string) => true);
 let focus: (() => void | (() => void)) | undefined, blur: void | (() => void);
 beforeEach(() => {
   jest.useFakeTimers();
@@ -322,7 +322,7 @@ test('fixed template has no actual confirmation action', async () => {
     screen.queryByRole('button', { name: 'Confirmar Electricidad' }),
   ).not.toBeOnTheScreen();
 });
-test('duplicate taps blocked and late completion cannot populate another authenticated session', async () => {
+test('duplicate taps blocked and late completion cannot repopulate a logged-out session', async () => {
   let done!: (value: never) => void;
   jest.mocked(resolveRecurring).mockImplementation(
     () =>
@@ -378,4 +378,62 @@ test('focus refresh and month navigation reload recurring data', async () => {
       expect.any(AbortSignal),
     ),
   );
+});
+
+test('a direct account switch discards pending identity and old completion cannot dismiss the new owner draft', async () => {
+  let done!: (value: never) => void;
+  jest.mocked(resolveRecurring).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        done = resolve;
+      }),
+  );
+  const { client, rerender } = await openScreen();
+  const user = await beginResolve();
+  await user.press(
+    screen.getByRole('button', { name: 'Confirmar importe real' }),
+  );
+  const second = { ...profile, id: 'f0050000-0000-4000-8000-000000000002' };
+  const otherTemplate = {
+    ...template,
+    id: 'f1170000-0000-4000-8000-000000000002',
+    ownerProfileId: second.id,
+    name: 'Internet privado',
+  };
+  jest.mocked(readRecurringMonth).mockResolvedValue({
+    ...screenData,
+    period: { ...period, profile_id: second.id },
+    items: [{ ...screenData.items[0], template: otherTemplate }],
+  });
+  isCurrentUser.mockImplementation((id) => id === second.id);
+  jest.mocked(useAuth).mockReturnValue({
+    ...jest.mocked(useAuth)(),
+    state: {
+      status: 'AUTHENTICATED_READY',
+      userId: second.id,
+      profile: second,
+    },
+  });
+  await rerender(
+    <QueryClientProvider client={client}>
+      <RecurringScreen />
+    </QueryClientProvider>,
+  );
+  await act(async () => {
+    blur = focus?.();
+  });
+  await screen.findByText('Internet privado');
+  expect(screen.queryByText('Electricidad')).not.toBeOnTheScreen();
+  expect(
+    screen.queryByRole('button', { name: 'Comprobar operación pendiente' }),
+  ).not.toBeOnTheScreen();
+  await user.press(screen.getByRole('button', { name: 'Crear plantilla' }));
+  await user.type(screen.getByLabelText('Nombre'), 'Nueva plantilla');
+  const invalidate = jest.spyOn(client, 'invalidateQueries');
+  invalidate.mockClear();
+  await act(async () => {
+    done({} as never);
+  });
+  expect(screen.getByLabelText('Nombre')).toHaveDisplayValue('Nueva plantilla');
+  expect(invalidate).not.toHaveBeenCalled();
 });

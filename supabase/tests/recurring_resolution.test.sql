@@ -62,6 +62,15 @@ select throws_ok($$insert into public.transactions(owner_profile_id,budget_perio
  values(auth.uid(),'f1030000-0000-4000-8000-000000000002','EXPENSE',1,'USD',pg_temp.month(1),'f1070000-0000-4000-8000-000000000002','f1170000-0000-4000-8000-000000000001',pg_temp.month(1))$$,'23514',null,'Direct link cannot forge category');
 select throws_ok($$insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,category_id,recurring_template_id,recurring_month)
  values(auth.uid(),'f1030000-0000-4000-8000-000000000002','EXPENSE',1,'USD',pg_temp.month(1),'f1070000-0000-4000-8000-000000000001','f1170000-0000-4000-8000-000000000001',pg_temp.month())$$,'23514',null,'Direct link cannot forge month');
+-- Direct clients cannot bypass the resolver with a forged classification or partial pair.
+select throws_ok($$insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,category_id,recurring_template_id,recurring_month)
+ values(auth.uid(),'f1030000-0000-4000-8000-000000000002','EXPENSE',1,'EUR',pg_temp.month(1),'f1070000-0000-4000-8000-000000000001','f1170000-0000-4000-8000-000000000003',pg_temp.month(1))$$,'23514',null,'Direct link requires original currency');
+select throws_ok($$insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,category_id,recurring_template_id,recurring_month)
+ values(auth.uid(),'f1030000-0000-4000-8000-000000000002','EXPENSE',1,'USD',pg_temp.month(1),'f1070000-0000-4000-8000-000000000001','f1170000-0000-4000-8000-000000000002',pg_temp.month(1))$$,'23514',null,'Direct link cannot resolve a fixed definition');
+select throws_ok($$insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,category_id,recurring_month)
+ values(auth.uid(),'f1030000-0000-4000-8000-000000000002','EXPENSE',1,'USD',pg_temp.month(1),'f1070000-0000-4000-8000-000000000001',pg_temp.month(1))$$,'23514',null,'Direct occurrence month requires template');
+select throws_ok($$insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,category_id,recurring_template_id)
+ values(auth.uid(),'f1030000-0000-4000-8000-000000000002','EXPENSE',1,'USD',pg_temp.month(1),'f1070000-0000-4000-8000-000000000001','f1170000-0000-4000-8000-000000000003')$$,'23514',null,'Direct template requires occurrence month');
 select throws_ok($$update public.transactions set recurring_template_id=null$$,'42501',null,'Actual cannot be unlinked');
 select throws_ok($$update public.transactions set recurring_month=pg_temp.month(1)$$,'42501',null,'Occurrence cannot move');
 update public.transactions set deleted_at=now() where id='f1180000-0000-4000-8000-000000000001';
