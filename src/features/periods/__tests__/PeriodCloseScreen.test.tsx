@@ -1,0 +1,294 @@
+import { createContext, useContext, useEffect } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
+import {
+  act,
+  render,
+  screen,
+  userEvent,
+  waitFor,
+} from '@testing-library/react-native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useAuth, type AuthState } from '../../auth/AuthProvider';
+import { PeriodCloseScreen } from '../PeriodCloseScreen';
+import {
+  readPeriodClose,
+  closePeriod,
+  mapPeriodClose,
+  periodCloseKey,
+} from '../period-close-data';
+import {
+  closeContext,
+  closedContext,
+  closure,
+  profile,
+  period,
+} from './fixtures';
+import { recurringOwnerKey } from '../../recurring/recurring-data';
+jest.mock('../period-close-data', () => ({
+  ...jest.requireActual('../period-close-data'),
+  readPeriodClose: jest.fn(),
+  closePeriod: jest.fn(),
+}));
+jest.mock('../../../infrastructure/supabase/client', () => ({ supabase: {} }));
+jest.mock('../../auth/AuthProvider', () => ({ useAuth: jest.fn() }));
+jest.mock('expo-router', () => ({
+  router: { push: jest.fn() },
+  useFocusEffect: jest.fn(),
+  useLocalSearchParams: jest.fn(),
+}));
+jest.mock('expo-crypto', () => ({
+  randomUUID: () => 'f1230000-0000-4000-8000-000000000050',
+}));
+const Focus = createContext(true);
+let state: AuthState;
+let listener: (s: AppStateStatus) => void;
+const mapped = () =>
+  mapPeriodClose(profile.id, period.starts_on, closeContext());
+beforeEach(() => {
+  jest.clearAllMocks();
+  jest.useFakeTimers();
+  jest.setSystemTime(new Date('2026-11-02T12:00:00Z'));
+  state = { status: 'AUTHENTICATED_READY', userId: profile.id, profile };
+  jest.mocked(useAuth).mockImplementation(
+    () =>
+      ({
+        state,
+        isCurrentUser: (owner: string) =>
+          state.status === 'AUTHENTICATED_READY' && state.userId === owner,
+      }) as ReturnType<typeof useAuth>,
+  );
+  jest
+    .mocked(useLocalSearchParams)
+    .mockReturnValue({ month: period.starts_on });
+  jest.mocked(useFocusEffect).mockImplementation(function useFocus(cb) {
+    const focused = useContext(Focus);
+    useEffect(() => {
+      if (focused) return cb();
+    }, [cb, focused]);
+  });
+  jest.spyOn(AppState, 'addEventListener').mockImplementation((_event, cb) => {
+    listener = cb;
+    return { remove: jest.fn() };
+  });
+  jest.mocked(readPeriodClose).mockResolvedValue(mapped());
+  jest.mocked(closePeriod).mockResolvedValue(closure());
+});
+afterEach(() => {
+  jest.restoreAllMocks();
+  jest.useRealTimers();
+});
+async function open() {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+  });
+  const tree = (focused = true) => (
+    <QueryClientProvider client={client}>
+      <Focus.Provider value={focused}>
+        <PeriodCloseScreen />
+      </Focus.Provider>
+    </QueryClientProvider>
+  );
+  const view = await render(tree());
+  return { client, tree, ...view };
+}
+async function review() {
+  await userEvent
+    .setup()
+    .press(await screen.findByRole('button', { name: 'Revisar cierre' }));
+}
+async function confirm() {
+  await review();
+  await userEvent
+    .setup()
+    .press(screen.getByRole('button', { name: 'Confirmar cierre' }));
+}
+test('reviews exact month, monthly versus as-of savings, confirms explicitly and invalidates owner-wide data', async () => {
+  const { client } = await open();
+  const spy = jest.spyOn(client, 'invalidateQueries');
+  await review();
+  expect(closePeriod).not.toHaveBeenCalled();
+  expect(screen.getByText(/Reabrir aún no está disponible/)).toBeOnTheScreen();
+  expect(
+    screen.getByText(/Ahorro protegido acumulado hasta el mes/),
+  ).toBeOnTheScreen();
+  await userEvent
+    .setup()
+    .press(screen.getByRole('button', { name: 'Confirmar cierre' }));
+  expect(await screen.findByText(/Cierre confirmado/)).toBeOnTheScreen();
+  expect(closePeriod).toHaveBeenCalledTimes(1);
+  expect(spy).toHaveBeenCalledWith({ queryKey: recurringOwnerKey(profile.id) });
+  expect(spy.mock.calls.length).toBeGreaterThanOrEqual(7);
+});
+test('cancel and navigation discard unconfirmed review without writing', async () => {
+  await open();
+  await review();
+  await userEvent
+    .setup()
+    .press(screen.getByRole('button', { name: 'Cancelar' }));
+  expect(
+    screen.queryByRole('button', { name: 'Confirmar cierre' }),
+  ).not.toBeOnTheScreen();
+  await review();
+  await userEvent
+    .setup()
+    .press(screen.getByRole('button', { name: 'Mes anterior' }));
+  expect(
+    screen.queryByRole('button', { name: 'Confirmar cierre' }),
+  ).not.toBeOnTheScreen();
+  expect(closePeriod).not.toHaveBeenCalled();
+});
+test('current incomplete month hides closing even with a completed-looking device date', async () => {
+  const data = closeContext();
+  data.financial_month = period.starts_on;
+  data.can_close = false;
+  jest
+    .mocked(readPeriodClose)
+    .mockResolvedValue(mapPeriodClose(profile.id, period.starts_on, data));
+  await open();
+  expect(
+    await screen.findByText(/aún no terminó según la fecha del servidor/),
+  ).toBeOnTheScreen();
+  expect(
+    screen.queryByRole('button', { name: 'Revisar cierre' }),
+  ).not.toBeOnTheScreen();
+});
+test('prior obligations block close and link to correct month without backdate suggestion', async () => {
+  const data = closeContext();
+  data.summary.availability.commitments.prior_unresolved_count = 1;
+  data.can_close = false;
+  jest
+    .mocked(readPeriodClose)
+    .mockResolvedValue(mapPeriodClose(profile.id, period.starts_on, data));
+  await open();
+  expect(
+    await screen.findByText(/No se puede cerrar mientras existan/),
+  ).toBeOnTheScreen();
+  expect(
+    screen.queryByRole('button', { name: 'Revisar cierre' }),
+  ).not.toBeOnTheScreen();
+  await userEvent
+    .setup()
+    .press(screen.getByRole('button', { name: 'Revisar obligaciones' }));
+  expect(router.push).toHaveBeenLastCalledWith({
+    pathname: '/recurring',
+    params: { month: period.starts_on },
+  });
+});
+test('closed immutable evidence readable with history but no ordinary close action', async () => {
+  jest
+    .mocked(readPeriodClose)
+    .mockResolvedValue(
+      mapPeriodClose(profile.id, period.starts_on, closedContext()),
+    );
+  await open();
+  expect(
+    await screen.findByText('Resumen conservado al cierre'),
+  ).toBeOnTheScreen();
+  expect(screen.getByText(/registrado al cierre/)).toBeOnTheScreen();
+  expect(
+    screen.queryByRole('button', { name: 'Revisar cierre' }),
+  ).not.toBeOnTheScreen();
+  await userEvent
+    .setup()
+    .press(screen.getByRole('button', { name: 'Ver movimientos de este mes' }));
+  expect(router.push).toHaveBeenLastCalledWith({
+    pathname: '/history',
+    params: { month: period.starts_on },
+  });
+});
+test('uncertain request retains identical payload through navigation and retries exactly once', async () => {
+  jest.mocked(closePeriod).mockRejectedValueOnce(new Error('Network'));
+  const { rerender, tree } = await open();
+  await confirm();
+  expect(
+    await screen.findByRole('button', { name: 'Comprobar cierre pendiente' }),
+  ).toBeOnTheScreen();
+  const request = jest.mocked(closePeriod).mock.calls[0][0];
+  await rerender(tree(false));
+  await rerender(tree());
+  await userEvent
+    .setup()
+    .press(
+      await screen.findByRole('button', { name: 'Comprobar cierre pendiente' }),
+    );
+  expect(closePeriod).toHaveBeenLastCalledWith(request);
+  expect(closePeriod).toHaveBeenCalledTimes(2);
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('button', { name: 'Comprobar cierre pendiente' }),
+    ).not.toBeOnTheScreen(),
+  );
+});
+test('stale preview rejection clears pending and requires fresh confirmation', async () => {
+  jest.mocked(closePeriod).mockRejectedValueOnce({ code: '40001' });
+  await open();
+  await confirm();
+  expect(
+    await screen.findByText(/vuelve a revisar antes de cerrar/),
+  ).toBeOnTheScreen();
+  expect(
+    screen.queryByRole('button', { name: 'Comprobar cierre pendiente' }),
+  ).not.toBeOnTheScreen();
+  expect(
+    screen.queryByRole('button', { name: 'Confirmar cierre' }),
+  ).not.toBeOnTheScreen();
+});
+test('blur/background cancel review and hide all financial content until fresh reads', async () => {
+  const { client, rerender, tree } = await open();
+  await review();
+  await rerender(tree(false));
+  expect(
+    screen.queryByText(/Ingresos recibidos del mes/),
+  ).not.toBeOnTheScreen();
+  await rerender(tree());
+  await review();
+  await act(async () => listener('background'));
+  expect(
+    screen.queryByRole('button', { name: 'Confirmar cierre' }),
+  ).not.toBeOnTheScreen();
+  expect(
+    screen.queryByText(/Ingresos recibidos del mes/),
+  ).not.toBeOnTheScreen();
+  await act(async () => listener('active'));
+  expect(
+    await screen.findByRole('button', { name: 'Revisar cierre' }),
+  ).toBeOnTheScreen();
+  expect(
+    client.getQueryData(periodCloseKey(profile.id, period.starts_on)),
+  ).toBeDefined();
+});
+test('refresh error hides cached summary and confirmation', async () => {
+  await open();
+  await review();
+  jest.mocked(readPeriodClose).mockRejectedValueOnce(new Error('Offline'));
+  await userEvent
+    .setup()
+    .press(screen.getByRole('button', { name: 'Actualizar mes' }));
+  expect(
+    await screen.findByText(/No se pudo cargar un resumen válido/),
+  ).toBeOnTheScreen();
+  expect(
+    screen.queryByText(/Ingresos recibidos del mes/),
+  ).not.toBeOnTheScreen();
+});
+test('late success after logout does not restore private UI or invalidate another owner', async () => {
+  let resolve!: (value: ReturnType<typeof closure>) => void;
+  jest.mocked(closePeriod).mockReturnValue(
+    new Promise((r) => {
+      resolve = r;
+    }),
+  );
+  const { client, rerender, tree } = await open();
+  await confirm();
+  const spy = jest.spyOn(client, 'invalidateQueries');
+  spy.mockClear();
+  state = { status: 'UNAUTHENTICATED' };
+  await rerender(tree());
+  await act(async () => resolve(closure()));
+  expect(screen.queryByText(/Cierre confirmado/)).not.toBeOnTheScreen();
+  expect(
+    screen.queryByText(/Ingresos recibidos del mes/),
+  ).not.toBeOnTheScreen();
+  expect(spy).not.toHaveBeenCalled();
+});

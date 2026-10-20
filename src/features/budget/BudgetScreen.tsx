@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { View } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -161,6 +161,12 @@ function PersonalBudget({ profile }: { profile: Profile }) {
   return (
     <Screen scroll>
       <AppText variant="title">Presupuesto</AppText>
+      <Button
+        variant="secondary"
+        onPress={() => router.push({ pathname: '/periods', params: { month } })}
+      >
+        Cerrar o consultar meses
+      </Button>
       <AppText variant="section">
         {month.slice(0, 7)} · {currency}
       </AppText>

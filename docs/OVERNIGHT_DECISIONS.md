@@ -324,3 +324,27 @@ credential/security changes are authorized by this log.
 - Revisit: Accepted under delegated authority, not personally approved by the owner.
   Pending owner review. Audit retention/account deletion and cross-month correction
   remain separate future decisions; process-termination request recovery is not added.
+
+## FIN-123: Completed months, unresolved obligations and immutable close evidence
+
+- Question: Can a month close with unresolved bills, and what remains historically true
+  if earlier corrections later change cumulative savings?
+- Options: close with qualified warnings; silently cancel/carry obligations; block until
+  resolved. Recompute close summaries forever, or store immutable as-of evidence.
+- Decision: Block closure for every selected-month/prior unresolved obligation. The
+  server clock and persisted financial timezone determine completed-month eligibility.
+  Store immutable as-of summary, close request UUID and lifecycle version. Require a
+  fresh matching preview and explicit confirmation under owner-wide serialization.
+- Reason: Pending money is not free, unsupported cross-period payments cannot be
+  invented, and recomputation would misleadingly rewrite what the user finalized.
+- Impact: No automatic cancellation, backdating, savings movement, rollover, reopen or
+  remainder action. Snapshot cumulative savings are historical, not a live balance.
+  FIN-124 must advance lifecycle version and retain closes; FIN-125 must revalidate
+  current authorized financial state. Narrow definer RPC is needed without status grants.
+- Verification: Owner/anonymous/grant/forgery tests; month/timezone, unresolved bills,
+  snapshot preservation, exact replay/stale version, all closed mutation guards, real
+  concurrent close/write scenarios and UI confirmation/navigation/auth/cache tests;
+  matching-head generated types, bounded review and exact-head full CI before merge.
+- Revisit: Delegated choice, not personally reviewed by the owner. Review strict pending
+  obligation policy and as-of presentation after waking; unsupported cross-month
+  settlement and process-termination request recovery remain separate work.

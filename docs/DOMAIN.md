@@ -1884,3 +1884,14 @@ after template stop under the same guards; corrected FIXED amounts survive resto
 Dates cannot cross the original month or be backdated to clear an older obligation.
 Closed periods deny new corrections. Exact request replay is read-only and returns its
 recorded revision, not a claim that no later correction exists.
+
+## FIN-123 completed-month close
+
+ADR-075 makes closing explicit, server-timezone-authoritative and unavailable while
+any selected-month or prior obligation is unresolved. It records OPEN → CLOSED,
+closed time, a monotonic lifecycle version and immutable as-of summary evidence.
+The summary is historical, including cumulative savings as observed at that instant;
+later authorized older-month corrections do not rewrite it. Bucket deficits remain
+negative and unconfigured availability remains unknown. Closing moves no money,
+cancels no obligations and implies no rollover or remainder disposition. A stale
+preview/version conflicts; exact UUID replay only reads the original result.

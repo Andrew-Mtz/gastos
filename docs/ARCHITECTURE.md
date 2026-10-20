@@ -2350,3 +2350,18 @@ transactions with original immutable relations. Owner-wide savings, recurring
 (commitment/availability/dashboard), history, income, expense and consumption queries,
 plus the affected monthly budget, are invalidated after confirmed correction. An old
 exact replay result is never installed as current transaction or dashboard state.
+
+## FIN-123 explicit period lifecycle
+
+The hidden periods route, reached from Presupuesto, browses calendar months and reads
+one owner-scoped server close context. A complete current preview is reviewed before
+confirmation; server time/timezone, lifecycle version and fingerprint are checked again
+under the owner finance lock. The narrow definer RPC atomically appends immutable
+close evidence and changes OPEN to CLOSED, without monetary writes. Closed views
+read saved evidence, never current recomputation. Existing history remains accessible.
+
+Uncertain in-session requests retain UUID/version/fingerprint across navigation and
+are explicitly reconciled; cancelled previews, blur/background, month and auth changes
+cannot submit stale UI. Auth changes discard private state and late responses. Every
+close result/rejection invalidates owner-wide derived financial queries plus the target
+budget. No automatic retry, process-restart recovery, reopen or remainder disposition.

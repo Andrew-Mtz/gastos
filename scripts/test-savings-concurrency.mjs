@@ -170,7 +170,8 @@ async function scenario(
   } finally {
     // This target is an ephemeral local Supabase container, and these UUIDs were
     // created by this invocation. No production DELETE capability is introduced.
-    await run(`begin;delete from public.transaction_revisions where owner_profile_id='${owner}';
+    await run(`begin;delete from public.budget_period_closures where owner_profile_id='${owner}';
+      delete from public.transaction_revisions where owner_profile_id='${owner}';
       delete from public.transactions where owner_profile_id='${owner}';
       delete from public.budget_allocations where budget_period_id in ('${september}','${october}');
       delete from public.savings_goals where owner_profile_id='${owner}';
@@ -668,4 +669,74 @@ await scenario(
       '500',
     ),
   /Contribution exceeds/,
+);
+
+// FIN-123: close and every financial writer share the existing owner lock.
+const closeSeptember = (
+  c,
+) => `select public.close_personal_budget_period('${c.resolution}','${c.september}',0,
+  public.get_personal_period_close_context('2026-09-01')->>'snapshot_hash',true);`;
+const closedExactlyOnce = async (c) =>
+  assert.equal(
+    (
+      await run(`select status||':'||lifecycle_version||':'||
+ (select count(*) from public.budget_period_closures where budget_period_id='${c.september}')
+ from public.budget_periods where id='${c.september}';`)
+    ).trim(),
+    'CLOSED:1:1',
+  );
+for (const [name, write] of [
+  ['expense', (c) => c.expense(1)],
+  [
+    'income',
+    (c) =>
+      `select public.register_income('${c.template}','${c.september}',1,'USD','2026-09-02');`,
+  ],
+  ['correction', (c) => editIncome(c, 900)],
+  ['savings withdrawal', (c) => c.move('SAVINGS_WITHDRAWAL', 1)],
+  ['savings contribution', (c) => c.move('SAVINGS_CONTRIBUTION', 1)],
+  [
+    'allocation',
+    (c) =>
+      `select public.save_budget_allocations('${c.september}','[{"budget_bucket_id":"${c.ordinary}","percentage_basis_points":7000},{"budget_bucket_id":"${c.savings}","percentage_basis_points":3000}]');`,
+  ],
+]) {
+  await scenario(
+    `close first rejects concurrent ${name}`,
+    closeSeptember,
+    write,
+    false,
+    closedExactlyOnce,
+    /open|OPEN|closed/,
+  );
+  await scenario(
+    `${name} first makes the waiting close preview stale`,
+    write,
+    closeSeptember,
+    false,
+    async (c) =>
+      assert.equal(
+        (
+          await run(
+            `select status||':'||(select count(*) from public.budget_period_closures where budget_period_id='${c.september}') from public.budget_periods where id='${c.september}';`,
+          )
+        ).trim(),
+        'OPEN:0',
+      ),
+    /Close preview changed/,
+  );
+}
+await scenario(
+  'duplicate close returns one immutable event',
+  closeSeptember,
+  closeSeptember,
+  true,
+  closedExactlyOnce,
+);
+await scenario(
+  'close serializes with future recurring stop without changing historical facts',
+  closeSeptember,
+  (c) => c.stop,
+  true,
+  closedExactlyOnce,
 );

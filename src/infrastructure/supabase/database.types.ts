@@ -98,6 +98,53 @@ export type Database = {
           },
         ];
       };
+      budget_period_closures: {
+        Row: {
+          budget_period_id: string;
+          closed_at: string;
+          expected_lifecycle_version: number;
+          financial_timezone: string;
+          id: string;
+          lifecycle_version: number;
+          owner_profile_id: string;
+          snapshot_hash: string;
+          snapshot_version: number;
+          summary: Json;
+        };
+        Insert: {
+          budget_period_id: string;
+          closed_at: string;
+          expected_lifecycle_version: number;
+          financial_timezone: string;
+          id: string;
+          lifecycle_version: number;
+          owner_profile_id: string;
+          snapshot_hash: string;
+          snapshot_version?: number;
+          summary: Json;
+        };
+        Update: {
+          budget_period_id?: string;
+          closed_at?: string;
+          expected_lifecycle_version?: number;
+          financial_timezone?: string;
+          id?: string;
+          lifecycle_version?: number;
+          owner_profile_id?: string;
+          snapshot_hash?: string;
+          snapshot_version?: number;
+          summary?: Json;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'budget_period_closures_budget_period_id_owner_profile_id_fkey';
+            columns: ['budget_period_id', 'owner_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'budget_periods';
+            referencedColumns: ['id', 'profile_id'];
+          },
+        ];
+      };
       budget_periods: {
         Row: {
           base_currency: string;
@@ -106,6 +153,7 @@ export type Database = {
           ends_on: string;
           expected_income_minor: number | null;
           id: string;
+          lifecycle_version: number;
           profile_id: string;
           starts_on: string;
           status: string;
@@ -118,6 +166,7 @@ export type Database = {
           ends_on: string;
           expected_income_minor?: number | null;
           id?: string;
+          lifecycle_version?: number;
           profile_id: string;
           starts_on: string;
           status?: string;
@@ -130,6 +179,7 @@ export type Database = {
           ends_on?: string;
           expected_income_minor?: number | null;
           id?: string;
+          lifecycle_version?: number;
           profile_id?: string;
           starts_on?: string;
           status?: string;
@@ -484,6 +534,16 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      close_personal_budget_period: {
+        Args: {
+          p_budget_period_id: string;
+          p_confirmed: boolean;
+          p_expected_lifecycle_version: number;
+          p_id: string;
+          p_snapshot_hash: string;
+        };
+        Returns: Json;
+      };
       correct_personal_transaction: {
         Args: {
           p_action: string;
@@ -565,6 +625,10 @@ export type Database = {
         Returns: Json;
       };
       get_personal_dashboard: { Args: { p_month: string }; Returns: Json };
+      get_personal_period_close_context: {
+        Args: { p_month: string };
+        Returns: Json;
+      };
       get_personal_recurring_month: {
         Args: { p_month: string };
         Returns: Json;
@@ -792,6 +856,7 @@ export type Database = {
           ends_on: string;
           expected_income_minor: number | null;
           id: string;
+          lifecycle_version: number;
           profile_id: string;
           starts_on: string;
           status: string;

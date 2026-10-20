@@ -53,6 +53,7 @@ const routes = {
   '(app)/transactions': Transactions,
   '(app)/expenses': () => <Text>Gastos personales</Text>,
   '(app)/history': () => <Text>Historial personal</Text>,
+  '(app)/periods': () => <Text>Cierre de meses</Text>,
   '(app)/savings': () => <Text>Ahorro personal</Text>,
   '(app)/recurring': () => <Text>Gastos recurrentes</Text>,
   '(app)/savings-goals': () => <Text>Metas personales</Text>,

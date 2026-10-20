@@ -1397,7 +1397,7 @@ not claimed as personal approval.
 
 ## FIN-123 — Close Budget Period
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-121
 
@@ -1411,6 +1411,38 @@ Allow a user to close a completed month.
 * summary;
 * normal editing blocked afterward;
 * closed history remains readable.
+
+### Implementation evidence
+
+An explicit historical-month screen reviews one complete server snapshot before close.
+The server's clock and persisted financial timezone require a completed month, and any
+selected-month or prior unresolved obligation blocks closure, including unknown and
+zero estimates. No obligation is silently cancelled or backdated. No transaction,
+savings contribution, rollover or remainder disposition occurs.
+
+ADR-075 records immutable as-of evidence with UUID, lifecycle version, original timezone
+and deterministic fingerprint. Cumulative savings are labeled as recorded at close;
+later explicit older-month corrections do not rewrite them. Exact replay never mutates
+or re-closes a later lifecycle. A narrow owner-locked definer RPC is the sole status
+writer; no status grants or existing closed-write protections are weakened. History
+stays owner-readable, including legacy closed months without stored evidence. Pending
+requests survive in-session navigation unchanged; auth/background/navigation resets and
+owner-wide invalidation prevent stale private UI.
+
+One bounded independent review found an all-null composite edge for legacy closed
+months. The explicit-null fix and SQL regression were rechecked with no remaining P1/P2
+finding. Initial disposable CI also exposed the old exact-column assertion, updated to
+include the intentionally approved lifecycle version without weakening the contract.
+Local full checks pass 969 Jest tests in 53 suites, typecheck, lint and formatting.
+Disposable CI passed 1,691 SQL assertions in 28 files and 42 real concurrent-session
+scenarios, including close races with income, expenses, corrections, savings,
+allocations, duplicate requests and recurring stop. Generated types were copied verbatim
+from artifact 12259306181 after verifying workflow source head
+8ba1499018f7f78d4b3e679eee2948c4b6c01db1 and ZIP SHA256
+e4a7c74c10a7cf33aefa0fc3c109080c7817157eeecef123db434bee96eaa379.
+Final exact-head quality/database/type-drift CI gates merge. No production database
+change/deployment, native/device QA, dependency change, reopen or remainder action is
+included. Delegated lifecycle choices remain pending owner review.
 
 ---
 
@@ -1985,7 +2017,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-123 — Close Budget Period
+FIN-124 — Reopen Budget Period
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.
