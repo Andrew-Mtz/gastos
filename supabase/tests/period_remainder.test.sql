@@ -56,6 +56,7 @@ select throws_ok($$select pg_temp.dispose(amount=>151)$$,'23514',null,'Global ca
 select throws_ok($$select pg_temp.dispose(amount=>0)$$,'22023',null,'Zero amount denied');
 select throws_ok($$select pg_temp.dispose(amount=>9007199254740992)$$,'22023',null,'Unsafe amount denied');
 select throws_ok($$select pg_temp.dispose(confirmed=>false)$$,'22023',null,'Explicit disposition confirmation required');
+select throws_ok($$select public.close_and_dispose_personal_remainder(pg_temp.id(100),pg_temp.id(1),0,pg_temp.context()->>'preview_hash','SAVINGS',1)$$,'22023',null,'Omitted confirmation safely defaults to false');
 select throws_ok($$select pg_temp.dispose(confirmed=>null)$$,'22023',null,'Null confirmation denied');
 select throws_ok($$select pg_temp.dispose(version=>null)$$,'22023',null,'Null version denied');
 select throws_ok($$select pg_temp.dispose(fingerprint=>repeat('a',32))$$,'40001',null,'Stale preview denied');
@@ -65,25 +66,25 @@ select throws_ok($$select pg_temp.dispose(bucket=>pg_temp.id(12))$$,'23514',null
 select throws_ok($$select pg_temp.dispose(bucket=>pg_temp.id(14))$$,'23514',null,'Partner bucket denied');
 select throws_ok($$select pg_temp.dispose(action=>'CARRY_UNALLOCATED')$$,'22023',null,'Unallocated carry rejects hidden bucket assignment');
 select throws_ok($$select pg_temp.dispose(action=>'SAVINGS')$$,'22023',null,'Savings rejects destination fields');
-savepoint invalid_destination;
 reset role;
 update public.budget_periods set base_currency='UYU' where id=pg_temp.id(2);
 set local role authenticated;
 select throws_ok($$select pg_temp.dispose()$$,'23514',null,'currency destination cannot receive carry');
-rollback to invalid_destination;
-savepoint invalid_destination;
+reset role;
+update public.budget_periods set base_currency='USD' where id=pg_temp.id(2);
+set local role authenticated;
 reset role;
 update public.budget_periods set status='CLOSED',closed_at=clock_timestamp() where id=pg_temp.id(2);
 set local role authenticated;
 select throws_ok($$select pg_temp.dispose()$$,'23514',null,'closed destination cannot receive carry');
-rollback to invalid_destination;
-savepoint invalid_destination;
+reset role;
+update public.budget_periods set status='OPEN',closed_at=null where id=pg_temp.id(2);
+set local role authenticated;
 reset role;
 delete from public.budget_allocations where budget_period_id=pg_temp.id(2);
 set local role authenticated;
 select throws_ok($$select pg_temp.dispose()$$,'23514',null,'unconfigured destination cannot receive carry');
-rollback to invalid_destination;
-savepoint unresolved_source;
+select public.save_budget_allocations(pg_temp.id(2),jsonb_build_array(jsonb_build_object('budget_bucket_id',pg_temp.id(10),'percentage_basis_points',5000),jsonb_build_object('budget_bucket_id',pg_temp.id(11),'percentage_basis_points',3000),jsonb_build_object('budget_bucket_id',pg_temp.id(12),'percentage_basis_points',2000)));
 reset role;
 set constraints all immediate;
 alter table public.recurring_expenses disable trigger recurring_expenses_validate;
@@ -93,7 +94,9 @@ alter table public.recurring_expenses enable trigger recurring_expenses_validate
 set local role authenticated;
 select throws_ok($$select pg_temp.dispose()$$,'23514',null,'Even zero estimated source obligation blocks disposition and close');
 select is((select count(*) from public.budget_period_dispositions),0::bigint,'Unresolved source leaves no partial carry');
-rollback to unresolved_source;
+reset role;
+delete from public.recurring_expenses where id=pg_temp.id(250);
+set local role authenticated;
 select set_config('fin125.pre_hash',pg_temp.context()->>'preview_hash',true);
 select set_config('fin125.old_close_hash',pg_temp.context()#>>'{close,snapshot_hash}',true);
 set constraints all immediate;
@@ -113,7 +116,6 @@ select is(jsonb_array_length(public.get_personal_dashboard('2025-02-01')->'consu
 select is(pg_temp.dispose(fingerprint=>current_setting('fin125.pre_hash'))#>>'{disposition,id}',pg_temp.id(100)::text,'Exact disposition replay read-only after close');
 select throws_ok($$select pg_temp.dispose(amount=>149,fingerprint=>current_setting('fin125.pre_hash'))$$,'23505',null,'Changed replay amount denied');
 select throws_ok($$select public.reopen_personal_budget_period(pg_temp.id(102),pg_temp.id(1),1,public.get_personal_period_close_context('2025-01-01')->>'reopen_hash',true)$$,'23514',null,'New source reopen cannot reuse active carry');
-savepoint unresolved_destination;
 reset role;
 set constraints all immediate;
 alter table public.recurring_expenses disable trigger recurring_expenses_validate;
@@ -124,7 +126,9 @@ set local role authenticated;
 select is(pg_temp.reverse_context()->>'can_reverse','false','Even zero estimated destination obligation blocks reversal');
 select throws_ok($$select pg_temp.reverse()$$,'23514',null,'Reversal never cancels obligation or silently opens source');
 select is((select status from public.budget_periods where id=pg_temp.id(1)),'CLOSED','Blocked reversal leaves source closed');
-rollback to unresolved_destination;
+reset role;
+delete from public.recurring_expenses where id=pg_temp.id(251);
+set local role authenticated;
 select public.register_savings_movement(pg_temp.id(40),pg_temp.id(2),'SAVINGS_CONTRIBUTION',100,'USD','2025-02-01',false);
 select is((select amount_minor from public.transactions where id=pg_temp.id(40)),100::bigint,'Incoming carry funds an ordinary new contribution');
 select is(pg_temp.reverse_context()->>'can_reverse','false','Cannot reverse already contributed money');
@@ -197,7 +201,6 @@ select throws_ok($$select pg_temp.dispose(fingerprint=>repeat('a',32))$$,'42501'
 reset role;
 -- Independent successful unallocated path and downstream reversal ordering.
 reset role;
-savepoint extra_paths;
 insert into public.budget_periods(id,profile_id,starts_on,ends_on,base_currency) values
 (pg_temp.id(6),'f0050000-0000-4000-8000-000000000001','2025-05-01','2025-05-31','USD'),
 (pg_temp.id(7),'f0050000-0000-4000-8000-000000000001','2025-06-01','2025-06-30','USD'),
@@ -227,7 +230,7 @@ select public.reverse_carry_and_reopen_personal_period(pg_temp.id(205),pg_temp.i
 select is(public.get_personal_carry(pg_temp.id(6))->>'outgoing_minor','0','Ordered reversals restore original capacity exactly');
 select is(public.get_personal_carry(pg_temp.id(7))->>'incoming_minor','0','Intermediate credit removed exactly');
 select is(public.get_personal_carry(pg_temp.id(8))->>'incoming_minor','0','Final destination credit removed exactly');
-rollback to extra_paths;
+reset role;
 
 select * from finish();
 rollback;
