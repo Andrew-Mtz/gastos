@@ -977,7 +977,7 @@ rendering/navigation remains unverified.
 
 ## FIN-114 — Protected Savings
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-110, FIN-108
 
@@ -990,6 +990,18 @@ Treat savings allocation as unavailable for ordinary spending.
 * savings amount shown separately;
 * ordinary safe-to-spend excludes protected savings;
 * no implicit savings withdrawal.
+
+FIN-114 partitions the existing rounded received-income allocation into protected
+savings and ordinary spendable allocation by immutable bucket type, including
+custom and archived referenced buckets. Missing classifications fail explicitly.
+Presupuesto shows both totals separately and clearly labels them as period
+allocations, not remaining money, cumulative savings or final safe-to-spend.
+Ordinary overspending cannot change the plan or create a savings withdrawal.
+No schema, persisted balance, movement, permission or dependency change is needed.
+Local typecheck, lint, formatting and 558 Jest tests pass; PostgreSQL regression
+and independent review are required with exact-head CI before merge. Native-device
+rendering/navigation remains unverified. FIN-115 movements and FIN-120's final
+formula remain separate tasks; delegated scope decisions are documented.
 
 ---
 
@@ -1770,7 +1782,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-114 — Protected Savings
+FIN-115 — Explicit Savings Contribution and Withdrawal
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.

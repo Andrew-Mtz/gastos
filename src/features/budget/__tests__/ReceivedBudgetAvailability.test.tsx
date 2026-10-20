@@ -64,6 +64,13 @@ test('shows actual distribution and identifies savings as not ordinary spendable
   expect(screen.getByText(/Ahorro:/)).toHaveTextContent(
     /286,00.*no a gasto libre/,
   );
+  expect(screen.getByText(/Ahorro protegido asignado:/)).toHaveTextContent(
+    /286,00/,
+  );
+  expect(screen.getByText(/Asignado a gasto ordinario:/)).toHaveTextContent(
+    /1.144,00/,
+  );
+  expect(screen.getByText(/no al ahorro acumulado/)).toBeOnTheScreen();
   expect(screen.getByText(/No son un saldo restante/)).toBeOnTheScreen();
 });
 test('zero received renders zero allocations', async () => {
@@ -72,6 +79,12 @@ test('zero received renders zero allocations', async () => {
   await screen.findByText(/Total recibido:/);
   expect(screen.getByText(/Necesidades:/)).toHaveTextContent(/0,00/);
   expect(screen.getByText(/Ahorro:/)).toHaveTextContent(/0,00/);
+  expect(screen.getByText(/Ahorro protegido asignado:/)).toHaveTextContent(
+    /0,00/,
+  );
+  expect(screen.getByText(/Asignado a gasto ordinario:/)).toHaveTextContent(
+    /0,00/,
+  );
 });
 test('loading never substitutes zero or a planned amount', async () => {
   jest
@@ -80,6 +93,9 @@ test('loading never substitutes zero or a planned amount', async () => {
   const view = await show();
   expect(screen.getByRole('progressbar')).toBeOnTheScreen();
   expect(screen.queryByText(/Total recibido:/)).not.toBeOnTheScreen();
+  expect(
+    screen.queryByText(/Ahorro protegido asignado:/),
+  ).not.toBeOnTheScreen();
   const signal = jest.mocked(readReceivedIncome).mock.calls[0][1]!;
   await view.unmount();
   expect(signal.aborted).toBe(true);
@@ -110,6 +126,12 @@ test('owner income invalidation immediately recomputes allocations from the new 
     expect(screen.getByText(/Necesidades:/)).toHaveTextContent(/1.000,00/),
   );
   expect(screen.getByText(/Ahorro:/)).toHaveTextContent(/400,00/);
+  expect(screen.getByText(/Ahorro protegido asignado:/)).toHaveTextContent(
+    /400,00/,
+  );
+  expect(screen.getByText(/Asignado a gasto ordinario:/)).toHaveTextContent(
+    /1.600,00/,
+  );
 });
 test('refocusing refreshes the received total, including external deletions', async () => {
   await show();
@@ -137,6 +159,9 @@ test('a new owner/period never receives cached figures from the previous identit
   await rerender(tree(otherOwner, otherPlan));
   expect(screen.queryByText(/Total recibido:/)).not.toBeOnTheScreen();
   expect(
+    screen.queryByText(/Ahorro protegido asignado:/),
+  ).not.toBeOnTheScreen();
+  expect(
     client.getQueryData(
       receivedIncomeKey(otherOwner, otherPlan.budgetPeriodId),
     ),
@@ -144,4 +169,74 @@ test('a new owner/period never receives cached figures from the previous identit
   expect(jest.mocked(readReceivedIncome).mock.calls.at(-1)?.[0]).toBe(
     otherPlan.budgetPeriodId,
   );
+});
+
+test('failed refresh hides cached protected and spendable allocations rather than showing stale savings', async () => {
+  const { client } = await show();
+  await screen.findByText(/Ahorro protegido asignado:/);
+  jest
+    .mocked(readReceivedIncome)
+    .mockRejectedValue(new Error('private detail'));
+  await act(async () => {
+    await client.invalidateQueries({ queryKey: incomeOwnerKey(profileId) });
+  });
+  await screen.findByRole('alert');
+  expect(
+    screen.queryByText(/Ahorro protegido asignado:/),
+  ).not.toBeOnTheScreen();
+  expect(
+    screen.queryByText(/Asignado a gasto ordinario:/),
+  ).not.toBeOnTheScreen();
+});
+
+test('missing allocation classification fails closed without exposing a misleading spendable figure', async () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+  });
+  await render(
+    <QueryClientProvider client={client}>
+      <ReceivedBudgetAvailability
+        profileId={profileId}
+        plan={plan}
+        buckets={buckets.slice(0, 2)}
+      />
+    </QueryClientProvider>,
+  );
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    /No se pudo verificar la protección del ahorro/,
+  );
+  expect(screen.queryByText(/Total recibido:/)).not.toBeOnTheScreen();
+  expect(
+    screen.queryByText(/Asignado a gasto ordinario:/),
+  ).not.toBeOnTheScreen();
+});
+
+test('archived custom savings remains protected regardless of its label', async () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+  });
+  await render(
+    <QueryClientProvider client={client}>
+      <ReceivedBudgetAvailability
+        profileId={profileId}
+        plan={plan}
+        buckets={buckets.map((bucket) => ({
+          ...bucket,
+          name: 'Reserva histórica',
+          is_system: false,
+          system_key: null,
+          archived_at: '2026-10-01T00:00:00Z',
+        }))}
+      />
+    </QueryClientProvider>,
+  );
+  expect(
+    await screen.findByText(/Ahorro protegido asignado:/),
+  ).toHaveTextContent(/286,00/);
+  expect(screen.getByText(/Asignado a gasto ordinario:/)).toHaveTextContent(
+    /1.144,00/,
+  );
+  expect(
+    screen.getByText(/Reserva histórica:.*286,00.*no a gasto libre/),
+  ).toBeOnTheScreen();
 });
