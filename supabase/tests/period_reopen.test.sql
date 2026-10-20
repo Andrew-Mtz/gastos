@@ -32,6 +32,8 @@ select public.close_personal_budget_period(pg_temp.id(11),pg_temp.id(1),0,curren
 select set_config('fin124.reopen_hash',pg_temp.context()->>'reopen_hash',true);
 select set_config('fin124.summary',(select summary::text from public.budget_period_closures where id=pg_temp.id(11)),true);
 select is(pg_temp.context()->>'reopen_hash',current_setting('fin124.reopen_hash'),'Closed state fingerprint deterministic');
+select throws_ok($$select public.reopen_personal_budget_period(pg_temp.id(20),null,1,current_setting('fin124.reopen_hash'),true)$$,'22023',null,'Missing period rejected');
+select throws_ok($$select public.reopen_personal_budget_period(pg_temp.id(20),pg_temp.id(1),1,null,true)$$,'22023',null,'Missing fingerprint rejected');
 select throws_ok($$select pg_temp.reopen(null)$$,'22023',null,'Missing UUID rejected');
 select throws_ok($$select pg_temp.reopen(pg_temp.id(20),null)$$,'22023',null,'Missing version rejected');
 select throws_ok($$select pg_temp.reopen(pg_temp.id(20),-1)$$,'22023',null,'Negative version rejected');
@@ -69,6 +71,11 @@ select is(jsonb_array_length(pg_temp.context()#>'{history,closures}'),2,'Every c
 select is(pg_temp.context()#>>'{summary,received_income_minor}','2000','Reclose captures corrected facts separately');
 select is(pg_temp.reopen(pg_temp.id(23),3)->>'lifecycle_version','4','Later explicit reopen advances again');
 select is(jsonb_array_length(pg_temp.context()#>'{history,reopenings}'),2,'Every reopening retained');
+select is(public.close_personal_budget_period(pg_temp.id(11),pg_temp.id(1),0,current_setting('fin124.close_hash'),true)->>'lifecycle_version','1','First close replays after multiple full cycles');
+select is(pg_temp.reopen(pg_temp.id(20),1,current_setting('fin124.reopen_hash'))->>'lifecycle_version','2','First reopen replays after multiple full cycles');
+select is((select status||':'||lifecycle_version from public.budget_periods where id=pg_temp.id(1)),'OPEN:4','Old replay never changes latest lifecycle');
+select is((select summary from public.budget_period_closures where id=pg_temp.id(11)),current_setting('fin124.summary')::jsonb,'Exact original summary survives corrections and multiple cycles');
+select throws_ok($$select pg_temp.reopen(pg_temp.id(20),1,current_setting('fin124.reopen_hash'),false)$$,'22023',null,'Replay still requires explicit confirmation');
 select is(public.reopen_personal_budget_period(pg_temp.id(24),pg_temp.id(2),0,public.get_personal_period_close_context('2025-02-01')->>'reopen_hash',true)->>'lifecycle_version','1','Legacy close reopens without fabricated close evidence');
 select is((select closure_id from public.budget_period_reopenings where id=pg_temp.id(24)),null::uuid,'Legacy close link explicitly absent');
 select is((select previous_closed_at from public.budget_period_reopenings where id=pg_temp.id(24)),'2025-03-01T00:00:00Z'::timestamptz,'Legacy original timestamp retained');

@@ -1448,7 +1448,7 @@ included. Delegated lifecycle choices remain pending owner review.
 
 ## FIN-124 — Reopen Budget Period
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-123
 
@@ -1461,6 +1461,34 @@ Explicitly reopen a closed period for corrections.
 * explicit user action;
 * preserve history;
 * prepare for future audit logging.
+
+### Implementation evidence
+
+The existing month screen explicitly reviews and confirms CLOSED → OPEN. ADR-076
+records a stable request UUID, expected/resulting lifecycle version, reviewed closed-state
+fingerprint, previous close identity/time and reopen time in immutable owner-private
+evidence. Legacy closed months can reopen without fabricated summaries. Old close and
+reopen retries return their recorded result without changing any later lifecycle; fresh
+stale or already-open requests conflict. Reopening moves no money and cannot silently
+apply FIN-125 remainder behavior.
+
+Every historical close and reopening remains visible through one complete stable
+snapshot, including original as-of summaries after corrections and reclosure. No status
+or evidence write grants were added. Ordinary corrections, savings solvency, allocation,
+transaction and template guards remain intact. Pending requests survive actual in-session
+screen remounts with unchanged payload; auth cache clear and late-response isolation
+prevent private state returning after logout or same-owner re-login.
+
+One independent bounded review found no actionable P1/P2 issue. Full local checks pass
+987 Jest tests in 53 suites, typecheck, lint and formatting. Disposable PostgreSQL CI
+passed the authorization suite and all 50 real concurrent-session scenarios; final
+exact-head CI also covers additional multiple-cycle replay/null-payload regressions.
+Generated types were copied verbatim from artifact 12260523131 after verifying source
+head 3175d8c057e9bd2a87061723a8da206ed92a5c76 and ZIP SHA256
+15869fbd659ab47eb3842449944c80b645d0f6c0e2f6d1e98f2ddedb57ddd156.
+Final exact-head quality/database/type-drift gates merge. No production database change,
+deployment, native/device QA, process-restart recovery, new dependency or FIN-125 action.
+Delegated choices remain pending owner review, not personal confirmation.
 
 ---
 
@@ -2017,7 +2045,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-124 — Reopen Budget Period
+FIN-125 — Month-End Remainder
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.

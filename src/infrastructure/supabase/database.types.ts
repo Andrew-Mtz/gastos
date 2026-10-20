@@ -145,6 +145,57 @@ export type Database = {
           },
         ];
       };
+      budget_period_reopenings: {
+        Row: {
+          budget_period_id: string;
+          closed_state_hash: string;
+          closure_id: string | null;
+          expected_lifecycle_version: number;
+          id: string;
+          lifecycle_version: number;
+          owner_profile_id: string;
+          previous_closed_at: string;
+          reopened_at: string;
+        };
+        Insert: {
+          budget_period_id: string;
+          closed_state_hash: string;
+          closure_id?: string | null;
+          expected_lifecycle_version: number;
+          id: string;
+          lifecycle_version: number;
+          owner_profile_id: string;
+          previous_closed_at: string;
+          reopened_at: string;
+        };
+        Update: {
+          budget_period_id?: string;
+          closed_state_hash?: string;
+          closure_id?: string | null;
+          expected_lifecycle_version?: number;
+          id?: string;
+          lifecycle_version?: number;
+          owner_profile_id?: string;
+          previous_closed_at?: string;
+          reopened_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'budget_period_reopenings_budget_period_id_owner_profile_id_fkey';
+            columns: ['budget_period_id', 'owner_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'budget_periods';
+            referencedColumns: ['id', 'profile_id'];
+          },
+          {
+            foreignKeyName: 'budget_period_reopenings_closure_id_fkey';
+            columns: ['closure_id'];
+            isOneToOne: false;
+            referencedRelation: 'budget_period_closures';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       budget_periods: {
         Row: {
           base_currency: string;
@@ -784,6 +835,16 @@ export type Database = {
           isOneToOne: true;
           isSetofReturn: false;
         };
+      };
+      reopen_personal_budget_period: {
+        Args: {
+          p_budget_period_id: string;
+          p_closed_state_hash: string;
+          p_confirmed: boolean;
+          p_expected_lifecycle_version: number;
+          p_id: string;
+        };
+        Returns: Json;
       };
       resolve_personal_recurring_expense: {
         Args: {

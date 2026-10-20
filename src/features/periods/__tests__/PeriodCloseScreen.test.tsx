@@ -349,13 +349,11 @@ test('uncertain reopening survives a real screen unmount with unchanged UUID ver
   const request = jest.mocked(reopenPeriod).mock.calls[0][0];
   await unmount();
   await render(tree());
-  await userEvent
-    .setup()
-    .press(
-      await screen.findByRole('button', {
-        name: 'Comprobar reapertura pendiente',
-      }),
-    );
+  await userEvent.setup().press(
+    await screen.findByRole('button', {
+      name: 'Comprobar reapertura pendiente',
+    }),
+  );
   expect(reopenPeriod).toHaveBeenLastCalledWith(request);
   expect(reopenPeriod).toHaveBeenCalledTimes(2);
   await waitFor(() =>

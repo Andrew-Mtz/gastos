@@ -159,7 +159,7 @@ function PersonalPeriodClose({
         setNotice(
           kind === 'close'
             ? 'Cierre confirmado. El resumen histórico se conserva sin mover dinero.'
-            : 'Reapertura confirmada. Puedes corregir este mes; los cierres anteriores se conservan. No se movió dinero.',
+            : 'Reapertura confirmada para esta solicitud. Revisa el estado actualizado del mes antes de corregir; una acción posterior puede haberlo cerrado de nuevo. Los cierres anteriores se conservan. No se movió dinero.',
         );
     } catch (error) {
       if (!isCurrentRequest()) return;
