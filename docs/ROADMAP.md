@@ -908,7 +908,7 @@ request recovery remain unverified. Final exact-head CI is required before merge
 
 ## FIN-112 — Personal Transaction History
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-109, FIN-111
 
@@ -925,6 +925,17 @@ Display current user's transactions.
 ### Security
 
 Only current user's personal records are visible.
+
+---
+
+FIN-112 adds owner-only chronological history with month navigation and bounded
+50-record keyset pages. Original amounts/currencies, explicit movement types and
+archived category names remain visible; deleted records are excluded. Reads are
+cancellable and isolated by owner/month. Registration invalidates history, and
+refocus refreshes it. No schema or financial calculation changes are introduced.
+Independent review found no blockers; added tests cover its suggested refocus and
+pagination-recovery cases. Native-device navigation remains unverified. Full
+quality and existing database authorization CI are required before merge.
 
 ---
 
@@ -1744,7 +1755,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-112 — Personal Transaction History
+FIN-113 — Bucket Consumption
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.
