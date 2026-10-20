@@ -145,6 +145,54 @@ export type Database = {
           },
         ];
       };
+      categories: {
+        Row: {
+          archived_at: string | null;
+          budget_bucket_id: string | null;
+          created_at: string;
+          id: string;
+          is_system: boolean;
+          name: string;
+          profile_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          archived_at?: string | null;
+          budget_bucket_id?: string | null;
+          created_at?: string;
+          id?: string;
+          is_system?: boolean;
+          name: string;
+          profile_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          archived_at?: string | null;
+          budget_bucket_id?: string | null;
+          created_at?: string;
+          id?: string;
+          is_system?: boolean;
+          name?: string;
+          profile_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'categories_bucket_owner_fkey';
+            columns: ['budget_bucket_id', 'profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'budget_buckets';
+            referencedColumns: ['id', 'profile_id'];
+          },
+          {
+            foreignKeyName: 'categories_profile_id_fkey';
+            columns: ['profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       profiles: {
         Row: {
           base_currency: string;
