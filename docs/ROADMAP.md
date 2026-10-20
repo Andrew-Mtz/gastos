@@ -1552,7 +1552,7 @@ before readiness/merge. This does not claim production migration or device QA.
 
 ## FIN-126 — Phase 1 Review
 
-**Status:** Not Started
+**Status:** In Progress — automated review and current-device acceptance tracked separately
 
 **Depends on:** FIN-101 through FIN-125
 
@@ -1581,6 +1581,14 @@ see safe-to-spend
 →
 close month
 ```
+
+### Review evidence
+
+See [FIN-126 review](PHASE_ONE_REVIEW.md) for the authenticated HTTP flow, existing
+coverage matrix, dependency findings and explicit native/production limits. The
+[current-device checklist](PHASE_ONE_DEVICE_CHECKLIST.md) preserves prior physical
+authentication evidence while identifying the newer financial regression still needed.
+No Phase 2 work is authorized or included in this review.
 
 ---
 
@@ -2081,7 +2089,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-125 — Month-End Remainder
+FIN-126 — Phase 1 Review
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.
