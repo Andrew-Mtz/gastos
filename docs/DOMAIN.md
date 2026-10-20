@@ -1812,3 +1812,20 @@ Before implementing domain logic, also consult:
 * `AGENTS.md` — development instructions.
 
 No implementation should introduce a new domain rule solely because it is convenient for the current code.
+
+## FIN-118 monthly variable resolution
+
+A pending variable obligation is derived from its immutable template and canonical
+month. An actual EXPENSE stores insert-only recurring-template/month fields, unique
+per owner/template/month including soft-deleted records. Its transaction identity is
+the permanent actual linkage; immutable template terms preserve the obligation.
+Explicit resolution accepts a positive actual amount and financial date in that open
+month, using the template's original currency/category and ordinary expense guards.
+It affects cash, spending and budget consumption once, with no savings withdrawal.
+
+Later stop does not remove linked history. Soft-deleting the actual cancels that
+month's obligation, not just its payment: it is visible as cancelled and never pending
+again. FIN-119 must exclude linked tombstones as well as active actuals from further
+commitments. Restore reuses the same ID with ordinary restoration validation, even
+after a later stop. FIN-122 delete confirmation must explain this cancellation effect;
+correction cannot relink or silently create another actual for that occurrence.

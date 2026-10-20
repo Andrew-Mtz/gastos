@@ -29,6 +29,8 @@ select throws_ok($$select public.stop_personal_recurring_expense('f1170000-0000-
  '0A000','Recurring writes require READ COMMITTED isolation','Snapshot-isolated stop RPC rejected');
 select throws_ok($$update public.recurring_expenses set stopped_from='9999-01-01' where id='f1170000-0000-4000-8000-000000000001'$$,
  '0A000','Recurring writes require READ COMMITTED isolation','Snapshot-isolated direct stop rejected');
+select throws_ok($$select public.resolve_personal_recurring_expense(gen_random_uuid(),'f1170000-0000-4000-8000-000000000001',gen_random_uuid(),'9999-01-01',1,'USD','9999-01-01')$$,
+ '0A000','Recurring writes require READ COMMITTED isolation','Snapshot-isolated resolution RPC rejected');
 reset role;
 select * from finish();
 rollback;

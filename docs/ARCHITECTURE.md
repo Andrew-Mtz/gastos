@@ -2272,3 +2272,21 @@ FIN-118/119 must use a unique owner/template/month occurrence identity and actua
 transaction link to avoid double counting. FIN-123/124 lifecycle writes must retain
 the same owner lock now used by period/template writes. No native runtime claim is
 made by the schema/domain tests.
+
+## FIN-118 resolution and recurring UI
+
+The hidden recurring route, reachable from Transacciones, supports monthly inspection,
+minimal immutable template creation/stop, and explicit variable-amount resolution.
+An invoker scalar JSON snapshot includes all owner templates and selected-month linked
+actuals, even after stop or soft deletion. It cannot truncate at a Data API row cap;
+future FIN-119 totals must still be complete server derivations, not UI page totals.
+
+Resolution atomically inserts one existing EXPENSE carrying immutable recurrence
+identity. It reuses the owner finance lock and ordinary expense validation. The client
+validates response owner/month/payload and retains uncertain requests across tab
+navigation and month selection, without automatic mutation retries. Auth changes
+remove private state. New templates/stops invalidate only owner recurring data;
+actual resolution additionally invalidates owner-wide savings/history/consumption/
+expense queries and its monthly budget. FIN-119 must attach commitment invalidation
+to recurring changes; FIN-122 corrections must invalidate owner recurring data too.
+Process termination recovery and native/device runtime remain unverified.

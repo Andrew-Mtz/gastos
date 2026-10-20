@@ -29,13 +29,13 @@ select ok(proconfig @> array['search_path=""'],'Empty search path '||proname) fr
 select ok(not has_function_privilege('anon','public.resolve_personal_recurring_expense(uuid,uuid,uuid,date,bigint,text,date,text)','EXECUTE'),'Anonymous cannot resolve');
 select ok(not has_function_privilege('anon','public.get_personal_recurring_month(date)','EXECUTE'),'Anonymous cannot read recurring snapshot');
 select ok(not has_function_privilege('authenticated','public.validate_recurring_resolution()','EXECUTE'),'Trigger has no direct execute');
+insert into public.budget_periods(id,profile_id,starts_on,ends_on,base_currency) values
+ ('f1030000-0000-4000-8000-000000000001','f0050000-0000-4000-8000-000000000001',pg_temp.month(),(pg_temp.month()+interval '1 month -1 day')::date,'USD'),
+ ('f1030000-0000-4000-8000-000000000002','f0050000-0000-4000-8000-000000000001',pg_temp.month(1),(pg_temp.month(1)+interval '1 month -1 day')::date,'USD');
 set local role authenticated;
 select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000001');
 select is(current_user::text,'authenticated','A role');
 select is(auth.uid(),'f0050000-0000-4000-8000-000000000001'::uuid,'A identity');
-insert into public.budget_periods(id,profile_id,starts_on,ends_on,base_currency) values
- ('f1030000-0000-4000-8000-000000000001',auth.uid(),pg_temp.month(),(pg_temp.month()+interval '1 month -1 day')::date,'USD'),
- ('f1030000-0000-4000-8000-000000000002',auth.uid(),pg_temp.month(1),(pg_temp.month(1)+interval '1 month -1 day')::date,'USD');
 select public.create_personal_recurring_expense('f1170000-0000-4000-8000-000000000001','Electricity','f1070000-0000-4000-8000-000000000001','VARIABLE','USD',31,pg_temp.month());
 select public.create_personal_recurring_expense('f1170000-0000-4000-8000-000000000002','Fixed','f1070000-0000-4000-8000-000000000001','FIXED','USD',1,pg_temp.month(),null,100);
 select public.create_personal_recurring_expense('f1170000-0000-4000-8000-000000000003','Bounded','f1070000-0000-4000-8000-000000000001','VARIABLE','USD',1,pg_temp.month(1),pg_temp.month(1),0);
@@ -64,6 +64,9 @@ select throws_ok($$insert into public.transactions(owner_profile_id,budget_perio
  values(auth.uid(),'f1030000-0000-4000-8000-000000000002','EXPENSE',1,'USD',pg_temp.month(1),'f1070000-0000-4000-8000-000000000001','f1170000-0000-4000-8000-000000000001',pg_temp.month())$$,'23514',null,'Direct link cannot forge month');
 select throws_ok($$update public.transactions set recurring_template_id=null$$,'42501',null,'Actual cannot be unlinked');
 select throws_ok($$update public.transactions set recurring_month=pg_temp.month(1)$$,'42501',null,'Occurrence cannot move');
+update public.transactions set deleted_at=now() where id='f1180000-0000-4000-8000-000000000001';
+select throws_ok($$select pg_temp.resolve(gen_random_uuid())$$,'23505',null,'Unique monthly identity includes tombstones while template is active');
+update public.transactions set deleted_at=null where id='f1180000-0000-4000-8000-000000000001';
 select public.stop_personal_recurring_expense('f1170000-0000-4000-8000-000000000001',pg_temp.month());
 select lives_ok($$select pg_temp.resolve('f1180000-0000-4000-8000-000000000001')$$,'Replay survives later stop');
 select is((select count(*) from jsonb_array_elements(public.get_personal_recurring_month(pg_temp.month())->'items') i where i->'transaction'->>'id'='f1180000-0000-4000-8000-000000000001'),1::bigint,'Stopped actual history remains visible');
@@ -80,6 +83,11 @@ select throws_ok($$update public.transactions set deleted_at=null where id='f118
 update public.categories set archived_at=null where id='f1070000-0000-4000-8000-000000000001';
 update public.transactions set deleted_at=null where id='f1180000-0000-4000-8000-000000000001';
 select throws_ok($$select public.get_personal_recurring_month(pg_temp.month()+1)$$,'23514',null,'Read requires canonical month');
+insert into public.recurring_expenses(owner_profile_id,name,category_id,amount_mode,currency,due_day,active_from)
+select auth.uid(),'Synthetic overflow '||n,'f1070000-0000-4000-8000-000000000001','VARIABLE','USD',1,pg_temp.month(1)
+from generate_series(1,1001) n;
+select is(jsonb_array_length(public.get_personal_recurring_month(pg_temp.month())->'items'),1004,'Scalar snapshot is complete beyond Data API row caps');
+
 reset role;
 update public.budget_periods set status='CLOSED',closed_at=now() where id='f1030000-0000-4000-8000-000000000001';
 set local role authenticated;

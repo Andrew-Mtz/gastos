@@ -118,9 +118,9 @@ async function scenario(
         ('${september}','${owner}','2026-09-01','2026-09-30','USD'),('${october}','${owner}','2026-10-01','2026-10-31','USD');
       insert into public.budget_buckets(id,profile_id,name,type) values('${ordinary}','${owner}','Ordinary','SPENDABLE'),('${savings}','${owner}','Savings','SAVINGS');
       insert into public.categories(id,profile_id,name,budget_bucket_id) values('${category}','${owner}','Food','${ordinary}');
-      ${auth}
       insert into public.budget_periods(id,profile_id,starts_on,ends_on,base_currency)
         values('${recurringPeriod}','${owner}',${month},(${month}+interval '1 month -1 day')::date,'USD');
+      ${auth}
       select public.create_personal_recurring_expense('${template}','Electricity','${category}','VARIABLE','USD',31,${month});
       select public.create_personal_savings_goal('${goal}','Synthetic goal',100,'USD');
       select public.save_budget_allocations('${september}','[{"budget_bucket_id":"${ordinary}","percentage_basis_points":8000},{"budget_bucket_id":"${savings}","percentage_basis_points":2000}]');
