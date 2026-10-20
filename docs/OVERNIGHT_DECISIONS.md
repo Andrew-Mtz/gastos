@@ -162,3 +162,34 @@ credential/security changes are authorized by this log.
 - Revisit: Pending owner review. A future explicit edit/reactivation operation must be
   effective-month/version based and preserve already established obligations. Fixed
   automatic generation remains an open decision, not permission supplied here.
+
+## FIN-118: One monthly resolution and explicit cancellation history
+
+- Question: How should a monthly obligation be identified, resolved, stopped or
+  corrected without producing a second expense or silently reviving a deleted one?
+- Options: a separate occurrence ledger duplicating actual amounts; attach the
+  immutable template/month identity directly to the existing actual transaction.
+- Decision: Use the latter. A pending obligation is the template/month projection;
+  resolution atomically inserts one EXPENSE with immutable recurring-template and
+  canonical month columns, unique per owner/template/month even after soft deletion.
+  The transaction ID is the stable request identity and permanent actual linkage.
+  Original obligation terms remain in the immutable template; only stop is mutable.
+- Reason: No unresolved row needs persistence or amount duplication. The established
+  transaction is the financial event, so existing spending/history/savings paths count
+  it exactly once. Owner serialization orders simultaneous stop and resolution.
+- Impact: Stop first prevents new resolution; resolution first preserves that actual
+  even when the template is subsequently stopped. Deleted actuals are visibly cancelled,
+  not pending obligations: future FIN-119 must not subtract them again as commitments.
+  Restore only reactivates the same transaction under open-period/category guards;
+  stop is not a prohibition on restoring already-established history. Exact resolve
+  replay never restores a deleted expense. Description correction does not relink;
+  monetary corrections in FIN-122 must preserve the occurrence/actual identity or
+  introduce a separately documented explicit adjustment, never silently re-resolve.
+  Actual dates must belong to the obligation's open month and currency. No automatic
+  fixed generation, fixed confirmation, commitments, conversion or safe-to-spend.
+- Verification: Direct-write/RPC authorization and unique constraints, exact replay,
+  stop/deletion/restoration/closed-period checks, concurrent duplicate and stop races,
+  domain/form/UI lifecycle tests, generated types and exact-head CI before merge.
+- Revisit: Pending owner review. FIN-119 consumes this identity; FIN-122 may extend
+  corrections without rewriting recurrence linkage. Process-restart pending-request
+  recovery and native/device runtime remain unverified, as in prior entry flows.

@@ -187,6 +187,9 @@ function PersonalIncome({ profile }: { profile: Profile }) {
           {pending ? 'Comprobar registro pendiente' : 'Registrar ingreso'}
         </Button>
       )}
+      <Button variant="secondary" onPress={() => router.push('/recurring')}>
+        Gastos recurrentes
+      </Button>
       <Button variant="secondary" onPress={() => router.push('/savings')}>
         Ahorro personal
       </Button>
