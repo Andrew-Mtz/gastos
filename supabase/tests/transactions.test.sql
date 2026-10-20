@@ -9,9 +9,12 @@ select id, 'Synthetic', 'USD', 'UTC' from auth.users where id::text like 'f00500
 insert into public.budget_periods (id, profile_id, starts_on, ends_on, base_currency) values
  ('f1030000-0000-4000-8000-000000000001','f0050000-0000-4000-8000-000000000001','2026-10-01','2026-10-31','USD'),
  ('f1030000-0000-4000-8000-000000000002','f0050000-0000-4000-8000-000000000002','2026-10-01','2026-10-31','USD');
+insert into public.budget_buckets(id,profile_id,name,type) values
+ ('f1040000-0000-4000-8000-000000000001','f0050000-0000-4000-8000-000000000001','Needs','SPENDABLE');
 insert into public.categories(id,profile_id,name) values
  ('f1070000-0000-4000-8000-000000000001','f0050000-0000-4000-8000-000000000001','Food'),
  ('f1070000-0000-4000-8000-000000000002','f0050000-0000-4000-8000-000000000002','Private');
+update public.categories set budget_bucket_id='f1040000-0000-4000-8000-000000000001' where name='Food';
 select ok((select relrowsecurity from pg_class where oid='public.transactions'::regclass),'RLS enabled');
 select ok(not has_table_privilege('authenticated','public.transactions',p),'No broad '||p)
 from unnest(array['INSERT','UPDATE','DELETE','TRUNCATE']) p;
@@ -26,8 +29,8 @@ set local role authenticated;
 select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000001');
 select is(current_user::text,'authenticated','A client role');
 select is(auth.uid(),'f0050000-0000-4000-8000-000000000001'::uuid,'A subject');
-select lives_ok($$insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date)
-select 'f0050000-0000-4000-8000-000000000001','f1030000-0000-4000-8000-000000000001',t,10000,'USD','2026-10-01' from unnest(array['INCOME','EXPENSE','SAVINGS_CONTRIBUTION','SAVINGS_WITHDRAWAL']) t$$,'Four Phase 1 types persist separately');
+select lives_ok($$insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,category_id)
+select 'f0050000-0000-4000-8000-000000000001','f1030000-0000-4000-8000-000000000001',t,10000,'USD','2026-10-01',case when t='EXPENSE' then 'f1070000-0000-4000-8000-000000000001'::uuid end from unnest(array['INCOME','EXPENSE','SAVINGS_CONTRIBUTION','SAVINGS_WITHDRAWAL']) t$$,'Four Phase 1 types persist separately');
 select is((select count(*) from public.transactions),4::bigint,'A reads own records');
 select ok((select bool_and(scope='PERSONAL' and deleted_at is null and created_at is not null) from public.transactions),'Personal active defaults and technical timestamps');
 select throws_ok($$insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date)
@@ -60,7 +63,7 @@ select is((select deleted_at from public.transactions where id='f1080000-0000-40
 select is((select count(*) from public.transactions where deleted_at is null),5::bigint,'Normal lookup excludes removed row');
 select lives_ok($$update public.transactions set deleted_at=null where id='f1080000-0000-4000-8000-000000000001'$$,'Restore reuses same identity');
 select lives_ok($$update public.categories set archived_at=now() where name='Food'$$,'Category archive preserves transaction');
-select is((select count(*) from public.transactions t join public.categories c on c.id=t.category_id),1::bigint,'Archived category remains available to history');
+select is((select count(*) from public.transactions t join public.categories c on c.id=t.category_id),2::bigint,'Archived category remains available to history');
 select lives_ok($$update public.transactions set deleted_at=now() where id='f1080000-0000-4000-8000-000000000001'$$,'Historical archived-category activity may be removed');
 select throws_ok($$update public.transactions set deleted_at=null where id='f1080000-0000-4000-8000-000000000001'$$,'42501',null,'Restoration requires category to be active again');
 select ok((select deleted_at is not null from public.transactions where id='f1080000-0000-4000-8000-000000000001'),'Failed restore preserves deletion');

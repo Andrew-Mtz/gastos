@@ -2041,6 +2041,24 @@ before lifting this temporary restriction. Expense conversion is not decided her
 
 ---
 
+# ADR-067 — Phase 1 Personal Expenses Use Their Period Currency
+
+**Status:** Accepted under delegated implementation authority (2026-10-20),
+pending owner review of `OVERNIGHT_DECISIONS.md`.
+
+New and restored personal expenses require the budget period's currency and an
+active owned category mapped to an active SPENDABLE bucket. The category's immutable
+bucket relation determines consumption. Savings are never an ordinary expense
+source. Cross-currency expenses require Phase 4 conversion semantics before they
+can be accepted; no rates are inferred and no historical values are rewritten.
+
+Minimal custom category creation is included in FIN-111 so the existing category
+schema can be used from the expense form. Category-management features remain
+outside this task. Existing legacy invalid expenses remain visible to history;
+future calculations must fail explicitly rather than silently ignore them.
+
+---
+
 # Superseding Decisions
 
 When replacing an accepted ADR:

@@ -870,7 +870,7 @@ required in CI. Native-device rendering/navigation QA remains unverified.
 
 ## FIN-111 — Register Personal Expense
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-107, FIN-108, FIN-110
 
@@ -892,6 +892,17 @@ Allow users to create personal expenses.
 * financial calculations are outside UI;
 * ownership cannot be forged;
 * input validation.
+
+---
+
+FIN-111 implements validated mobile expense entry, minimal personal category
+creation, idempotent invoker registration and database enforcement of ADR-067's
+same-period-currency/spendable-category rule. Savings are never charged implicitly.
+Positive and negative PostgreSQL coverage passes 771 assertions; generated types
+come verbatim from verified CI artifact 12243025401. Local quality checks pass
+with 488 Jest tests. Independent review found no remaining blocker after correcting
+category-selection feedback. Native-device QA and full-process-restart pending
+request recovery remain unverified. Final exact-head CI is required before merge.
 
 ---
 
@@ -1733,7 +1744,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-111 — Register Personal Expense
+FIN-112 — Personal Transaction History
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.

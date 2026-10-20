@@ -45,6 +45,7 @@ const routes = {
   '(app)/_layout': AppLayout,
   '(app)/index': Home,
   '(app)/transactions': Transactions,
+  '(app)/expenses': () => <Text>Gastos personales</Text>,
   '(app)/budget': Budget,
   '(app)/household': Household,
   '(app)/settings': Settings,

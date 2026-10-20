@@ -29,7 +29,7 @@ select lives_ok($$select public.register_income('f1090000-0000-4000-8000-0000000
 select is(public.get_received_income('f1030000-0000-4000-8000-000000000001'),143000::bigint,'Actual amounts aggregate exactly');
 select is((select expected_income_minor from public.budget_periods where id='f1030000-0000-4000-8000-000000000001'),150000::bigint,'Expected estimate remains unchanged');
 select lives_ok($$insert into public.transactions(owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date)
-values('f0050000-0000-4000-8000-000000000001','f1030000-0000-4000-8000-000000000001','EXPENSE',1234,'USD','2026-10-15')$$,'Non-income fixture');
+values('f0050000-0000-4000-8000-000000000001','f1030000-0000-4000-8000-000000000001','SAVINGS_CONTRIBUTION',1234,'USD','2026-10-15')$$,'Non-income fixture');
 select is(public.get_received_income('f1030000-0000-4000-8000-000000000001'),143000::bigint,'Non-income is excluded');
 select lives_ok($$update public.transactions set deleted_at=now() where id='f1090000-0000-4000-8000-000000000001'$$,'Soft delete actual income');
 select is(public.get_received_income('f1030000-0000-4000-8000-000000000001'),43000::bigint,'Deleted income is excluded');

@@ -37,6 +37,7 @@ export default function AppLayout() {
         sceneStyle: { backgroundColor: colors.background },
       }}
     >
+      <Tabs.Screen name="expenses" options={{ href: null }} />
       {tabs.map(({ name, title, icon }) => (
         <Tabs.Screen
           key={name}
