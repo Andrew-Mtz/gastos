@@ -301,8 +301,10 @@ may still resolve them. Clearing a custom archive marker restores the same row;
 this schema does not introduce a recovery UI or account-deletion policy.
 
 Clients create custom buckets only. System-defined rows remain owner-readable
-but not client-customizable. Default bucket provisioning belongs to initial
-budget setup (FIN-106); period percentages and amounts belong to FIN-105.
+but not client-customizable. FIN-106 provisions three immutable system defaults with stable `NEEDS`,
+`LEISURE`, and `SAVINGS` keys, independently of translated labels. Keys are
+unique per owner; existing custom or legacy system buckets are not reclassified.
+Period percentages and amounts belong to FIN-105.
 
 ---
 
@@ -362,6 +364,16 @@ sorts normalized bucket UUIDs before applying FIN-102 largest remainder, so data
 row order cannot change tie-breaking. Planned income is never treated as received
 cash or actual availability. Configuration creates no cash movement, spending, or
 savings transaction. No defaults or setup UI are introduced here.
+
+FIN-106 adds initial setup for an unconfigured personal month. Balanced (50/30/20),
+Saver (50/20/30), Aggressive Saving (45/15/40), and Custom plans use the same
+three defaults. Expected income may remain unknown; an explicit zero remains
+zero. Preview and saved plans share actual bucket identities for deterministic
+rounding. Saving creates the period, expected-income snapshot, and complete
+allocation set atomically. An identical retry returns the existing open plan;
+a different setup never overwrites an already-configured plan. Existing and
+closed plans are read-only in this initial UI. Preparing defaults alone creates
+no period, allocation, cash movement, spending, or savings transaction.
 
 ---
 

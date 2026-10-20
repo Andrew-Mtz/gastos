@@ -1597,7 +1597,8 @@ Inicio (index), Transacciones, Presupuesto, Hogar, and Ajustes. No nested tabs
 group is needed yet. AuthNavigator retains centralized Auth/Profile protection;
 only authenticated-ready users enter the shell. Ajustes invokes the existing
 AuthProvider signOut operation. Session lifecycle and cache cleanup remain
-owned by FIN-006. The new areas are placeholders without financial queries.
+owned by FIN-006. The remaining areas are placeholders except Presupuesto, which FIN-106 connects
+to private budget setup and persisted plan reads.
 
 Expo Router should separate unauthenticated and authenticated flows.
 
@@ -1638,6 +1639,20 @@ budget strategy
 Household creation can be optional and separate.
 
 Avoid forcing the entire product configuration before the user can enter the app.
+
+FIN-106 keeps budget setup optional in the Presupuesto tab. Its feature module
+uses React Hook Form/Zod for decimal input and TanStack Query for owner/month
+server state. Decimal parsing produces safe integer minor units and basis
+points; previews invoke FIN-105 domain allocation, never floating-point finance
+inside components. Currency precision follows Intl currency metadata. Unknown
+expected income is not received income or spendable availability.
+
+An explicit Configure action provisions default bucket identities before preview.
+Cancel or tab blur discards the draft without creating a financial plan. Save is
+one database transaction, with duplicate-submit and stale-navigation guards.
+Native iOS keyboard, device Back, and screenshots require a future device pass;
+component tests cover interrupted, repeated, cancellation and auth flows. No web
+application, new dependencies, or actual-income functionality is introduced.
 
 ---
 

@@ -14,7 +14,7 @@ insert into public.profiles (id, display_name, base_currency, timezone) values
 -- not a fabricated household-membership fixture; C is an unrelated identity.
 select has_table('public', 'budget_buckets', 'Budget bucket table exists');
 select columns_are('public', 'budget_buckets', array[
-  'id', 'profile_id', 'name', 'type', 'is_system', 'created_at', 'updated_at', 'archived_at'
+  'id', 'profile_id', 'name', 'type', 'is_system', 'created_at', 'updated_at', 'archived_at', 'system_key'
 ], 'Only bucket identity, purpose, provenance, and lifecycle are persisted');
 select col_is_pk('public', 'budget_buckets', 'id', 'Bucket id is the primary key');
 select col_type_is('public', 'budget_buckets', 'id', 'uuid', 'Id is UUID');
