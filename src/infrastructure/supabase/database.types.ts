@@ -9,6 +9,47 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      budget_buckets: {
+        Row: {
+          archived_at: string | null;
+          created_at: string;
+          id: string;
+          is_system: boolean;
+          name: string;
+          profile_id: string;
+          type: string;
+          updated_at: string;
+        };
+        Insert: {
+          archived_at?: string | null;
+          created_at?: string;
+          id?: string;
+          is_system?: boolean;
+          name: string;
+          profile_id: string;
+          type: string;
+          updated_at?: string;
+        };
+        Update: {
+          archived_at?: string | null;
+          created_at?: string;
+          id?: string;
+          is_system?: boolean;
+          name?: string;
+          profile_id?: string;
+          type?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'budget_buckets_profile_id_fkey';
+            columns: ['profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       budget_periods: {
         Row: {
           base_currency: string;

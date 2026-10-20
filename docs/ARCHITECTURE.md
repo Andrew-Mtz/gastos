@@ -985,6 +985,14 @@ dates, currency, lifecycle state, and timestamps are not client-updateable;
 ordinary updates cannot mutate `CLOSED` rows. Generated database types include
 the table shape and its Profile relationship but do not replace SQL authorization.
 
+FIN-104 adds `public.budget_buckets`, with a restricted Profile foreign key and
+an owner index. `type` is constrained text (`SPENDABLE`/`SAVINGS`); `is_system`
+defaults to false. `archived_at` retains historical bucket references instead of
+physical deletion. An invoker trigger with an empty search path manages update
+and archive timestamps. RLS and narrow column grants enforce private ownership
+and defer system-bucket customization. No allocation, category, transaction,
+default provisioning, or persisted derived financial value is introduced.
+
 ---
 
 # 38. Migration Philosophy
@@ -1903,6 +1911,13 @@ and runs `npm run db:test`. Cleanup always attempts to stop the stack. Startup
 output is suppressed to keep privileged local credentials out of logs. No hosted
 project, repository secrets, custom Docker cache, or deployment is involved.
 PRs should not merge unless both jobs pass.
+
+FIN-104 extends that same database job with `npm run db:types`, a seven-day
+artifact containing only `src/infrastructure/supabase/database.types.ts`, and a
+Git diff check that rejects uncommitted generated type changes. Generation runs
+against the migrated local CI stack, not a hosted database. Workflow permissions
+remain `contents: read`; generated files are reviewed and committed separately,
+not pushed automatically by CI.
 
 ---
 

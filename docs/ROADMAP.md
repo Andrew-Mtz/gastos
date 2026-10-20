@@ -620,7 +620,7 @@ Calendar-month periods.
 
 ## FIN-104 — Budget Bucket Schema
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-103
 
@@ -642,6 +642,12 @@ Savings
 * bucket type;
 * RLS;
 * archive support if needed.
+
+Implementation adds personal spendable/savings buckets, archive support,
+owner-only RLS, narrow SQL grants, transactional security tests, and generated
+database types. CI regenerates those types and rejects drift. Independent review
+found no blocking issues; quality and database authorization checks passed,
+including 241 Jest tests and 333 SQL assertions across the complete suites.
 
 ---
 
@@ -1663,7 +1669,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-104 — Budget Bucket Schema
+FIN-105 — Budget Allocation Schema and Domain
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.

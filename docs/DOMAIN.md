@@ -290,6 +290,20 @@ SAVINGS
 * Savings buckets are not ordinary spendable buckets.
 * System-defined buckets may be customized in future versions.
 
+FIN-104 persists personal buckets independently of periods and allocations.
+Each bucket has a required non-blank name, a `SPENDABLE` or `SAVINGS` type,
+system provenance, and creation/update timestamps. Type and ownership cannot be
+changed by ordinary clients, preserving savings classification and historical
+references. Custom buckets may be renamed or archived with `archivedAt`; an
+archive preserves the row and its financial meaning rather than deleting it.
+Active configuration queries exclude archived buckets, while historical queries
+may still resolve them. Clearing a custom archive marker restores the same row;
+this schema does not introduce a recovery UI or account-deletion policy.
+
+Clients create custom buckets only. System-defined rows remain owner-readable
+but not client-customizable. Default bucket provisioning belongs to initial
+budget setup (FIN-106); period percentages and amounts belong to FIN-105.
+
 ---
 
 # 9. BudgetAllocation
