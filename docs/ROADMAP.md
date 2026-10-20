@@ -1602,8 +1602,8 @@ Allow two users to manage household finances together without exposing their per
 
 ## FIN-201 — Household Schema
 
-**Status:** In Progress — local schema/tests independently reviewed; real SQL CI,
-generated types and final-head verification pending
+**Status:** Implemented and independently reviewed — exact-schema SQL CI and
+generated types verified; final-head CI pending
 
 Create household entities and ownership/membership foundation.
 
@@ -1622,16 +1622,34 @@ owner decision.
 
 The new transactional SQL suite covers constraints, client privilege denial,
 default-deny RLS independent of grants, and actual A/B same-household personal
-isolation against each other and unrelated C. Local Docker/PostgreSQL are unavailable;
-real SQL and generated types await the existing disposable CI workflow. Do not mark
-complete until exact-schema types, independent review and all final-head checks pass.
+isolation against each other and unrelated C. Independent static review and the
+post-Inicio delta review found no actionable issues. Local Docker/PostgreSQL remain
+unavailable; real SQL verification uses the existing disposable CI workflow.
 Phase 1 current-device acceptance and the earlier margin error remain separate.
 
 Local verification after incorporating Inicio main `0988321`, on pinned Node
 24.14.0 / npm 11.9.0, passed typecheck, lint with Expo telemetry disabled,
 formatting, all 1049 Jest tests in 55 suites, the installed Router parser regression,
-and whitespace checks. These application checks do not execute or validate the
-new PostgreSQL migration/RLS tests.
+and whitespace checks. These application checks are separate from real SQL evidence.
+The complete local checks were repeated successfully after importing generated types,
+again with 1049 tests in 55 suites.
+
+Disposable CI run `39471701921`, schema head
+`aec776dbcc13432489eae3562fd7c153f42a9a83`, passed Quality checks, all 2099 SQL
+assertions across 33 files, existing two-session concurrency scenarios, and the
+authenticated HTTP finance journey with both production snapshot parsers. Its only
+failure was the expected generated-type drift before importing the generated file.
+
+Database types were copied verbatim from that run's artifact `12288170512`.
+Verified ZIP SHA256:
+`13b18dd31ccd7475adfe4ec75180bb76d9dd4da02b572a98a29f50f6ba0cbb27`.
+The 40944-byte generated file has SHA256
+`de08a588c6c58a09edf57ba607070f55dd453d842aed8182abfcf0eb1419bcdf`;
+its only schema additions are the two household tables and their relationships.
+The migration and SQL test bytes remain unchanged from the reviewed schema head.
+Independent review of the complete types/documentation delta found no actionable
+issues. All checks including generated-type drift must pass on the final head before merge.
+No production migration, real household creation, or native/device validation is claimed.
 
 ---
 

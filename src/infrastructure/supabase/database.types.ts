@@ -427,6 +427,83 @@ export type Database = {
           },
         ];
       };
+      household_members: {
+        Row: {
+          household_id: string;
+          id: string;
+          joined_at: string;
+          left_at: string | null;
+          profile_id: string;
+          role: string;
+        };
+        Insert: {
+          household_id: string;
+          id?: string;
+          joined_at?: string;
+          left_at?: string | null;
+          profile_id: string;
+          role: string;
+        };
+        Update: {
+          household_id?: string;
+          id?: string;
+          joined_at?: string;
+          left_at?: string | null;
+          profile_id?: string;
+          role?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'household_members_household_id_fkey';
+            columns: ['household_id'];
+            isOneToOne: false;
+            referencedRelation: 'households';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'household_members_profile_id_fkey';
+            columns: ['profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      households: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          default_currency: string;
+          id: string;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by: string;
+          default_currency: string;
+          id?: string;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string;
+          default_currency?: string;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'households_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       profiles: {
         Row: {
           base_currency: string;
