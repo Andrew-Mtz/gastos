@@ -740,7 +740,7 @@ types come verbatim from CI artifact 12238858729. Independent review found no bl
 
 ## FIN-108 — Transaction Schema
 
-**Status:** Not Started
+**Status:** In Progress
 
 **Depends on:** FIN-101, FIN-005
 

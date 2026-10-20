@@ -2022,6 +2022,25 @@ with FIN-011 explicitly deferred, without claiming signed-build verification.
 
 ---
 
+# ADR-066 — Register Income in the Budget Period Currency Initially
+
+**Status:** Accepted (explicit user decision, 2026-10-20)
+
+## Decision
+
+For FIN-109/FIN-110, income can be registered only in the currency snapshotted
+on its budget period. Enforce this in the database as well as the form. Preserve
+original transaction amounts and currencies; do not invent a rate, convert using
+current rates, or combine unlike currencies.
+
+## Consequences
+
+Future cross-currency income registration and budget conversion remain pending.
+That work must define explicit exchange-rate snapshots and reproducible allocation
+before lifting this temporary restriction. Expense conversion is not decided here.
+
+---
+
 # Superseding Decisions
 
 When replacing an accepted ADR:
