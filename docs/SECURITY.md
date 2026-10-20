@@ -1781,3 +1781,20 @@ full aggregates and historical snapshot versioning. Auth-cleared in-session pend
 requests retain IDs through remount; all owner financial namespaces invalidate after
 attempts. Independent privilege/conservation review, real RLS negative/forged-write
 checks and two-session races are required. No hosted database changes or deployment.
+
+## FIN-202 active-membership boundary (ADR-079)
+
+The planned FIN-202 capability supersedes FIN-201's closed SELECT surface only.
+Direct writes stay denied. Current active membership, never created_by, authorizes
+household and active-member reads. Both role labels receive the same limited read
+permission; neither confers editing, enrollment or role-management capability.
+
+Private profiles and every financial source retain their existing RLS/grants. A
+narrow empty-search-path definer projection returns only authorized active members'
+identifiers, display_name and role. It exposes no email, personal currency, timezone
+or private aggregate. Authenticated callers cannot choose another subject. Creation
+is atomic and actor-serialized; even exact replay requires current active membership
+and never revives departed rows. Missing identity, stranger, inactive and creator-only
+cases deny access. Client caches hide shared identity during revalidation and clear
+on auth changes; stale requests cannot restore cleared data. SQL tests and review
+are mandatory before any readiness claim. No live grants or hosted changes occur.

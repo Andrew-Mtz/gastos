@@ -38,8 +38,11 @@ from (values
 select ok((select relrowsecurity from pg_class where oid = table_name::regclass), table_name || ' has RLS enabled')
 from unnest(array['public.households', 'public.household_members']) table_name;
 select is((select count(*) from pg_policies where schemaname = 'public'
-  and tablename in ('households', 'household_members')), 0::bigint,
-  'FIN-201 deliberately adds no client RLS policy');
+  and tablename in ('households', 'household_members')), 2::bigint,
+  'FIN-202 supersedes the closed foundation with two SELECT-only policies');
+select is((select count(*) from pg_policies where schemaname = 'public'
+  and tablename in ('households', 'household_members') and cmd <> 'SELECT'), 0::bigint,
+  'The foundation still has no client write policy');
 select ok(not has_table_privilege(role_name, table_name, privilege_name),
   role_name || ' has no ' || privilege_name || ' on ' || table_name)
 from unnest(array['anon', 'authenticated']) role_name
@@ -49,7 +52,8 @@ select ok(not has_any_column_privilege(role_name, table_name, privilege_name),
   role_name || ' has no column ' || privilege_name || ' on ' || table_name)
 from unnest(array['anon', 'authenticated']) role_name
 cross join unnest(array['public.households', 'public.household_members']) table_name
-cross join unnest(array['SELECT', 'INSERT', 'UPDATE', 'REFERENCES']) privilege_name;
+cross join unnest(array['SELECT', 'INSERT', 'UPDATE', 'REFERENCES']) privilege_name
+where role_name <> 'authenticated' or privilege_name <> 'SELECT';
 select ok(not exists (
   select 1 from pg_class c cross join lateral aclexplode(c.relacl) acl
   where c.oid = table_name::regclass and acl.grantee = 0
@@ -188,9 +192,9 @@ select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000001');
 select is(current_user::text, 'authenticated', 'A tests run as client role');
 select is(auth.uid(), 'f0050000-0000-4000-8000-000000000001'::uuid, 'A subject is genuine auth.uid()');
 select throws_ok('select * from public.households', '42501', 'permission denied for table households',
-  'Creator/OWNER still cannot read the closed household surface');
+  'OWNER cannot read ungranted household audit fields with SELECT star');
 select throws_ok('select * from public.household_members', '42501', 'permission denied for table household_members',
-  'OWNER label does not open membership discovery');
+  'OWNER cannot read ungranted membership lifecycle fields with SELECT star');
 select throws_ok($$insert into public.households(name, default_currency, created_by)
   values ('Forged creator', 'USD', 'f0050000-0000-4000-8000-000000000002')$$,
   '42501', 'permission denied for table households', 'No client household/creator forgery');
@@ -216,8 +220,8 @@ set local role authenticated;
 select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000002');
 select is(current_user::text, 'authenticated', 'B tests run as client role');
 select is(auth.uid(), 'f0050000-0000-4000-8000-000000000002'::uuid, 'B subject is genuine auth.uid()');
-select throws_ok('select * from public.households', '42501', 'permission denied for table households', 'Actual member B cannot read closed households');
-select throws_ok('select * from public.household_members', '42501', 'permission denied for table household_members', 'Actual member B cannot discover membership');
+select throws_ok('select * from public.households', '42501', 'permission denied for table households', 'Member B cannot read ungranted household audit fields');
+select throws_ok('select * from public.household_members', '42501', 'permission denied for table household_members', 'Member B cannot read ungranted membership lifecycle fields');
 select results_eq('select id from public.profiles', array['f0050000-0000-4000-8000-000000000002'::uuid], 'Actual partner B cannot read A private Profile');
 select results_eq('select id from public.budget_periods', array['f2012000-0000-4000-8000-000000000002'::uuid], 'Actual partner B cannot read A private budget');
 select results_eq('select id from public.transactions', array['f2013000-0000-4000-8000-000000000002'::uuid], 'Actual partner B cannot read A income');
@@ -233,8 +237,8 @@ set local role authenticated;
 select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000003');
 select is(current_user::text, 'authenticated', 'C tests run as client role');
 select is(auth.uid(), 'f0050000-0000-4000-8000-000000000003'::uuid, 'C subject is genuine auth.uid()');
-select throws_ok('select * from public.households', '42501', 'permission denied for table households', 'Unrelated C cannot read closed households');
-select throws_ok('select * from public.household_members', '42501', 'permission denied for table household_members', 'Unrelated C cannot discover memberships');
+select throws_ok('select * from public.households', '42501', 'permission denied for table households', 'C cannot read ungranted household audit fields');
+select throws_ok('select * from public.household_members', '42501', 'permission denied for table household_members', 'C cannot read ungranted membership lifecycle fields');
 select results_eq('select id from public.profiles', array['f0050000-0000-4000-8000-000000000003'::uuid], 'Unrelated C sees only C private Profile');
 select is((select count(*) from public.budget_periods), 0::bigint, 'Unrelated C sees neither personal budget');
 select is((select count(*) from public.transactions), 0::bigint, 'Unrelated C sees neither personal income');
@@ -269,8 +273,9 @@ set local role authenticated;
 select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000001');
 select is(current_user::text, 'authenticated', 'RLS-only A checks run as client role');
 select is(auth.uid(), 'f0050000-0000-4000-8000-000000000001'::uuid, 'RLS-only checks use A');
-select is((select count(*) from public.households), 0::bigint, 'Default-deny RLS hides creator A households even with SELECT grant');
-select is((select count(*) from public.household_members), 0::bigint, 'Default-deny RLS hides OWNER A memberships even with SELECT grant');
+select results_eq('select id from public.households', array['f2010000-0000-4000-8000-000000000001'::uuid],
+  'Active RLS permits Home but excludes Future despite A creator provenance');
+select is((select count(*) from public.household_members), 3::bigint, 'Active RLS shows only the three active Home members');
 select throws_ok($$insert into public.households(name, default_currency, created_by)
   values ('Otherwise valid A household', 'USD', 'f0050000-0000-4000-8000-000000000001')$$,
   '42501', 'new row violates row-level security policy for table "households"',
@@ -291,16 +296,19 @@ set local role authenticated;
 select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000002');
 select is(current_user::text, 'authenticated', 'RLS-only B checks run as client role');
 select is(auth.uid(), 'f0050000-0000-4000-8000-000000000002'::uuid, 'RLS-only checks use actual partner B');
-select is((select count(*) from public.households), 0::bigint, 'RLS denies actual member B despite SELECT grant');
-select is((select count(*) from public.household_members), 0::bigint, 'RLS denies actual partner B membership discovery');
+select results_eq('select id from public.households order by id', array[
+  'f2010000-0000-4000-8000-000000000001'::uuid, 'f2010000-0000-4000-8000-000000000003'::uuid
+], 'Active RLS preserves multiple authorized households for B');
+select is((select count(*) from public.household_members), 5::bigint, 'B sees only active members of the two authorized households');
 
 reset role;
 set local role authenticated;
 select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000003');
 select is(current_user::text, 'authenticated', 'RLS-only C checks run as client role');
 select is(auth.uid(), 'f0050000-0000-4000-8000-000000000003'::uuid, 'RLS-only checks use unrelated C');
-select is((select count(*) from public.households), 0::bigint, 'RLS denies unrelated C despite SELECT grant');
-select is((select count(*) from public.household_members), 0::bigint, 'RLS denies unrelated C membership discovery');
+select results_eq('select id from public.households', array['f2010000-0000-4000-8000-000000000002'::uuid],
+  'C sees only Other, never the unrelated A/B households');
+select is((select count(*) from public.household_members), 1::bigint, 'C cannot discover unrelated or departed members');
 
 reset role;
 set local role authenticated;
@@ -323,6 +331,6 @@ select is((select role from public.household_members where id = 'f2011000-0000-4
   'MEMBER', 'Actual partner role was not escalated');
 select is((select count(*) from public.transactions), 2::bigint, 'Private income fixtures survive rejected writes');
 select is((select count(*) from pg_policies where schemaname = 'public'
-  and tablename in ('households', 'household_members')), 0::bigint, 'Tests never add a permissive policy');
+  and tablename in ('households', 'household_members')), 2::bigint, 'Tests preserve only the reviewed FIN-202 SELECT policies');
 select * from finish();
 rollback;

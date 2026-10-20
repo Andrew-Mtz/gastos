@@ -2412,3 +2412,19 @@ default split storage. Types must come from the exact disposable Supabase CI
 artifact, not a hand-edited approximation. Foundation SQL tests independently
 exercise constraints, SQL grants, default-deny RLS and actual member personal
 isolation; they do not replace FIN-204 or claim native/production validation.
+
+## FIN-202 minimal membership feature (ADR-079)
+
+A feature-local household module replaces the existing Hogar placeholder, reusing
+UI tokens/components, React Hook Form/Zod, CurrencySelect and TanStack Query.
+Creation uses one atomic RPC; a no-argument snapshot RPC returns only currently
+authorized household identity and minimized member names/roles. A narrow definer
+helper avoids self-recursive membership RLS, and the name projection does not widen
+Profile policies. No generic repositories, realtime or new dependencies.
+
+Auth-owned QueryClient clearing and request-cache identity isolate asynchronous work.
+Pending create UUID/payload survive in-session remounts, never logout. Lost responses
+can be reconciled by an authorized read of the created household. Blur/background
+dismiss unsent editors and hide stale data until foreground/focus revalidation.
+Generated schema types remain an authentic-artifact gate; unavailable local Docker
+must not be bypassed with handwritten types.

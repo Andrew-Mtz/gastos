@@ -2648,3 +2648,89 @@ production permissions. FIN-204 remains the comprehensive household privacy
 suite after FIN-202/203; these foundation tests do not replace it. Commit database
 types only from the exact disposable CI schema artifact, then require reviewed
 exact-head quality and SQL CI before merging.
+
+
+---
+
+# ADR-079 — Bounded First-Household Creation and Active Membership Reads
+
+**Status:** Accepted for bounded FIN-202 implementation under delegated authority,
+pending owner review. Recorded before code. Initial local preparation used FIN-201
+reviewed head `e2d682c9f05273285aded68f0ef4860d395acdcd`. PR #42 is now merged as
+`75f8610b7878479f25763aae50024e2e8e5c9320`, with the identical dependency tree.
+FIN-202 may proceed to a draft PR and disposable CI under the owner's publication
+authorization. Review, authentic schema types and exact-head full CI remain merge
+gates; publication does not authorize deployment, real data changes or FIN-203.
+
+## Decision and explicit limits
+
+FIN-202 opens only first-household creation and active-membership reads. The new
+creation flow is temporarily available only to a Profile with no membership
+history. An active membership blocks another creation; inactive-only history
+produces an explicit unsupported state without revealing old households or
+suggesting deletion. This is a reversible flow limitation, not an approved
+domain-wide one-household rule. Keep the collection schema, multiple-household
+read support and unrestricted structural member/OWNER cardinality.
+
+Creation atomically inserts a household and its creator's explicit active OWNER
+membership. Derive both actor references from auth.uid(), not client data.
+created_by remains immutable provenance and never grants access. OWNER and MEMBER
+have identical read rights in this slice; neither receives membership, role,
+household-edit or deletion powers. There are no invitations, leave/removal,
+rejoining, ownership transfer, historical access, financial splits or expenses.
+FIN-203 and each later lifecycle operation still need their explicit decisions.
+
+Read access requires left_at IS NULL. Only active members are projected. Profiles
+remain owner-private under unchanged RLS/grants. A narrow, reviewed definer read
+projects only membership identity, Profile identity, display_name and role within
+currently authorized households, plus household identity/name/currency. No email,
+personal currency, timezone, private preferences or financial sources are returned.
+A snapshot includes only the current user's creation eligibility state, not the
+identity or details of any inaccessible historical household.
+
+## Database and client contract
+
+All direct client writes remain revoked. Reviewed SELECT policies and narrow
+column grants enforce active membership, with a fixed-search-path definer helper
+to avoid recursive membership RLS. No helper accepts an actor Profile parameter.
+The projection RPC is a complete single-statement snapshot with explicit fields,
+not profiles.*. Its elevated capability is limited to authorized identity names.
+
+create_first_household takes a stable household/request UUID, name and explicit
+household currency. It derives the actor, validates Profile existence, serializes
+creation per actor at READ COMMITTED and inserts both rows transactionally. Exact
+replay checks both original payload/provenance and CURRENT active membership
+before returning only the household UUID. It never restores a departed membership
+or lets creator metadata authorize a response. Mismatched reuse conflicts without
+revealing another household. The initial bounded name and currency-shape rules
+remain unchanged. No personal financial lock, money movement or new dependency.
+
+get_my_household_memberships takes no arguments and returns profile_id,
+creation_status (ELIGIBLE, ACTIVE_MEMBERSHIP or PREVIOUS_MEMBERSHIP), and a complete
+households collection. Each household contains id, name, default_currency and
+active members with id, profile_id, display_name and role. No raw Profile row is
+shared. create_first_household returns only {household_id}.
+
+The UI reuses current components/tokens, explicit currency choice, QueryClient and
+React Hook Form/Zod. Uncertain submissions keep the same UUID/payload in auth-cleared
+in-session cache; an authorized read of the created household can settle a lost
+response. Do not allow a new request while the old result is uncertain. Background
+and blur hide stale shared identity, dismiss unsent editors and require revalidation
+before showing data. Logout and account changes clear data; a late response cannot
+recreate a cleared cache, even after same-account sign-in. No persistent request
+storage or realtime is added.
+
+## Verification and honesty
+
+Real SQL tests must distinguish privilege denial from RLS filtering, cover active
+OWNER/MEMBER, inactive member, creator-not-member, stranger and missing identity,
+prove private sources stay private, verify exact projection fields, atomicity,
+replay after revocation and concurrent requests. Update FIN-201's historical
+closed-surface assertions only where the new reviewed SELECT contract supersedes
+them; preserve structural and forged-write protections. Types must come from an
+authentic disposable Supabase artifact, never hand editing or escape casts.
+
+This is a bounded FIN-202 slice, not a complete membership lifecycle or FIN-204
+privacy-suite completion. Local Docker is unavailable; real SQL/concurrency,
+authentic generated types, independent review, exact-head CI and native acceptance
+remain explicit gates. No production, credentials or real-user data is changed.

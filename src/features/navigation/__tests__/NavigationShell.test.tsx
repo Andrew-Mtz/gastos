@@ -24,6 +24,10 @@ jest.mock('../../dashboard/DashboardScreen', () => {
     DashboardScreen: () => <MockText role="heading">Gastos</MockText>,
   };
 });
+jest.mock('../../household/HouseholdScreen', () => {
+  const { Text: MockText } = jest.requireActual('react-native');
+  return { HouseholdScreen: () => <MockText role="heading">Hogar</MockText> };
+});
 jest.mock('../../budget/BudgetScreen', () => {
   const { Text: MockText } = jest.requireActual('react-native');
   return {

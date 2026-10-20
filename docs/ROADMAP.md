@@ -1602,8 +1602,7 @@ Allow two users to manage household finances together without exposing their per
 
 ## FIN-201 — Household Schema
 
-**Status:** Implemented and independently reviewed — exact-schema SQL CI and
-generated types verified; final-head CI pending
+**Status:** Merged — independently reviewed, exact-head CI and generated types verified
 
 Create household entities and ownership/membership foundation.
 
@@ -1648,14 +1647,53 @@ The 40944-byte generated file has SHA256
 its only schema additions are the two household tables and their relationships.
 The migration and SQL test bytes remain unchanged from the reviewed schema head.
 Independent review of the complete types/documentation delta found no actionable
-issues. All checks including generated-type drift must pass on the final head before merge.
+issues. Final CI run `39473692889` passed on exact head
+`e2d682c9f05273285aded68f0ef4860d395acdcd`, including generated-type drift.
+PR #42 merged as `75f8610b7878479f25763aae50024e2e8e5c9320`; its tree
+`3a39217a680f8f50f547907510a4eb0a980eef72` is identical to that reviewed head.
 No production migration, real household creation, or native/device validation is claimed.
 
 ---
 
 ## FIN-202 — Household Membership
 
+**Status:** In Progress — bounded slice prepared for draft PR/CI; verification gates remain
+
 Implement active household membership and authorization.
+
+ADR-079 explicitly scopes this slice to atomic first-household creation for
+Profiles without membership history and active-only household/member reads. The
+creator receives an explicit OWNER membership; creator provenance is not access.
+Private profiles/finances stay isolated while a minimal name/role projection serves
+Hogar. This temporary create-flow limit is not a global cardinality decision.
+
+Inactive-only membership history gets a clear unsupported state. Invitations,
+leave/removal/rejoin, role changes, ownership transfer and historical visibility
+remain unsupported; FIN-203 needs explicit owner decisions. Do not claim a complete
+membership lifecycle or FIN-204 completion from this slice.
+
+FIN-201 PR #42 is merged as `75f8610b7878479f25763aae50024e2e8e5c9320`.
+FIN-202 was rebased onto that main without changing its previously reviewed tree
+before this documentation update. The dependency gate is resolved, and the owner's
+publication authorization permits a draft PR and disposable CI. Real SQL/RLS and
+concurrency, authentic generated types, exact-head full CI and native acceptance
+remain pending; no deployment or real household creation is authorized by this status.
+
+Local validation on pinned Node 24.14.0 / npm 11.9.0 passed 1,109 Jest tests in
+57 suites, ESLint with no warnings, Prettier and the installed Router parser check.
+The 60 new household tests cover strict minimal projection, collections, explicit
+creation, duplicate requests, interrupted flows, exact retry/read recovery,
+revocation and account-cache isolation. Independent source review reproduced two
+remount recovery races, now fixed with regressions for confirmed success and a
+lost response after commit; the reviewer rechecked both fixes and session guards.
+An offline iOS export with synthetic public configuration also passed; this is not
+native/device or live-service acceptance.
+Typecheck is explicitly blocked by exactly the two new RPC names absent from the
+unchanged generated types. No handwritten type replacement or escape cast is used.
+SQL authorization/concurrency tests are prepared but not executed without Docker;
+no full-security or completion claim is made from mocked client tests.
+The [manual membership checklist](HOUSEHOLD_MEMBERSHIP_REVIEW.md) records pending
+synthetic local/device cases and explicit operational limits, not passed acceptance.
 
 ---
 
