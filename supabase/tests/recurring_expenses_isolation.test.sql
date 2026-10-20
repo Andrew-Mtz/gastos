@@ -20,7 +20,7 @@ set local role authenticated;
 select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000001');
 select is(current_user::text,'authenticated','Client role');
 select is(auth.uid(),'f0050000-0000-4000-8000-000000000001'::uuid,'Real auth identity');
-select throws_ok($$select public.create_personal_recurring_expense(gen_random_uuid(),'Rent','f1070000-0000-4000-8000-000000000001','FIXED',1,'USD',1,'9999-01-01')$$,
+select throws_ok($$select public.create_personal_recurring_expense(gen_random_uuid(),'Rent','f1070000-0000-4000-8000-000000000001','FIXED','USD',1,'9999-01-01',null,1)$$,
  '0A000','Recurring writes require READ COMMITTED isolation','Snapshot-isolated creation RPC rejected');
 select throws_ok($$insert into public.recurring_expenses(owner_profile_id,name,category_id,amount_mode,default_amount_minor,currency,due_day,active_from)
  values(auth.uid(),'Rent','f1070000-0000-4000-8000-000000000001','FIXED',1,'USD',1,'9999-01-01')$$,

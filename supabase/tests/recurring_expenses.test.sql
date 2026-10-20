@@ -27,9 +27,9 @@ begin
   result := public.create_personal_recurring_expense(p_id,coalesce(changes->>'name','Rent'),
     coalesce((changes->>'category_id')::uuid,'f1070000-0000-4000-8000-000000000001'),
     coalesce(changes->>'amount_mode','FIXED'),
-    case when changes ? 'amount' then (changes->>'amount')::bigint else 120000 end,
     coalesce(changes->>'currency','USD'),coalesce((changes->>'due_day')::integer,31),
-    coalesce((changes->>'active_from')::date,pg_temp.month()),(changes->>'active_until')::date);
+    coalesce((changes->>'active_from')::date,pg_temp.month()),(changes->>'active_until')::date,
+    case when changes ? 'amount' then (changes->>'amount')::bigint else 120000 end);
   return result.id;
 end;
 $$;
@@ -45,7 +45,7 @@ select is(prosecdef,false,'Invoker function '||proname) from pg_proc where prona
 select ok(proconfig @> array['search_path=""'],'Empty search path '||proname) from pg_proc where proname in
  ('validate_personal_recurring_expense','create_personal_recurring_expense','stop_personal_recurring_expense');
 select ok(not has_function_privilege('authenticated','public.validate_personal_recurring_expense()','EXECUTE'),'Trigger cannot be called directly');
-select ok(not has_function_privilege('anon','public.create_personal_recurring_expense(uuid,text,uuid,text,bigint,text,integer,date,date)','EXECUTE'),'Anonymous cannot create via RPC');
+select ok(not has_function_privilege('anon','public.create_personal_recurring_expense(uuid,text,uuid,text,text,integer,date,date,bigint)','EXECUTE'),'Anonymous cannot create via RPC');
 select ok(not has_function_privilege('anon','public.stop_personal_recurring_expense(uuid,date)','EXECUTE'),'Anonymous cannot stop via RPC');
 set local role authenticated;
 select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000001');
@@ -68,6 +68,8 @@ select is((select default_amount_minor from public.recurring_expenses where id='
 select is((select default_amount_minor from public.recurring_expenses where id='f1170000-0000-4000-8000-000000000003'),0::bigint,'Zero estimate stays zero');
 select lives_ok($$select pg_temp.template('f1170000-0000-4000-8000-000000000001')$$,'Exact create replay');
 select is((select count(*) from public.recurring_expenses),4::bigint,'Retry does not duplicate');
+select lives_ok($$select public.create_personal_recurring_expense(p_template_id=>'f1170000-0000-4000-8000-000000000012',p_name=>'Unknown',p_category_id=>'f1070000-0000-4000-8000-000000000001',p_amount_mode=>'VARIABLE',p_currency=>'USD',p_due_day=>1,p_active_from=>pg_temp.month())$$,'Typed RPC may omit unknown estimate');
+select is((select default_amount_minor from public.recurring_expenses where id='f1170000-0000-4000-8000-000000000012'),null::bigint,'Omitted estimate defaults to unknown');
 select throws_ok($$select pg_temp.template('f1170000-0000-4000-8000-000000000001','{"amount":1}')$$,'23505',null,'Conflicting replay cannot overwrite');
 select throws_ok(format($$select pg_temp.template('f1170000-0000-4000-8000-000000000005',%L::jsonb)$$,v),'23514',null,'Invalid scalar values are rejected: '||v::text)
 from unnest(array['{"amount":null}','{"amount":0}','{"amount":-1}','{"amount":9007199254740992}',
@@ -104,7 +106,7 @@ update public.categories set archived_at=now() where id='f1070000-0000-4000-8000
 update public.budget_buckets set archived_at=now() where id='f1040000-0000-4000-8000-000000000001';
 select lives_ok($$select pg_temp.template('f1170000-0000-4000-8000-000000000001')$$,'Create replay does not reactivate stopped definition after archival');
 select is((select stopped_from from public.recurring_expenses where id='f1170000-0000-4000-8000-000000000001'),pg_temp.month(1),'Create replay preserves stop');
-select is((select count(*) from public.recurring_expenses r join public.categories c on c.id=r.category_id),5::bigint,'Archived mappings and stopped templates remain readable');
+select is((select count(*) from public.recurring_expenses r join public.categories c on c.id=r.category_id),6::bigint,'Archived mappings and stopped templates remain readable');
 select is(public.get_savings_availability(current_setting('test.period')::uuid)::text,current_setting('test.savings_before'),'Template creation/stopping never changes savings or ordinary availability');
 select is(public.get_bucket_consumption(current_setting('test.period')::uuid)::text,current_setting('test.consumption_before'),'No double-counted template spending');
 select is((select count(*) from public.transactions),2::bigint,'Actual income and expense are unchanged');

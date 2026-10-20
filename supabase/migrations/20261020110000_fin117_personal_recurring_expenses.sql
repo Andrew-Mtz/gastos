@@ -99,8 +99,8 @@ for each row execute function public.validate_personal_recurring_expense();
 
 create function public.create_personal_recurring_expense(
   p_template_id uuid, p_name text, p_category_id uuid, p_amount_mode text,
-  p_default_amount_minor bigint, p_currency text, p_due_day integer,
-  p_active_from date, p_active_until date default null
+  p_currency text, p_due_day integer, p_active_from date,
+  p_active_until date default null, p_default_amount_minor bigint default null
 ) returns public.recurring_expenses language plpgsql security invoker set search_path = '' as $$
 declare result public.recurring_expenses;
 begin
@@ -128,8 +128,8 @@ begin
   return result;
 end;
 $$;
-revoke all on function public.create_personal_recurring_expense(uuid,text,uuid,text,bigint,text,integer,date,date) from public,anon,authenticated;
-grant execute on function public.create_personal_recurring_expense(uuid,text,uuid,text,bigint,text,integer,date,date) to authenticated;
+revoke all on function public.create_personal_recurring_expense(uuid,text,uuid,text,text,integer,date,date,bigint) from public,anon,authenticated;
+grant execute on function public.create_personal_recurring_expense(uuid,text,uuid,text,text,integer,date,date,bigint) to authenticated;
 
 create function public.stop_personal_recurring_expense(p_template_id uuid, p_stopped_from date)
 returns public.recurring_expenses language plpgsql security invoker set search_path = '' as $$
