@@ -1,10 +1,11 @@
 # FIN-202 — Membership Review and Manual Acceptance
 
-**Status:** Implementation prepared for draft PR and disposable CI after FIN-201
-PR #42 merged. Manual/device cases below are **not run**.
-SQL/RLS and concurrent-session cases are prepared but **not run locally** because
-Docker is unavailable. Typecheck is blocked only by the two new RPC names absent
-from the unchanged generated database types. This document does not mark FIN-202,
+**Status:** Bounded implementation in draft PR #43 after FIN-201 PR #42 merged.
+Initial disposable CI passed real SQL/RLS and concurrent-session cases; they are
+**not run locally** because Docker is unavailable. Authentic generated types are
+integrated and local typecheck passes. Final-head full CI is required for merge;
+consult PR #43 for current results.
+Manual/device cases below are **not run**. This document does not mark FIN-202,
 FIN-204 or native acceptance complete.
 
 ## Scope and prerequisites
@@ -24,14 +25,16 @@ Before manual testing:
 
 1. Confirm the checkout includes merged FIN-201 main `75f8610` and obtain review
    approval for the exact FIN-202 source being tested. The FIN-201 dependency gate
-   is resolved; draft PR publication is authorized, but FIN-202 CI is still pending.
+   is resolved; initial FIN-202 SQL CI has run. Full CI must pass on the final head
+   before merge; consult PR #43 for current results.
 2. Use the repository's pinned Node/npm versions and installed dependencies. Follow
    the existing local Supabase setup in README. The stack must belong to this
    disposable checkout; inspect the target before any reset.
 3. Apply migrations in that disposable stack with `npm run db:reset`. Run
    `npm run db:test`, `node scripts/test-household-concurrency.mjs` and the existing
    personal-finance authorization/concurrency/API checks. Preserve failures rather
-   than weakening tests. These commands have **not** been executed for FIN-202 here.
+   than weakening tests. These checks passed in disposable CI, but have **not** been
+   executed in this local environment.
 4. Generate database types from the actual migrated disposable schema, retaining
    provenance. Do not hand-edit types or cast away missing RPC signatures. Run
    typecheck, lint, formatting, Jest and Router parser checks on the resulting head.
@@ -151,7 +154,7 @@ visible result without capturing secrets or authentic personal information.
 - Record actual device/platform evidence. An Expo export or mocked RNTL test does
   not count as these checks passing.
 
-## Evidence available locally
+## Verification evidence
 
 - 1,109 Jest tests pass across 57 suites, including 60 new household contract/UI
   tests. Existing navigation remains covered.
@@ -159,11 +162,17 @@ visible result without capturing secrets or authentic personal information.
   pass. The local-only concurrency script passes JavaScript syntax validation.
 - Offline iOS export with synthetic public configuration passes and includes the
   FIN-202 RPC call sites. No live authentication or database call was tested by it.
-- Generated types remain byte-for-byte FIN-201 output. The expected typecheck
-  failures are `get_my_household_memberships` and `create_first_household` missing
-  from that generated RPC union. This is a blocker, not a passing typecheck.
+- Initial disposable CI `39490114410`, schema head `9c331650`, passed 2,357 SQL
+  assertions in 34 files, 57 existing finance and 14 household concurrency cases,
+  authenticated HTTP finance checks, both application snapshot parsers and cleanup.
+  Only the expected missing-RPC typecheck and generated-type drift failed before
+  artifact integration. A complete final-head run is required for merge.
+- Database types match artifact `12295003351` byte for byte. The three expected RPC
+  signatures are the only generated delta, and local typecheck passes. The
+  [roadmap evidence](ROADMAP.md#fin-202--household-membership) records the full source
+  head and both ZIP/file SHA256 values; no manual types or escape casts were added.
 - Independent source review reproduced two remount recovery races. Both fixes
   passed the reviewer's independent repros and late-read session checks, and have
-  official regressions. This does not replace real SQL/RLS/concurrency, authentic
-  updated types, exact-head full CI, publication/dependency gates or the manual
-  cases above. No production or real-user data was changed.
+  official regressions. Source review and initial CI do not replace exact-head
+  full CI, final review or the manual cases above. No production or real-user data
+  was changed.

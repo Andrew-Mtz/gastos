@@ -830,6 +830,14 @@ export type Database = {
         };
         Returns: Json;
       };
+      create_first_household: {
+        Args: {
+          p_default_currency: string;
+          p_household_id: string;
+          p_name: string;
+        };
+        Returns: Json;
+      };
       create_personal_recurring_expense: {
         Args: {
           p_active_from: string;
@@ -895,6 +903,7 @@ export type Database = {
         Args: { p_budget_period_id: string };
         Returns: Json;
       };
+      get_my_household_memberships: { Args: never; Returns: Json };
       get_personal_carry: {
         Args: { p_budget_period_id: string };
         Returns: Json;
@@ -935,6 +944,10 @@ export type Database = {
       get_savings_availability: {
         Args: { p_budget_period_id: string };
         Returns: Json;
+      };
+      is_active_household_member: {
+        Args: { p_household_id: string };
+        Returns: boolean;
       };
       lock_personal_finance: { Args: never; Returns: undefined };
       prepare_initial_budget_buckets: {
