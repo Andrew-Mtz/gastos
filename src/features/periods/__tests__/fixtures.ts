@@ -1,3 +1,4 @@
+import type { LifecycleHistory } from '../period-close-data';
 import { snapshot, profile, period } from '../../dashboard/__tests__/fixtures';
 export { profile, period };
 export const requestId = 'f1230000-0000-4000-8000-000000000050';
@@ -16,6 +17,11 @@ export function closeContext() {
     closure: null,
     snapshot_hash: 'a'.repeat(32),
     can_close: true,
+    reopen_hash: null as string | null,
+    history: {
+      closures: [] as LifecycleHistory['closures'],
+      reopenings: [] as LifecycleHistory['reopenings'],
+    },
   };
 }
 export function closure() {
@@ -41,5 +47,24 @@ export function closedContext() {
     period: { ...row.period, status: 'CLOSED', lifecycle_version: 1 },
     closure: saved,
     can_close: false,
+    reopen_hash: 'b'.repeat(32),
+    history: {
+      closures: [saved],
+      reopenings: [] as LifecycleHistory['reopenings'],
+    },
+  };
+}
+
+export function reopening() {
+  return {
+    id: requestId,
+    owner_profile_id: profile.id,
+    budget_period_id: period.id,
+    closure_id: requestId,
+    expected_lifecycle_version: 1,
+    lifecycle_version: 2,
+    closed_state_hash: 'b'.repeat(32),
+    previous_closed_at: '2026-11-01T01:00:00Z',
+    reopened_at: '2026-11-02T01:00:00Z',
   };
 }

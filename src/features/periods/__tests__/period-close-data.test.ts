@@ -1,6 +1,9 @@
 import { supabase } from '../../../infrastructure/supabase/client';
 import {
   buildCloseRequest,
+  buildReopenRequest,
+  reopenPeriod,
+  reopenErrorMessage,
   closePeriod,
   closeErrorMessage,
   isRejectedClose,
@@ -11,6 +14,7 @@ import {
   closeContext,
   closedContext,
   closure,
+  reopening,
   period,
   profile,
   requestId,
@@ -195,4 +199,96 @@ test('rejected/stale versus uncertain failures have distinct recovery', () => {
   expect(isRejectedClose(new Error('Network'))).toBe(false);
   expect(closeErrorMessage({ code: '40001' })).toContain('vuelve a revisar');
   expect(closeErrorMessage({ code: '23514' })).toContain('no cambies fechas');
+});
+
+test('reopen only builds a request from a current CLOSED state, including legacy', () => {
+  const data = mapPeriodClose(profile.id, period.starts_on, closedContext());
+  expect(buildReopenRequest(requestId, data)).toEqual({
+    id: requestId,
+    owner: profile.id,
+    periodId: period.id,
+    month: period.starts_on,
+    version: 1,
+    hash: 'b'.repeat(32),
+  });
+  expect(() => buildReopenRequest(requestId, mapped())).toThrow();
+  const legacy = mapPeriodClose(profile.id, period.starts_on, {
+    ...closedContext(),
+    closure: null,
+    summary: null,
+    snapshot_hash: null,
+    history: { closures: [], reopenings: [] },
+  });
+  expect(buildReopenRequest(requestId, legacy).version).toBe(1);
+});
+test('reopen sends exact confirmed UUID version fingerprint and validates replay evidence', async () => {
+  jest
+    .mocked(supabase.rpc)
+    .mockResolvedValue({ data: reopening(), error: null } as never);
+  const request = buildReopenRequest(
+    requestId,
+    mapPeriodClose(profile.id, period.starts_on, closedContext()),
+  );
+  expect(await reopenPeriod(request)).toEqual(reopening());
+  expect(supabase.rpc).toHaveBeenCalledWith('reopen_personal_budget_period', {
+    p_id: requestId,
+    p_budget_period_id: period.id,
+    p_expected_lifecycle_version: 1,
+    p_closed_state_hash: 'b'.repeat(32),
+    p_confirmed: true,
+  });
+  await reopenPeriod(request);
+  expect(supabase.rpc).toHaveBeenCalledTimes(2);
+});
+test.each([
+  'id',
+  'owner_profile_id',
+  'budget_period_id',
+  'expected_lifecycle_version',
+  'lifecycle_version',
+  'closed_state_hash',
+])('reopen rejects mismatched result %s as uncertain', async (field) => {
+  const row = {
+    ...reopening(),
+    [field]: field.endsWith('version')
+      ? 4
+      : field === 'closed_state_hash'
+        ? 'c'.repeat(32)
+        : period.id,
+  };
+  if (field === 'budget_period_id') row.budget_period_id = requestId;
+  jest
+    .mocked(supabase.rpc)
+    .mockResolvedValue({ data: row, error: null } as never);
+  await expect(
+    reopenPeriod(
+      buildReopenRequest(
+        requestId,
+        mapPeriodClose(profile.id, period.starts_on, closedContext()),
+      ),
+    ),
+  ).rejects.toThrow();
+});
+test('history rejects foreign owner, duplicate lifecycle and inconsistent original snapshots', () => {
+  for (const change of ['owner', 'duplicate', 'summary', 'link']) {
+    const data = closeContext();
+    data.period.lifecycle_version = 2;
+    data.summary.period.lifecycle_version = 2;
+    data.history = { closures: [closure()], reopenings: [reopening()] };
+    if (change === 'owner')
+      data.history.reopenings[0].owner_profile_id = requestId;
+    if (change === 'duplicate')
+      data.history.reopenings[0].lifecycle_version = 1;
+    if (change === 'summary')
+      data.history.closures[0].summary = {
+        ...closeContext().summary,
+        period: { ...period, status: 'CLOSED' },
+      };
+    if (change === 'link') data.history.reopenings[0].closure_id = period.id;
+    expect(() => mapPeriodClose(profile.id, period.starts_on, data)).toThrow();
+  }
+});
+test('reopen rejection and uncertain messages distinguish fresh review from same-request recovery', () => {
+  expect(reopenErrorMessage({ code: '40001' })).toContain('vuelve a revisar');
+  expect(reopenErrorMessage(new Error('Offline'))).toContain('misma solicitud');
 });

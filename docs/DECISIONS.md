@@ -2509,3 +2509,34 @@ period locks, then checks confirmation, version, server month, obligations and f
 Only authenticated EXECUTE is granted; evidence has owner-only SELECT and no client
 writes. Existing ordinary transaction/correction/allocation/template guards stay intact.
 No reopen operation, new monetary transaction or general status mutation is introduced.
+
+---
+
+# ADR-076 — Explicit Reopening with Immutable Lifecycle Evidence
+
+**Status:** Accepted under delegated implementation authority (2026-10-20),
+pending owner review of `OVERNIGHT_DECISIONS.md`.
+
+FIN-124 permits explicit reopening of an owned CLOSED period for corrections. Legacy
+closed periods may reopen without fabricating a historical summary. A confirmed request
+contains a stable UUID, expected lifecycle version and a fingerprint of the exact closed
+period/close evidence shown. Already-open or stale new requests conflict. Exact replay
+returns its original immutable event before examining the current lifecycle, so an old
+reopen cannot reopen a subsequently closed month. Every successful reopening increments
+lifecycle_version and clears closed_at, preserving every prior closure and its as-of
+summary. Cash, spending, budget and savings impacts are all zero.
+
+An owner-private append-only reopening table retains actor ownership, previous close
+identity (nullable for legacy), original closed time, expected/resulting version,
+request fingerprint and reopened time. No mandatory free-text reason or generic audit
+framework is introduced. Close/reopen history remains visible after further lifecycle
+changes; corrections use ADR-074 and existing ordinary write invariants.
+
+A narrow SECURITY DEFINER RPC is necessary because ordinary clients cannot UPDATE
+status, closed_at or lifecycle_version. It validates auth.uid(), exact owner, READ
+COMMITTED, full confirmation/payload and current CLOSED/version/fingerprint, under the
+owner finance lock before row locks. It has an empty search_path and authenticated-only
+EXECUTE. History is owner-only SELECT without client writes or household access.
+Unresolved close and reopen requests live in auth-cleared in-session query state so
+screen remount cannot lose their exact UUID/version/fingerprint. No automatic retry,
+process-restart recovery, FIN-125 remainder disposition or future restriction is added.

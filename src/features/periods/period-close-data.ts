@@ -20,6 +20,17 @@ const closureSchema = z.object({
   financial_timezone: z.string().min(1),
   closed_at: z.iso.datetime({ offset: true }),
 });
+export const reopeningSchema = z.object({
+  id: z.uuid(),
+  owner_profile_id: z.uuid(),
+  budget_period_id: z.uuid(),
+  closure_id: z.uuid().nullable(),
+  expected_lifecycle_version: version,
+  lifecycle_version: version.positive(),
+  closed_state_hash: hash,
+  previous_closed_at: z.iso.datetime({ offset: true }),
+  reopened_at: z.iso.datetime({ offset: true }),
+});
 const header = z.object({
   owner_profile_id: z.uuid(),
   month: monthSchema,
@@ -33,7 +44,13 @@ const contextSchema = header.extend({
   summary: z.unknown(),
   snapshot_hash: hash.nullable(),
   can_close: z.boolean(),
+  reopen_hash: hash.nullable(),
+  history: z.object({
+    closures: z.array(closureSchema),
+    reopenings: z.array(reopeningSchema),
+  }),
 });
+export type LifecycleHistory = z.infer<typeof contextSchema>['history'];
 export const periodCloseKey = (owner: string, month: string) =>
   [...recurringOwnerKey(owner), 'period-close', month] as const;
 export function mapPeriodClose(owner: string, month: string, value: unknown) {
@@ -45,6 +62,45 @@ export function mapPeriodClose(owner: string, month: string, value: unknown) {
     period = row.period;
   if (period.profile_id !== owner || period.starts_on !== month)
     throw new Error('Close period mismatch.');
+  if ((period.status === 'CLOSED') !== (row.reopen_hash !== null))
+    throw new Error('Reopen preview mismatch.');
+  const versions = new Set<number>();
+  for (const event of [...row.history.closures, ...row.history.reopenings]) {
+    if (
+      event.owner_profile_id !== owner ||
+      event.budget_period_id !== period.id ||
+      event.lifecycle_version !== event.expected_lifecycle_version + 1 ||
+      event.lifecycle_version > period.lifecycle_version ||
+      versions.has(event.lifecycle_version)
+    )
+      throw new Error('Lifecycle history mismatch.');
+    versions.add(event.lifecycle_version);
+  }
+  for (const event of row.history.closures) {
+    const facts = mapDashboard(owner, month, event.summary);
+    const original = lifecyclePeriod.parse(
+      z.object({ period: z.unknown() }).parse(event.summary).period,
+    );
+    if (
+      !facts.period ||
+      facts.period.id !== period.id ||
+      original.status !== 'OPEN' ||
+      original.lifecycle_version !== event.expected_lifecycle_version
+    )
+      throw new Error('Historical close summary mismatch.');
+  }
+  for (const event of row.history.reopenings) {
+    if (
+      event.closure_id !== null &&
+      !row.history.closures.some(
+        (c) =>
+          c.id === event.closure_id &&
+          c.lifecycle_version === event.expected_lifecycle_version &&
+          c.closed_at === event.previous_closed_at,
+      )
+    )
+      throw new Error('Reopen history link mismatch.');
+  }
   const summary =
     row.summary == null ? null : mapDashboard(owner, month, row.summary);
   if (summary && (!summary.period || summary.period.id !== period.id))
@@ -180,3 +236,61 @@ export function closeErrorMessage(error: unknown) {
     return 'No se pudo acceder al período. Revisa tu sesión.';
   return 'No se pudo confirmar el cierre. Comprueba la misma solicitud antes de intentar otro cierre.';
 }
+
+export type ReopenRequest = CloseRequest;
+export function buildReopenRequest(
+  id: string,
+  context: PeriodCloseContext,
+): ReopenRequest {
+  if (
+    !context.period ||
+    !('reopen_hash' in context) ||
+    context.period.status !== 'CLOSED' ||
+    !context.reopen_hash
+  )
+    throw new Error('A current closed-period preview is required.');
+  return {
+    id: z.uuid().parse(id),
+    owner: context.owner_profile_id,
+    periodId: context.period.id,
+    month: context.month,
+    version: context.period.lifecycle_version,
+    hash: context.reopen_hash,
+  };
+}
+export async function reopenPeriod(request: ReopenRequest) {
+  const { data, error } = await supabase.rpc('reopen_personal_budget_period', {
+    p_id: z.uuid().parse(request.id),
+    p_budget_period_id: z.uuid().parse(request.periodId),
+    p_expected_lifecycle_version: version.parse(request.version),
+    p_closed_state_hash: hash.parse(request.hash),
+    p_confirmed: true,
+  });
+  if (error) throw error;
+  const row = reopeningSchema.parse(data);
+  if (
+    row.id !== request.id ||
+    row.owner_profile_id !== request.owner ||
+    row.budget_period_id !== request.periodId ||
+    row.expected_lifecycle_version !== request.version ||
+    row.lifecycle_version !== request.version + 1 ||
+    row.closed_state_hash !== request.hash
+  )
+    throw new Error('Reopen result does not match request.');
+  return row;
+}
+export function reopenErrorMessage(error: unknown) {
+  const code = errorCode(error);
+  if (code === '40001' || code === '23505')
+    return 'El estado del período cambió. Actualiza y vuelve a revisar antes de reabrir.';
+  if (code === '42501')
+    return 'No se pudo acceder al período. Revisa tu sesión.';
+  return 'No se pudo confirmar la reapertura. Comprueba la misma solicitud antes de intentar otra.';
+}
+export type PendingLifecycle = Readonly<{
+  kind: 'close' | 'reopen';
+  request: CloseRequest;
+  inFlight: boolean;
+}>;
+export const pendingLifecycleKey = (owner: string) =>
+  ['pending-period-lifecycle', owner] as const;

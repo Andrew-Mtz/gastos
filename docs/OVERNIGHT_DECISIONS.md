@@ -348,3 +348,30 @@ credential/security changes are authorized by this log.
 - Revisit: Delegated choice, not personally reviewed by the owner. Review strict pending
   obligation policy and as-of presentation after waking; unsupported cross-month
   settlement and process-termination request recovery remain separate work.
+
+## FIN-124: Explicit reopening with immutable lifecycle evidence
+
+- Question: Which closed periods may reopen, what evidence is required, and how does
+  retry behave after later corrections or another close?
+- Options: broad status UPDATE; overwrite the last close; or a bounded, confirmed
+  lifecycle operation retaining all previous evidence. Require a free-text reason,
+  or retain structured actor/time/version evidence without collecting extra text.
+- Decision: Any owned CLOSED period can explicitly reopen, including legacy periods
+  without a stored close. Require a UUID, expected lifecycle version and fingerprint
+  of the reviewed closed state. Append immutable actor, prior close time/link,
+  expected/resulting version and reopen time; no required free-text reason. Advance
+  the version and clear closed_at. Exact replay returns the original evidence only;
+  new stale or already-open requests conflict. Show all stored closes and reopenings.
+- Reason: Corrections must be possible without inventing legacy summaries or erasing
+  what was finalized. Structured evidence provides a useful future audit boundary
+  without a general audit framework or unnecessary personal text.
+- Impact: No monetary side effect, automatic reclose, current-balance claim, status
+  grant, FIN-125 disposition or broader audit-retention policy. Existing correction,
+  allocation, savings and template guards still apply. Auth-scoped pending requests
+  survive actual in-session screen remounts, not process restart.
+- Verification: SQL authorization/grant/forgery, legacy/no-op/replay/version tests;
+  real reopen/write/close concurrency; preserved summaries; UI review/remount/auth
+  and late-response checks; generated types, bounded review and exact-head CI.
+- Revisit: Accepted under delegated authority, pending owner review, not personal
+  confirmation. FIN-125 must explicitly decide whether a disposition restricts
+  reopening; retention/account deletion remains future policy.

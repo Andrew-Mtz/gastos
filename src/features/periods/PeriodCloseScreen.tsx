@@ -15,6 +15,7 @@ import {
   currentMonth,
   formatMoney,
 } from '../budget/budget-setup';
+import { mapDashboard } from '../dashboard/dashboard-data';
 import { budgetKey } from '../budget/budget-data';
 import { consumptionOwnerKey } from '../budget/consumption-data';
 import { incomeOwnerKey } from '../income/income-data';
@@ -28,6 +29,11 @@ import { savingsOwnerKey } from '../savings/savings-data';
 import { recurringOwnerKey } from '../recurring/recurring-data';
 import {
   buildCloseRequest,
+  buildReopenRequest,
+  reopenPeriod,
+  reopenErrorMessage,
+  pendingLifecycleKey,
+  type PendingLifecycle,
   closePeriod,
   closeErrorMessage,
   isRejectedClose,
@@ -63,12 +69,19 @@ function PersonalPeriodClose({
     () => requestedMonth ?? currentMonth(profile.timezone),
   );
   const selected = useRef(month),
-    active = useRef(false),
-    inFlight = useRef(false);
-  const [visible, setVisible] = useState(false),
-    [busy, setBusy] = useState(false);
+    active = useRef(false);
+  const [visible, setVisible] = useState(false);
   const [review, setReview] = useState<PeriodCloseContext | null>(null);
-  const [pending, setPending] = useState<CloseRequest | null>(null);
+  const pendingKey = pendingLifecycleKey(profile.id);
+  const pendingQuery = useQuery<PendingLifecycle | null>({
+    queryKey: pendingKey,
+    queryFn: () => null,
+    enabled: false,
+    initialData: null,
+    gcTime: Infinity,
+  });
+  const pending = pendingQuery.data ?? null;
+  const busy = pending?.inFlight ?? false;
   const [notice, setNotice] = useState<string | null>(null);
   const key = periodCloseKey(profile.id, month);
   const query = useQuery({
@@ -111,30 +124,64 @@ function PersonalPeriodClose({
     });
     return () => listener.remove();
   }, [client, profile.id, refresh]);
-  const submit = async (request: CloseRequest) => {
-    if (inFlight.current || !active.current || !auth.isCurrentUser(profile.id))
+  const submit = async (request: CloseRequest, kind: 'close' | 'reopen') => {
+    const previous = client.getQueryData<PendingLifecycle | null>(pendingKey);
+    if (
+      previous?.inFlight ||
+      (previous && previous.request.id !== request.id) ||
+      !active.current ||
+      !auth.isCurrentUser(profile.id)
+    )
       return;
-    inFlight.current = true;
-    setBusy(true);
-    setPending(request);
+    client.setQueryData<PendingLifecycle>(pendingKey, {
+      kind,
+      request,
+      inFlight: true,
+    });
+    const requestCache = client
+      .getQueryCache()
+      .find({ queryKey: pendingKey, exact: true });
     setReview(null);
     setNotice(null);
+    // QueryClient auth clear invalidates even a late response after same-owner re-login.
+    const isCurrentRequest = () =>
+      auth.isCurrentUser(profile.id) &&
+      client.getQueryCache().find({ queryKey: pendingKey, exact: true }) ===
+        requestCache &&
+      client.getQueryData<PendingLifecycle | null>(pendingKey)?.request.id ===
+        request.id;
     try {
-      await closePeriod(request);
-      if (!auth.isCurrentUser(profile.id)) return;
-      setPending(null);
+      if (kind === 'close') await closePeriod(request);
+      else await reopenPeriod(request);
+      if (!isCurrentRequest()) return;
+      client.setQueryData(pendingKey, null);
       if (active.current && selected.current === request.month)
         setNotice(
-          'Cierre confirmado. El resumen histórico se conserva sin mover dinero.',
+          kind === 'close'
+            ? 'Cierre confirmado. El resumen histórico se conserva sin mover dinero.'
+            : 'Reapertura confirmada para esta solicitud. Revisa el estado actualizado del mes antes de corregir; una acción posterior puede haberlo cerrado de nuevo. Los cierres anteriores se conservan. No se movió dinero.',
         );
     } catch (error) {
-      if (!auth.isCurrentUser(profile.id)) return;
-      if (isRejectedClose(error)) setPending(null);
-      if (active.current) setNotice(closeErrorMessage(error));
+      if (!isCurrentRequest()) return;
+      client.setQueryData<PendingLifecycle | null>(pendingKey, () =>
+        isRejectedClose(error) ? null : { kind, request, inFlight: false },
+      );
+      if (active.current && selected.current === request.month)
+        setNotice(
+          kind === 'close'
+            ? closeErrorMessage(error)
+            : reopenErrorMessage(error),
+        );
     } finally {
-      inFlight.current = false;
-      if (auth.isCurrentUser(profile.id)) {
-        setBusy(false);
+      // Do not reintroduce auth-cleared private cache. A settled request is null;
+      // a different request belongs to a later screen lifecycle.
+      const current = client.getQueryData<PendingLifecycle | null>(pendingKey);
+      if (
+        auth.isCurrentUser(profile.id) &&
+        client.getQueryCache().find({ queryKey: pendingKey, exact: true }) ===
+          requestCache &&
+        (current === null || current?.request.id === request.id)
+      ) {
         await Promise.all(
           [
             recurringOwnerKey(profile.id),
@@ -158,16 +205,18 @@ function PersonalPeriodClose({
       {pending && (
         <>
           <AppText>
-            Hay una solicitud sin confirmar para {pending.month.slice(0, 7)}. No
-            se creará otra.
+            Hay una solicitud sin confirmar para{' '}
+            {pending.request.month.slice(0, 7)}. No se creará otra.
           </AppText>
           <Button
             loading={busy}
             onPress={() => {
-              void submit(pending);
+              void submit(pending.request, pending.kind);
             }}
           >
-            Comprobar cierre pendiente
+            {pending.kind === 'close'
+              ? 'Comprobar cierre pendiente'
+              : 'Comprobar reapertura pendiente'}
           </Button>
         </>
       )}
@@ -225,7 +274,7 @@ function PersonalPeriodClose({
               Revisar cierre
             </Button>
           )}
-          {review &&
+          {review?.period?.status === 'OPEN' &&
             'snapshot_hash' in review &&
             data.snapshot_hash === review.snapshot_hash && (
               <>
@@ -236,12 +285,15 @@ function PersonalPeriodClose({
                   Los movimientos y la configuración del mes quedarán
                   bloqueados. El resumen será una copia histórica, no un saldo
                   actual. No se moverá dinero ni se trasladará el remanente.
-                  Reabrir aún no está disponible.
+                  Para corregirlo luego deberás reabrirlo explícitamente.
                 </AppText>
                 <Button
                   loading={busy}
                   onPress={() => {
-                    void submit(buildCloseRequest(randomUUID(), review));
+                    void submit(
+                      buildCloseRequest(randomUUID(), review),
+                      'close',
+                    );
                   }}
                 >
                   Confirmar cierre
@@ -251,6 +303,44 @@ function PersonalPeriodClose({
                 </Button>
               </>
             )}
+          {data.period.status === 'CLOSED' && !review && (
+            <Button
+              disabled={!!pending || busy}
+              onPress={() => setReview(data)}
+            >
+              Revisar reapertura
+            </Button>
+          )}
+          {review?.period?.status === 'CLOSED' &&
+            'reopen_hash' in review &&
+            data.reopen_hash === review.reopen_hash && (
+              <>
+                <AppText variant="section">
+                  Confirmar reapertura de {month.slice(0, 7)}
+                </AppText>
+                <AppText>
+                  Volverás a permitir correcciones y cambios de configuración en
+                  este mes. Todos los cierres anteriores y sus resúmenes
+                  seguirán conservados. No se moverá dinero ni se trasladará un
+                  remanente. Deberás cerrar el mes otra vez cuando termines.
+                </AppText>
+                <Button
+                  loading={busy}
+                  onPress={() => {
+                    void submit(
+                      buildReopenRequest(randomUUID(), review),
+                      'reopen',
+                    );
+                  }}
+                >
+                  Confirmar reapertura
+                </Button>
+                <Button variant="secondary" onPress={() => setReview(null)}>
+                  Cancelar
+                </Button>
+              </>
+            )}
+          <LifecycleHistory context={data} />
           <Button
             variant="secondary"
             onPress={() =>
@@ -367,6 +457,74 @@ export function CloseSummary({ context }: { context: PeriodCloseContext }) {
         El cierre no convierte el margen en un remanente transferido ni
         arrastrado al siguiente mes.
       </AppText>
+    </>
+  );
+}
+
+function LifecycleHistory({ context }: { context: PeriodCloseContext }) {
+  if (!context.period || !('history' in context)) return null;
+  const events = [
+    ...context.history.closures.map((event) => ({
+      kind: 'close' as const,
+      event,
+    })),
+    ...context.history.reopenings.map((event) => ({
+      kind: 'reopen' as const,
+      event,
+    })),
+  ].sort((a, b) => b.event.lifecycle_version - a.event.lifecycle_version);
+  if (!events.length) return null;
+  return (
+    <>
+      <AppText variant="section">Historial de cierres y reaperturas</AppText>
+      {events.map((entry) =>
+        entry.kind === 'reopen' ? (
+          <AppText key={`reopen-${entry.event.id}`}>
+            Reapertura · versión {entry.event.lifecycle_version} ·{' '}
+            {entry.event.reopened_at}. Cierre anterior:{' '}
+            {entry.event.previous_closed_at}
+            {entry.event.closure_id ? '' : ' · Sin copia histórica disponible'}.
+          </AppText>
+        ) : (
+          <HistoricalClose
+            key={`close-${entry.event.id}`}
+            context={context}
+            event={entry.event}
+          />
+        ),
+      )}
+    </>
+  );
+}
+function HistoricalClose({
+  context,
+  event,
+}: {
+  context: PeriodCloseContext;
+  event: import('./period-close-data').LifecycleHistory['closures'][number];
+}) {
+  const [expanded, setExpanded] = useState(false);
+  if (!context.period || !('history' in context)) return null;
+  const summary = mapDashboard(
+    context.owner_profile_id,
+    context.month,
+    event.summary,
+  );
+  if (!summary.period) return null;
+  return (
+    <>
+      <Button variant="secondary" onPress={() => setExpanded(!expanded)}>
+        {`${expanded ? 'Ocultar' : 'Ver'} cierre versión ${event.lifecycle_version} · ${event.closed_at}`}
+      </Button>
+      {expanded && (
+        <CloseSummary
+          context={{
+            ...context,
+            closure: event,
+            summary,
+          }}
+        />
+      )}
     </>
   );
 }
