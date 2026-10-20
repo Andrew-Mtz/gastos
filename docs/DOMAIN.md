@@ -708,7 +708,7 @@ Ordinary remainder before commitments equals spendable allocated received income
 minus expenses minus additional contributions plus withdrawals. It may be negative
 following ordinary overspending; protected savings remains unchanged. This is not
 safe-to-spend. No ordinary remainder rollover, currency conversion, opening account
-balance or savings goal is implied. Unconfigured periods add no allocated savings;
+balance is implied. Goal sub-reserves are defined by ADR-069 below. Unconfigured periods add no allocated savings;
 new contributions require a configured complete plan. Invalid legacy records block
 availability rather than yielding a partial result. Corrections remain recoverable
 and cannot retroactively overdraw protected savings; closed-period guards still apply.
@@ -1179,6 +1179,23 @@ ARCHIVED
 * Personal savings goals are private.
 * Household savings goals are visible to household members.
 * A savings goal is not itself a financial account.
+
+---
+
+FIN-116 / ADR-069 implements personal goals only. Creation is financially neutral.
+The target is a positive safe-integer amount in an immutable currency, with an optional
+valid calendar target date. Progress and target attainment are derived through a named
+month, may decrease after an explicit withdrawal, and may exceed the target.
+
+A linked contribution is additional funding from that month's ordinary remainder,
+not a second recording of allocated savings or designation of existing reserves. The
+same immutable savings transaction provides both total savings and goal progress.
+An explicitly confirmed goal withdrawal reduces both and restores ordinary availability
+in its month. General withdrawals cannot consume goal sub-reserves. At every historical
+monthly prefix, every goal and the unassigned reserve (total minus goals) are nonnegative.
+Corrections/restorations must preserve this, without automatic withdrawal or reassignment.
+Cash impact and expense/spending impact are zero for both movement types. Goal creation,
+targets and target dates never affect budget availability or execute financial actions.
 
 ---
 

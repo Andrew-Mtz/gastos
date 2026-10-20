@@ -17,11 +17,11 @@ insert into public.budget_buckets(id,profile_id,name,type) values
 insert into public.categories(id,profile_id,name,budget_bucket_id) values
 ('c1150000-0000-4000-8000-000000000001','f0050000-0000-4000-8000-000000000001','Food','b1150000-0000-4000-8000-000000000001');
 select is(prosecdef,false,'Savings routine remains invoker') from pg_proc where oid in
-('public.get_savings_availability(uuid)'::regprocedure,'public.register_savings_movement(uuid,uuid,text,bigint,text,date,boolean,text)'::regprocedure);
+('public.get_savings_availability(uuid)'::regprocedure,'public.register_savings_movement(uuid,uuid,text,bigint,text,date,boolean,text,uuid)'::regprocedure);
 select is(array_to_string(proconfig,','),'search_path=""','Empty search path') from pg_proc where oid in
-('public.get_savings_availability(uuid)'::regprocedure,'public.register_savings_movement(uuid,uuid,text,bigint,text,date,boolean,text)'::regprocedure);
+('public.get_savings_availability(uuid)'::regprocedure,'public.register_savings_movement(uuid,uuid,text,bigint,text,date,boolean,text,uuid)'::regprocedure);
 select ok(not has_function_privilege('anon',routine,'EXECUTE'),'Anonymous cannot execute '||routine)
-from unnest(array['public.get_savings_availability(uuid)','public.register_savings_movement(uuid,uuid,text,bigint,text,date,boolean,text)']) routine;
+from unnest(array['public.get_savings_availability(uuid)','public.register_savings_movement(uuid,uuid,text,bigint,text,date,boolean,text,uuid)']) routine;
 select ok(not has_column_privilege('authenticated','public.transactions','withdrawal_confirmed','UPDATE'),'Confirmation evidence immutable');
 select ok(not has_column_privilege('authenticated','public.transactions','savings_validated','INSERT'),'Cannot forge validated contribution');
 select ok(not has_column_privilege('authenticated','public.transactions','savings_validated','UPDATE'),'Validation marker immutable');

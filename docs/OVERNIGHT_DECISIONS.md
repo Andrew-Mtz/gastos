@@ -97,3 +97,30 @@ credential/security changes are authorized by this log.
   exact-head generated types/full CI are required before merge.
 - Revisit: Pending owner review; revisit intramonth cash availability with accounts,
   conversion with Phase 4, corrections in FIN-122 and remainder actions in FIN-125.
+
+
+## FIN-116: Goal funding, sub-reserves and explicit withdrawals
+
+- Question: Does contributing to a goal fund new savings or designate existing
+  protected money, and what should a later withdrawal or correction do to progress?
+- Options: nonbinding aspirational progress; earmark existing reserves with a separate
+  designation ledger; additional funding linked to the existing savings transaction.
+- Decision: Use additional funding, recorded exactly once. Goal progress is its net
+  active contributions minus explicit goal-scoped withdrawals. Goals are subsets of
+  total savings. General withdrawals use only unassigned reserve; withdrawing from a
+  goal requires choosing that goal and affirmative confirmation. Validate every
+  monthly prefix for each goal and the unassigned reserve under the existing owner lock.
+- Reason: This follows the domain's contribution rule without double-counting the
+  percentage allocation or letting general withdrawals misrepresent funded progress.
+  Goal withdrawals are a minimal integration prerequisite, not a new transfer system.
+- Impact: Creating a goal has no cash, budget, spending or savings effect. Funding
+  reduces ordinary remainder once; withdrawing restores it in that month. Existing
+  protected money is not automatically assigned. Targets are positive safe minor-unit
+  amounts; overfunding is allowed, attainment is derived and can decrease after an
+  explicit withdrawal. Target dates do not trigger actions. No goal edit/archive UI,
+  shared goals, conversion, bank transfers or future roadmap features are included.
+- Verification: Private direct-write/RPC grants and negative RLS, exact replay,
+  multiple currencies/goals/months, correction and concurrent withdrawal tests,
+  isolated caches, interruption/cancellation and exact-head CI are required.
+- Revisit: Pending owner review. An explicit assignment/release operation for existing
+  savings can be designed separately; FIN-122 must preserve sub-reserve invariants.
