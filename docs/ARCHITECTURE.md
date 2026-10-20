@@ -993,6 +993,22 @@ and archive timestamps. RLS and narrow column grants enforce private ownership
 and defer system-bucket customization. No allocation, category, transaction,
 default provisioning, or persisted derived financial value is introduced.
 
+FIN-105 adds `public.budget_allocations`, a unique period/bucket configuration with
+integer basis points, restricted foreign keys and soft removal. An initially
+deferred constraint trigger enforces a complete active 10000-basis-point set;
+periods with no configuration may still await setup. An invoker write trigger locks
+the parent period and validates lifecycle and reference ownership. The invoker
+`save_budget_allocations(uuid, jsonb)` RPC atomically updates the full set, retaining
+removed rows and restoring existing identities rather than physically deleting
+financial records. It returns active rows ordered by bucket UUID. RLS and narrow
+column grants protect direct access as well as RPC use.
+
+`src/domain/budget/budget-allocation.ts` validates immutable period plans and derives
+planned Money values using existing FIN-102 allocation logic with canonical bucket
+UUID ordering. Unknown expected income stays null. Planned amounts are not stored,
+so changing expected income cannot leave a stale persisted amount; each period's
+currency and percentages remain its own source. UI strategies/setup remain FIN-106.
+
 ---
 
 # 38. Migration Philosophy

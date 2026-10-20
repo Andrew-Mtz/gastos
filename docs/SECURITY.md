@@ -481,6 +481,21 @@ repeated archive requests. Ownership, identity, type, system provenance, and
 creation/update timestamps cannot be forged or reassigned through client column
 grants. No anonymous access, DELETE grant/policy, or TRUNCATE grant exists.
 
+FIN-105 allocations inherit ownership from their period, not from a client-supplied
+profile or household. SELECT includes active and removed owner rows; INSERT and
+UPDATE require an owned `OPEN` period and a same-owner bucket. Column grants prevent
+reassigning the allocation identity, period or bucket and forging technical
+timestamps. New/restored references require a non-archived bucket. No anonymous,
+physical DELETE, or TRUNCATE access is granted.
+
+`save_budget_allocations` accepts one complete set and runs as SECURITY INVOKER;
+it has no elevated privileges, uses an empty search path, and explicitly checks
+`auth.uid()` and period ownership. Direct writes obey the same RLS, row checks and
+deferred 10000-basis-point invariant. Parent-period row locking serializes saves
+with each other and lifecycle writes; failed replacements roll back as one
+operation. Removed rows remain private and recoverable, but a restore UI and
+account-deletion policy are not part of this task.
+
 ---
 
 # 22. Avoiding Indirect Privacy Leaks

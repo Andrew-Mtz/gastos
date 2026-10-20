@@ -653,7 +653,7 @@ including 241 Jest tests and 333 SQL assertions across the complete suites.
 
 ## FIN-105 — Budget Allocation Schema and Domain
 
-**Status:** Not Started
+**Status:** In Progress
 
 **Depends on:** FIN-102, FIN-103, FIN-104
 
@@ -667,6 +667,12 @@ Assign budget percentages to a financial period.
 * allocations belong to a period;
 * history remains immutable across future periods;
 * safe deterministic amount calculations.
+
+Implementation adds private period/bucket allocation rows, atomic complete-set
+saving, soft removal, deferred total validation and closed-period guards. Planned
+amounts are derived through the existing deterministic money primitives with
+stable bucket ordering. Database CI, generated types and independent review are
+pending before completion.
 
 ---
 

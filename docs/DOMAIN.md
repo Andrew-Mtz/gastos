@@ -346,6 +346,23 @@ sum(all allocation percentageBasisPoints) = 10000
 * Planned amounts may be recalculated from expected income.
 * Actual budget availability may be based on actual received income.
 
+FIN-105 stores one allocation identity per period/bucket with integer basis points
+and server-managed creation, update, and removal timestamps. A period may exist
+without a configured plan; once configured, its active allocations must total
+10000 at transaction completion. Removed allocations are soft-deleted and excluded
+from calculations, while owner-readable rows retain their identity and timestamps.
+Reintroducing a removed allocation reuses that identity. New or restored references
+require an active bucket; archival does not invalidate an existing historical
+reference. Ordinary writes require an owned open period and a same-owner bucket.
+
+Planned amounts are derived, not persisted: the period's expected-income snapshot
+and its own percentages are sufficient to reproduce them. Unknown expected income
+produces unknown planned amounts, distinct from explicit zero. The pure domain plan
+sorts normalized bucket UUIDs before applying FIN-102 largest remainder, so database
+row order cannot change tie-breaking. Planned income is never treated as received
+cash or actual availability. Configuration creates no cash movement, spending, or
+savings transaction. No defaults or setup UI are introduced here.
+
 ---
 
 # 10. Category
