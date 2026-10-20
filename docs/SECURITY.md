@@ -1630,3 +1630,17 @@ functions with empty search paths; stable replay checks include all immutable in
 General and goal sub-reserves are validated at every historical month under the same
 owner lock and deferred correction guards as FIN-115. All goal queries live under the
 owner savings cache namespace so every financial correction invalidates their totals.
+
+## FIN-117 recurring-template enforcement
+
+Templates are personal-only. SELECT/INSERT/stop UPDATE use owner RLS; narrow column
+privileges deny changes to original terms, scope, identity or provenance. DELETE and
+TRUNCATE are unavailable. A composite category/owner foreign key preserves private
+references. New definitions require an active owned spendable category, a current-or-
+future financial start month and no overlapping closed month. Stop can only shorten
+from the current financial month onward and cannot change a covered closed month.
+Invoker creation/stop RPCs use an empty search path and never write transactions.
+Exact replay reads the original row, including after stop, archival or closure.
+Template and period writes share owner serialization; template mutations reject
+snapshot isolation. Household access is never included. SQL tests distinguish RLS
+filtering, rejected forged writes and absent column/table/function privileges.

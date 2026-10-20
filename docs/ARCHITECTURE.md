@@ -2253,3 +2253,22 @@ tab navigation, with no automatic mutation retries; auth changes discard private
 state. Full process restart recovery remains unimplemented, as in income/expense
 registration. Native/device QA remains unverified. The local-only concurrency
 harness runs after pgTAP in CI via `node scripts/test-savings-concurrency.mjs`.
+
+## FIN-117 recurring-template boundary
+
+The new migration provides private create/read/stop persistence; domain parsing and
+calendar due-date calculation remain pure. There is no UI, client query cache,
+scheduler, occurrence table or financial aggregate change in this schema task.
+`create_personal_recurring_expense` uses a stable UUID and exact original payload;
+`stop_personal_recurring_expense(id, stopped_from)` only shortens an effective
+monthly schedule and preserves original terms. Both are invoker RPCs. Direct writes
+obey the same guards and narrow grants. Exact retries do not reactivate a stopped
+schedule, change stop provenance or reapply current creation eligibility.
+
+FIN-118 should add only necessary template entry/list/stop UI with owner-scoped
+query keys; FIN-119 commitment reads must invalidate on create/stop. Templates alone
+must not invalidate actual income/expense/savings balances because none change.
+FIN-118/119 must use a unique owner/template/month occurrence identity and actual
+transaction link to avoid double counting. FIN-123/124 lifecycle writes must retain
+the same owner lock now used by period/template writes. No native runtime claim is
+made by the schema/domain tests.
