@@ -174,6 +174,27 @@ for financial tables.
 
 Any `USING (true)` or similarly broad access policy requires explicit review and justification.
 
+FIN-201 / ADR-078 introduces `households` and `household_members` with RLS enabled,
+no policies, and every table/column privilege revoked from PUBLIC, anon, and
+authenticated. Even a creator, OWNER, or actual member has no client access yet.
+No definer function, RPC, Profile projection, membership mutation, or invitation
+capability is introduced. Invoker-only triggers with empty search paths preserve
+identity and creation/join provenance and are not client-callable.
+
+This intentionally closed foundation is not active-member authorization. FIN-202
+must separately define and review the narrow read/mutation surface before adding
+any grants or policies. Creator audit metadata must never become an ownership
+shortcut. Detailed role permissions, MVP active-household limits, and departure/
+rejoin visibility remain explicit decisions before their relevant operations.
+Existing personal policies and grants are unchanged.
+
+The foundation SQL suite checks grant denial separately from default-deny RLS,
+temporarily granting test-only table privileges inside its rolled-back transaction.
+It also creates actual A/B memberships and proves private Profile, budget, and
+income isolation against their partner and unrelated C. No broad policy or test
+helper becomes a migration. FIN-204 still owns the comprehensive privacy suite
+after active membership and invitation behavior are implemented.
+
 ---
 
 # 8. Personal Data Access
