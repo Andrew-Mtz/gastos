@@ -318,6 +318,12 @@ Secure session storage and the root Auth lifecycle are accepted in ADR-064.
 
 Initial auth provider should remain minimal.
 
+FIN-006 onboarding polish replaces free-text base currency with an explicit
+UYU/USD/EUR/BRL/ARS selector, as requested by the user. No currency is silently
+selected. Existing Profile currencies remain readable and unchanged; this UI list
+does not narrow the domain or database currency schema. Native primitives avoid a
+new picker dependency or runtime Intl currency-list requirement.
+
 ### Security Requirements
 
 * secure session persistence;

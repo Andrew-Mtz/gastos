@@ -121,7 +121,11 @@ Email/password signup leads to Profile Setup when the local Auth session exists.
 Local email confirmation is currently disabled. Environments requiring email
 confirmation show pending feedback; no callback flow is implemented. Sign in
 resumes missing Profile Setup or opens Inicio in the authenticated shell. Profile Setup
-collects display name, uppercase three-letter currency, and a named timezone.
+collects display name, a currency selection, and a named timezone. New profiles
+choose UYU (peso uruguayo), USD (dólar estadounidense), EUR (euro), BRL (real
+brasileño), or ARS (peso argentino) from a native selector, with no default choice.
+The selector does not change existing saved currencies or domain/database currency
+validation. It uses static labels rather than requiring newer Intl APIs.
 PostgreSQL remains authoritative for validation and authorization.
 
 Supabase owns the session. SecureStore holds only a small AES-256 key;

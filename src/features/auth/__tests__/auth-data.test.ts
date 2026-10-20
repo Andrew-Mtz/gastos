@@ -5,6 +5,7 @@ import {
   signInSchema,
   signUpSchema,
   profileSchema,
+  profileSetupSchema,
 } from '../auth-data';
 
 jest.mock('../../../infrastructure/supabase/client', () => ({
@@ -40,6 +41,30 @@ beforeEach(() => {
   query.abortSignal.mockReturnValue(query);
   query.insert.mockReturnValue(query);
 });
+test('Profile Setup permits exactly UYU, USD, EUR, BRL and ARS', () => {
+  for (const base_currency of ['UYU', 'USD', 'EUR', 'BRL', 'ARS']) {
+    expect(
+      profileSetupSchema.safeParse({ ...row, base_currency }).success,
+    ).toBe(true);
+  }
+  for (const base_currency of ['', 'CAD', 'ZZZ', 'usd', ' USD ']) {
+    expect(
+      profileSetupSchema.safeParse({ ...row, base_currency }).success,
+    ).toBe(false);
+  }
+});
+test.each(['CAD', 'ZZZ'])(
+  'existing %s profiles remain readable without currency changes',
+  async (base_currency) => {
+    const existing = { ...row, base_currency };
+    maybeSingle.mockResolvedValue({ data: existing, error: null });
+    expect(await readProfile(row.id)).toEqual(existing);
+    expect(
+      await createProfile(row.id, { ...row, base_currency: 'USD' }),
+    ).toEqual(existing);
+    expect(query.insert).not.toHaveBeenCalled();
+  },
+);
 test('sign-in validates email/nonempty password without signup strength or password transformations', () => {
   expect(signInSchema.safeParse({ email: 'bad', password: '' }).success).toBe(
     false,
