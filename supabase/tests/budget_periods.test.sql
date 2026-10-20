@@ -13,8 +13,8 @@ insert into public.profiles (id, display_name, base_currency, timezone) values
 select has_table('public', 'budget_periods', 'Budget period table exists');
 select columns_are('public', 'budget_periods', array[
   'id', 'profile_id', 'starts_on', 'ends_on', 'status', 'base_currency',
-  'expected_income_minor', 'created_at', 'updated_at', 'closed_at'
-], 'Only the ten approved columns exist');
+  'expected_income_minor', 'created_at', 'updated_at', 'closed_at', 'lifecycle_version'
+], 'Only the approved period columns including FIN-123 lifecycle version exist');
 select col_is_pk('public', 'budget_periods', 'id', 'Budget period id is the primary key');
 select col_type_is('public', 'budget_periods', 'id', 'uuid', 'Id is UUID');
 select col_type_is('public', 'budget_periods', 'profile_id', 'uuid', 'Profile identity is UUID');
