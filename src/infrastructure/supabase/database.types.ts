@@ -220,6 +220,75 @@ export type Database = {
         };
         Relationships: [];
       };
+      recurring_expenses: {
+        Row: {
+          active_from: string;
+          active_until: string | null;
+          amount_mode: string;
+          category_id: string;
+          created_at: string;
+          currency: string;
+          default_amount_minor: number | null;
+          due_day: number;
+          frequency: string;
+          id: string;
+          name: string;
+          owner_profile_id: string;
+          scope: string;
+          stopped_at: string | null;
+          stopped_from: string | null;
+        };
+        Insert: {
+          active_from: string;
+          active_until?: string | null;
+          amount_mode: string;
+          category_id: string;
+          created_at?: string;
+          currency: string;
+          default_amount_minor?: number | null;
+          due_day: number;
+          frequency?: string;
+          id?: string;
+          name: string;
+          owner_profile_id: string;
+          scope?: string;
+          stopped_at?: string | null;
+          stopped_from?: string | null;
+        };
+        Update: {
+          active_from?: string;
+          active_until?: string | null;
+          amount_mode?: string;
+          category_id?: string;
+          created_at?: string;
+          currency?: string;
+          default_amount_minor?: number | null;
+          due_day?: number;
+          frequency?: string;
+          id?: string;
+          name?: string;
+          owner_profile_id?: string;
+          scope?: string;
+          stopped_at?: string | null;
+          stopped_from?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'recurring_expenses_category_owner_fkey';
+            columns: ['category_id', 'owner_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'categories';
+            referencedColumns: ['id', 'profile_id'];
+          },
+          {
+            foreignKeyName: 'recurring_expenses_owner_profile_id_fkey';
+            columns: ['owner_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       savings_goals: {
         Row: {
           created_at: string;
@@ -352,6 +421,42 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      create_personal_recurring_expense: {
+        Args: {
+          p_active_from: string;
+          p_active_until?: string;
+          p_amount_mode: string;
+          p_category_id: string;
+          p_currency: string;
+          p_default_amount_minor?: number;
+          p_due_day: number;
+          p_name: string;
+          p_template_id: string;
+        };
+        Returns: {
+          active_from: string;
+          active_until: string | null;
+          amount_mode: string;
+          category_id: string;
+          created_at: string;
+          currency: string;
+          default_amount_minor: number | null;
+          due_day: number;
+          frequency: string;
+          id: string;
+          name: string;
+          owner_profile_id: string;
+          scope: string;
+          stopped_at: string | null;
+          stopped_from: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'recurring_expenses';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       create_personal_savings_goal: {
         Args: {
           p_currency: string;
@@ -560,6 +665,32 @@ export type Database = {
         SetofOptions: {
           from: '*';
           to: 'budget_periods';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      stop_personal_recurring_expense: {
+        Args: { p_stopped_from: string; p_template_id: string };
+        Returns: {
+          active_from: string;
+          active_until: string | null;
+          amount_mode: string;
+          category_id: string;
+          created_at: string;
+          currency: string;
+          default_amount_minor: number | null;
+          due_day: number;
+          frequency: string;
+          id: string;
+          name: string;
+          owner_profile_id: string;
+          scope: string;
+          stopped_at: string | null;
+          stopped_from: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'recurring_expenses';
           isOneToOne: true;
           isSetofReturn: false;
         };

@@ -1094,7 +1094,7 @@ savings, goal-edit/archive flow, bank transfer, conversion or later roadmap work
 
 ## FIN-117 — Personal Recurring Expense Schema
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-107
 
@@ -1113,6 +1113,23 @@ VARIABLE
 ### Requirements
 
 A template is not automatically an actual expense.
+
+### Implementation notes
+
+Implemented private MONTHLY FIXED/VARIABLE definitions with owner RLS, immutable
+original terms, stable-UUID create replay and an explicit prospective stop operation.
+ADR-070 records fixed/estimated amounts, currency/category eligibility, short-month
+due dates, activation/last-month bounds and preservation of closed/historical months.
+Stopped templates remain owner-readable; nothing creates or deletes actual expenses.
+The domain parser and calendar helper are pure. This schema task has no UI.
+
+Verification includes 702 Jest tests, 1,178 PostgreSQL assertions and the existing
+nine real savings-concurrency cases. Generated types are copied verbatim from the
+matching-head CI artifact after verifying its workflow SHA and ZIP digest. Independent
+review found no blocker; final exact-head quality/database/type-drift CI gates merge.
+Native/device runtime remains unverified. FIN-118 needs minimal entry/list/stop UI
+and uniquely linked monthly resolution; FIN-119 must avoid double counting actuals.
+No commitments, safe-to-spend, scheduler, automatic fixed generation or broad edits.
 
 ---
 
@@ -1825,7 +1842,7 @@ If a completed implementation no longer matches the desired product, create a ne
 The current next implementation task is:
 
 ```text
-FIN-117 — Personal Recurring Expense Schema
+FIN-118 — Resolve Variable Recurring Expense
 ```
 
 Phase 0 foundation review has passed; Phase 1 financial implementation may begin.
