@@ -14,10 +14,19 @@ React DOM, Reanimated, Worklets, and Gesture Handler are explicit direct
 dependencies matching Expo SDK 57's supported set. This constrains Router's
 transitive peers without peer-check bypasses or dependency overrides.
 
-The dependency audit reports 13 moderate findings; no automatic fixes have been
-applied. The user successfully opened the app on a physical iPhone using Expo Go
+That bootstrap-era dependency audit reported 13 moderate findings. It is not
+the current security assessment; see [FIN-126 dependency review](docs/DEPENDENCY_REVIEW_FIN126.md)
+for the pinned-tooling audit, bounded compatible patches and unresolved risks. The user successfully opened the app on a physical iPhone using Expo Go
 and confirmed that `Gastos` and `La aplicación está lista para comenzar.` appeared
 correctly. Reload has not been explicitly verified.
+
+## Phase 1 review
+
+See [FIN-126 evidence and limitations](docs/PHASE_ONE_REVIEW.md) and the
+[current-device acceptance checklist](docs/PHASE_ONE_DEVICE_CHECKLIST.md). The new
+local-only `npm run test:finance-api` exercises actual Auth/Data API operations, not
+native UI. `npm run test:router-parser` checks the installed Router parsing path in
+a separate Node process. Neither command targets a hosted project.
 
 ## Setup
 

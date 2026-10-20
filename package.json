@@ -20,7 +20,9 @@
     "supabase:status": "supabase status",
     "db:reset": "supabase db reset --local",
     "db:test": "supabase test db --local",
-    "db:types": "node scripts/generate-database-types.mjs"
+    "db:types": "node scripts/generate-database-types.mjs",
+    "test:finance-api": "node scripts/test-personal-finance-flow.mjs",
+    "test:router-parser": "node scripts/test-router-parser.mjs"
   },
   "jest": {
     "preset": "jest-expo",
