@@ -430,6 +430,9 @@ test('refocus reloads period allocations before showing actual bucket amounts', 
   });
   await screen.findAllByRole('progressbar');
   expect(screen.queryByText(/Total recibido:/)).not.toBeOnTheScreen();
+  expect(
+    screen.queryByText(/Ahorro protegido asignado:/),
+  ).not.toBeOnTheScreen();
   await act(async () => {
     finish({
       ...saved,
@@ -441,6 +444,12 @@ test('refocus reloads period allocations before showing actual bucket amounts', 
   });
   expect(await screen.findByText(/Necesidades:.*643,50/)).toBeOnTheScreen();
   expect(screen.getByText(/Ahorro:.*572,00/)).toBeOnTheScreen();
+  expect(screen.getByText(/Ahorro protegido asignado:/)).toHaveTextContent(
+    /572,00/,
+  );
+  expect(screen.getByText(/Asignado a gasto ordinario:/)).toHaveTextContent(
+    /858,00/,
+  );
   expect(screen.getByText(/Necesidades: 45.00%/)).toHaveTextContent(/675,00/);
 });
 
@@ -547,4 +556,59 @@ test('a period without active allocations still shows spending and manual refres
   expect(invalidate).toHaveBeenCalledWith({
     queryKey: consumptionOwnerKey(profile.id),
   });
+  expect(
+    screen.queryByText(/Ahorro protegido asignado:/),
+  ).not.toBeOnTheScreen();
+});
+
+test('overspending stays visible without taking from the protected allocation, and logout hides it', async () => {
+  jest.mocked(readBudget).mockResolvedValue({
+    period: {
+      id: 'f1140000-0000-4000-8000-000000000001',
+      profile_id: profile.id,
+      starts_on: '2026-10-01',
+      ends_on: '2026-10-31',
+      status: 'OPEN',
+      base_currency: 'USD',
+      expected_income_minor: 999999,
+    },
+    buckets,
+    allocations: buckets.map((bucket, index) => ({
+      budget_period_id: 'f1140000-0000-4000-8000-000000000001',
+      budget_bucket_id: bucket.id,
+      percentage_basis_points: [5000, 3000, 2000][index],
+    })),
+  });
+  jest.mocked(readReceivedIncome).mockResolvedValue(150000);
+  jest.mocked(readBucketConsumption).mockResolvedValue({
+    totalSpent: createMoney(160000, 'USD'),
+    buckets: [],
+  });
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+  });
+  const tree = () => (
+    <QueryClientProvider client={client}>
+      <BudgetScreen />
+    </QueryClientProvider>
+  );
+  const view = await render(tree());
+  expect(await screen.findByText(/Total gastado:/)).toHaveTextContent(
+    /1.600,00/,
+  );
+  expect(
+    await screen.findByText(/Ahorro protegido asignado:/),
+  ).toHaveTextContent(/300,00/);
+  expect(screen.getByText(/Asignado a gasto ordinario:/)).toHaveTextContent(
+    /1.200,00/,
+  );
+  expect(screen.getByText(/No son un saldo restante/)).toBeOnTheScreen();
+  jest.mocked(useAuth).mockReturnValue({
+    ...jest.mocked(useAuth)(),
+    state: { status: 'UNAUTHENTICATED' },
+  });
+  await view.rerender(tree());
+  expect(
+    screen.queryByText(/Ahorro protegido asignado:/),
+  ).not.toBeOnTheScreen();
 });

@@ -386,6 +386,17 @@ These are pre-consumption amounts, not remaining balances or safe-to-spend. Savi
 allocations are labeled separately and never silently redistributed to spending.
 Expense consumption, protected-savings balances and commitments remain later tasks.
 
+FIN-114 partitions those already-rounded received-income allocations by immutable
+bucket type: SAVINGS contributes only to protected savings allocation, and
+SPENDABLE contributes only to ordinary spendable allocation. Both include every
+referenced bucket even after archival; missing or invalid classification is an
+error, never permission to spend. The two exact totals sum to received income.
+They are period allocations, not cumulative savings, remaining balances or final
+safe-to-spend. Derivation creates no cash, spending or savings movement. Ordinary
+overspending leaves protected savings unchanged and cannot create a withdrawal.
+FIN-115 defines explicit movements; FIN-120 uses only ordinary spendable allocation
+as its starting point before consumption and confirmed commitments.
+
 # 10. Category
 
 A `Category` classifies financial activity.

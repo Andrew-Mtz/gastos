@@ -39,3 +39,25 @@ credential/security changes are authorized by this log.
   complete aggregates beyond history page limits, plus domain and UI tests.
 - Revisit: Pending owner review; later reallocation/closing tasks can reuse these
   complete consumption figures without changing historical classification.
+
+## FIN-114: Protected allocation without premature safe-to-spend
+
+- Question: How should FIN-114 separate savings without implementing FIN-115
+  movements or FIN-120's final availability formula early?
+- Options: introduce a cumulative savings balance or final spendable balance now;
+  expose an exact partition of the existing received-income allocation.
+- Decision: Partition FIN-110's already-rounded actual allocations by immutable
+  bucket type into protected savings and ordinary spendable allocation. Include
+  archived referenced buckets and every savings bucket, not just the default key.
+  Missing or invalid classification fails explicitly rather than freeing money.
+- Reason: Product rules already exclude savings from ordinary spending. Reusing
+  the existing rounded amounts preserves every minor unit and avoids pretending
+  that commitments or explicit savings movements have been implemented.
+- Impact: Both figures are labeled pre-consumption period allocations, not remaining
+  money, safe-to-spend, or cumulative savings. No cash, spending or savings movement
+  is created; ordinary overspending neither changes the plan nor withdraws savings.
+  No schema, data migration, permission, dependency or generated-type change.
+- Verification: Pure exact-arithmetic tests, lifecycle/component tests and real
+  PostgreSQL CI assertions for overspending, immutable type and private sources.
+- Revisit: Pending owner review. FIN-115 defines explicit movement effects;
+  FIN-120 consumes the ordinary allocation and resolves its final formula.

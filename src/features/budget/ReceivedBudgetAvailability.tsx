@@ -4,10 +4,11 @@ import { useFocusEffect } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AppText } from '../../components/ui/AppText';
 import { Button } from '../../components/ui/Button';
+import { type BudgetAllocationPlan } from '../../domain/budget/budget-allocation';
 import {
-  calculateActualBudgetAllocation,
-  type BudgetAllocationPlan,
-} from '../../domain/budget/budget-allocation';
+  calculateProtectedBudgetAllocation,
+  type ProtectedBudgetAllocation,
+} from '../../domain/budget/protected-budget-allocation';
 import { createMoney } from '../../domain/money/money';
 import { readReceivedIncome, receivedIncomeKey } from '../income/income-data';
 import { incomeErrorMessage } from '../income/income-form';
@@ -59,7 +60,17 @@ export function ReceivedBudgetAvailability({
         </Button>
       </View>
     );
-  const actual = calculateActualBudgetAllocation(plan, query.data);
+  let actual: ProtectedBudgetAllocation;
+  try {
+    actual = calculateProtectedBudgetAllocation(plan, query.data, buckets);
+  } catch {
+    return (
+      <AppText role="alert" tone="danger">
+        No se pudo verificar la protección del ahorro. Actualiza el presupuesto
+        para volver a intentarlo.
+      </AppText>
+    );
+  }
   return (
     <View style={{ gap: spacing.sm }}>
       <AppText variant="section">Distribución de ingresos recibidos</AppText>
@@ -67,7 +78,13 @@ export function ReceivedBudgetAvailability({
         Total recibido:{' '}
         {formatMoney(createMoney(query.data, plan.baseCurrency))}
       </AppText>
-      {actual.map((item) => {
+      <AppText>
+        Ahorro protegido asignado: {formatMoney(actual.protectedSavings)}
+      </AppText>
+      <AppText>
+        Asignado a gasto ordinario: {formatMoney(actual.spendableAllocated)}
+      </AppText>
+      {actual.allocations.map((item) => {
         const bucket = buckets.find(
           (entry) => entry.id === item.budgetBucketId,
         );
@@ -77,7 +94,7 @@ export function ReceivedBudgetAvailability({
         return (
           <AppText key={item.budgetBucketId}>
             {label}: {formatMoney(item.allocatedAmount)}
-            {bucket?.type === 'SAVINGS'
+            {item.bucketType === 'SAVINGS'
               ? ' · Asignado a ahorro, no a gasto libre'
               : ''}
           </AppText>
@@ -87,6 +104,11 @@ export function ReceivedBudgetAvailability({
         Importes asignados por ingresos reales, antes de descontar gastos y
         compromisos. No son un saldo restante ni un cálculo de dinero seguro
         para gastar. El ahorro no se usa automáticamente para gastos.
+      </AppText>
+      <AppText>
+        El ahorro protegido corresponde solo a la asignación de este período, no
+        al ahorro acumulado. Está excluido del gasto ordinario incluso si te
+        excedes; usarlo requiere un retiro explícito.
       </AppText>
     </View>
   );
