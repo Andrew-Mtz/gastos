@@ -525,7 +525,7 @@ grant execute on function public.get_personal_remainder_context(date) to authent
 
 create function public.close_and_dispose_personal_remainder(
   p_id uuid,p_budget_period_id uuid,p_expected_lifecycle_version bigint,p_preview_hash text,
-  p_action text,p_amount_minor bigint,p_destination_period_id uuid,p_destination_bucket_id uuid,p_confirmed boolean
+  p_action text,p_amount_minor bigint,p_destination_period_id uuid default null,p_destination_bucket_id uuid default null,p_confirmed boolean default false
 ) returns jsonb language plpgsql security definer set search_path='' as $$
 declare v_source public.budget_periods; v_destination public.budget_periods; v_existing public.budget_period_dispositions;
   v_payload jsonb; v_context jsonb; v_savings jsonb; v_cap numeric; v_closure jsonb; v_bucket public.budget_buckets;
