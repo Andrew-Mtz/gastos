@@ -2365,3 +2365,17 @@ are explicitly reconciled; cancelled previews, blur/background, month and auth c
 cannot submit stale UI. Auth changes discard private state and late responses. Every
 close result/rejection invalidates owner-wide derived financial queries plus the target
 budget. No automatic retry, process-restart recovery, reopen or remainder disposition.
+
+## FIN-124 lifecycle history and reopening
+
+The existing periods route adds explicit review/confirmation for CLOSED → OPEN. Its
+single stable close context also returns immutable closure/reopening history and the
+closed-state fingerprint; recorded close summaries remain distinguishable from live
+previews. A bounded owner-locked RPC appends reopening evidence and advances lifecycle
+without monetary writes. Legacy closes have no invented summary. Auth-scoped query
+state retains exact pending close/reopen requests through remount, with no process
+persistence or automatic retry. Every lifecycle attempt invalidates the existing
+owner-wide financial namespaces and target budget; auth clear removes pending state.
+The stable history aggregate has no silent row cap. It is a complete response, not
+pagination; exceptional lifecycle growth may warrant an explicit paginated history
+contract later rather than silently limiting this one.

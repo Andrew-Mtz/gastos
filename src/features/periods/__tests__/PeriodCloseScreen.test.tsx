@@ -14,6 +14,8 @@ import { PeriodCloseScreen } from '../PeriodCloseScreen';
 import {
   readPeriodClose,
   closePeriod,
+  reopenPeriod,
+  pendingLifecycleKey,
   mapPeriodClose,
   periodCloseKey,
 } from '../period-close-data';
@@ -21,6 +23,7 @@ import {
   closeContext,
   closedContext,
   closure,
+  reopening,
   profile,
   period,
 } from './fixtures';
@@ -29,6 +32,7 @@ jest.mock('../period-close-data', () => ({
   ...jest.requireActual('../period-close-data'),
   readPeriodClose: jest.fn(),
   closePeriod: jest.fn(),
+  reopenPeriod: jest.fn(),
 }));
 jest.mock('../../../infrastructure/supabase/client', () => ({ supabase: {} }));
 jest.mock('../../auth/AuthProvider', () => ({ useAuth: jest.fn() }));
@@ -73,6 +77,7 @@ beforeEach(() => {
   });
   jest.mocked(readPeriodClose).mockResolvedValue(mapped());
   jest.mocked(closePeriod).mockResolvedValue(closure());
+  jest.mocked(reopenPeriod).mockResolvedValue(reopening());
 });
 afterEach(() => {
   jest.restoreAllMocks();
@@ -108,7 +113,9 @@ test('reviews exact month, monthly versus as-of savings, confirms explicitly and
   const spy = jest.spyOn(client, 'invalidateQueries');
   await review();
   expect(closePeriod).not.toHaveBeenCalled();
-  expect(screen.getByText(/Reabrir aún no está disponible/)).toBeOnTheScreen();
+  expect(
+    screen.getByText(/deberás reabrirlo explícitamente/),
+  ).toBeOnTheScreen();
   expect(
     screen.getByText(/Ahorro protegido acumulado hasta el mes/),
   ).toBeOnTheScreen();
@@ -291,4 +298,177 @@ test('late success after logout does not restore private UI or invalidate anothe
     screen.queryByText(/Ingresos recibidos del mes/),
   ).not.toBeOnTheScreen();
   expect(spy).not.toHaveBeenCalled();
+});
+
+async function openClosed() {
+  jest
+    .mocked(readPeriodClose)
+    .mockResolvedValue(
+      mapPeriodClose(profile.id, period.starts_on, closedContext()),
+    );
+  return open();
+}
+async function reviewReopen() {
+  await userEvent
+    .setup()
+    .press(await screen.findByRole('button', { name: 'Revisar reapertura' }));
+}
+async function confirmReopen() {
+  await reviewReopen();
+  await userEvent
+    .setup()
+    .press(screen.getByRole('button', { name: 'Confirmar reapertura' }));
+}
+test('reopening requires explicit review and confirmation and invalidates all financial namespaces', async () => {
+  const { client } = await openClosed();
+  const invalidate = jest.spyOn(client, 'invalidateQueries');
+  await reviewReopen();
+  expect(reopenPeriod).not.toHaveBeenCalled();
+  expect(screen.getByText(/Todos los cierres anteriores/)).toBeOnTheScreen();
+  await userEvent
+    .setup()
+    .press(screen.getByRole('button', { name: 'Cancelar' }));
+  expect(reopenPeriod).not.toHaveBeenCalled();
+  await confirmReopen();
+  expect(await screen.findByText(/Reapertura confirmada/)).toBeOnTheScreen();
+  expect(reopenPeriod).toHaveBeenCalledTimes(1);
+  expect(invalidate).toHaveBeenCalledWith({
+    queryKey: recurringOwnerKey(profile.id),
+  });
+  expect(invalidate.mock.calls.length).toBeGreaterThanOrEqual(7);
+});
+test('uncertain reopening survives a real screen unmount with unchanged UUID version and fingerprint', async () => {
+  jest.mocked(reopenPeriod).mockRejectedValueOnce(new Error('Offline'));
+  const { client, unmount, tree } = await openClosed();
+  await confirmReopen();
+  expect(
+    await screen.findByRole('button', {
+      name: 'Comprobar reapertura pendiente',
+    }),
+  ).toBeOnTheScreen();
+  const request = jest.mocked(reopenPeriod).mock.calls[0][0];
+  await unmount();
+  await render(tree());
+  await userEvent
+    .setup()
+    .press(
+      await screen.findByRole('button', {
+        name: 'Comprobar reapertura pendiente',
+      }),
+    );
+  expect(reopenPeriod).toHaveBeenLastCalledWith(request);
+  expect(reopenPeriod).toHaveBeenCalledTimes(2);
+  await waitFor(() =>
+    expect(client.getQueryData(pendingLifecycleKey(profile.id))).toBeNull(),
+  );
+});
+test('uncertain close also survives a real remount rather than creating a new request', async () => {
+  jest.mocked(closePeriod).mockRejectedValueOnce(new Error('Offline'));
+  const { unmount, tree } = await open();
+  await confirm();
+  const request = jest.mocked(closePeriod).mock.calls[0][0];
+  await unmount();
+  await render(tree());
+  await userEvent
+    .setup()
+    .press(
+      await screen.findByRole('button', { name: 'Comprobar cierre pendiente' }),
+    );
+  expect(closePeriod).toHaveBeenLastCalledWith(request);
+  expect(closePeriod).toHaveBeenCalledTimes(2);
+});
+test('remount during in-flight reopening cannot send a duplicate request', async () => {
+  let resolve!: (value: ReturnType<typeof reopening>) => void;
+  jest.mocked(reopenPeriod).mockReturnValue(
+    new Promise((r) => {
+      resolve = r;
+    }),
+  );
+  const { unmount, tree } = await openClosed();
+  await confirmReopen();
+  await unmount();
+  await render(tree());
+  const retry = await screen.findByRole('button', {
+    name: 'Comprobar reapertura pendiente',
+  });
+  expect(retry).toBeDisabled();
+  await userEvent.setup().press(retry);
+  expect(reopenPeriod).toHaveBeenCalledTimes(1);
+  await act(async () => resolve(reopening()));
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('button', { name: 'Comprobar reapertura pendiente' }),
+    ).not.toBeOnTheScreen(),
+  );
+});
+test('auth cache clear discards pending data and ignores old response even after same-owner login', async () => {
+  let resolve!: (value: ReturnType<typeof reopening>) => void;
+  jest.mocked(reopenPeriod).mockReturnValue(
+    new Promise((r) => {
+      resolve = r;
+    }),
+  );
+  const { client, rerender, tree } = await openClosed();
+  await confirmReopen();
+  state = { status: 'UNAUTHENTICATED' };
+  await rerender(tree());
+  client.clear();
+  state = { status: 'AUTHENTICATED_READY', userId: profile.id, profile };
+  await rerender(tree());
+  await screen.findByRole('button', { name: 'Revisar reapertura' });
+  const invalidate = jest.spyOn(client, 'invalidateQueries');
+  invalidate.mockClear();
+  await act(async () => resolve(reopening()));
+  expect(invalidate).not.toHaveBeenCalled();
+  expect(screen.queryByText(/Reapertura confirmada/)).not.toBeOnTheScreen();
+  expect(
+    screen.queryByRole('button', { name: 'Comprobar reapertura pendiente' }),
+  ).not.toBeOnTheScreen();
+});
+test('stale reopening requires new review, no uncertain retry', async () => {
+  jest.mocked(reopenPeriod).mockRejectedValueOnce({ code: '40001' });
+  await openClosed();
+  await confirmReopen();
+  expect(
+    await screen.findByText(/vuelve a revisar antes de reabrir/),
+  ).toBeOnTheScreen();
+  expect(
+    screen.queryByRole('button', { name: 'Comprobar reapertura pendiente' }),
+  ).not.toBeOnTheScreen();
+  expect(
+    screen.queryByRole('button', { name: 'Confirmar reapertura' }),
+  ).not.toBeOnTheScreen();
+});
+test('reopened context still presents immutable closure summary and reopen evidence', async () => {
+  const original = closure();
+  const data = closeContext();
+  data.period.lifecycle_version = 2;
+  data.summary.period.lifecycle_version = 2;
+  data.history = { closures: [original], reopenings: [reopening()] };
+  jest
+    .mocked(readPeriodClose)
+    .mockResolvedValue(mapPeriodClose(profile.id, period.starts_on, data));
+  await open();
+  expect(await screen.findByText(/Reapertura · versión 2/)).toBeOnTheScreen();
+  await userEvent
+    .setup()
+    .press(screen.getByRole('button', { name: /Ver cierre versión 1/ }));
+  expect(screen.getByText('Resumen conservado al cierre')).toBeOnTheScreen();
+});
+test('reopen review clears on month navigation and background', async () => {
+  await openClosed();
+  await reviewReopen();
+  await act(async () => listener('background'));
+  expect(
+    screen.queryByRole('button', { name: 'Confirmar reapertura' }),
+  ).not.toBeOnTheScreen();
+  await act(async () => listener('active'));
+  await reviewReopen();
+  await userEvent
+    .setup()
+    .press(screen.getByRole('button', { name: 'Mes anterior' }));
+  expect(
+    screen.queryByRole('button', { name: 'Confirmar reapertura' }),
+  ).not.toBeOnTheScreen();
+  expect(reopenPeriod).not.toHaveBeenCalled();
 });

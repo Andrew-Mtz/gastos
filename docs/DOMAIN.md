@@ -1895,3 +1895,13 @@ later authorized older-month corrections do not rewrite it. Bucket deficits rema
 negative and unconfigured availability remains unknown. Closing moves no money,
 cancels no obligations and implies no rollover or remainder disposition. A stale
 preview/version conflicts; exact UUID replay only reads the original result.
+
+## FIN-124 explicit reopening
+
+ADR-076 records CLOSED → OPEN as an explicit, confirmed, version-checked action with
+immutable reopening evidence. It clears the live closed timestamp, not past closure
+history. Legacy closes retain their original timestamp without an invented summary.
+Every new lifecycle advances the server version; old exact request replay is read-only
+and cannot reopen a later close. Corrections then use existing rules, including savings
+solvency and traceable transaction revisions. Reopening has zero cash, budget, spending
+and savings impact; no automatic reclose or remainder disposition occurs.

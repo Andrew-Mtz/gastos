@@ -170,7 +170,8 @@ async function scenario(
   } finally {
     // This target is an ephemeral local Supabase container, and these UUIDs were
     // created by this invocation. No production DELETE capability is introduced.
-    await run(`begin;delete from public.budget_period_closures where owner_profile_id='${owner}';
+    await run(`begin;delete from public.budget_period_reopenings where owner_profile_id='${owner}';
+      delete from public.budget_period_closures where owner_profile_id='${owner}';
       delete from public.transaction_revisions where owner_profile_id='${owner}';
       delete from public.transactions where owner_profile_id='${owner}';
       delete from public.budget_allocations where budget_period_id in ('${september}','${october}');
@@ -739,4 +740,77 @@ await scenario(
   (c) => c.stop,
   true,
   closedExactlyOnce,
+);
+
+// FIN-124: real reopening/close/write interleavings retain immutable lifecycle evidence.
+const reopenSeptember = (c, id = c.category, version = 1) =>
+  `select public.reopen_personal_budget_period('${id}','${c.september}',${version},
+    public.get_personal_period_close_context('2026-09-01')->>'reopen_hash',true);`;
+const lifecycle = async (c, expected) =>
+  assert.equal(
+    (
+      await run(`select status||':'||lifecycle_version||':'||
+  (select count(*) from public.budget_period_closures where budget_period_id='${c.september}')||':'||
+  (select count(*) from public.budget_period_reopenings where budget_period_id='${c.september}')
+  from public.budget_periods where id='${c.september}';`)
+    ).trim(),
+    expected,
+  );
+await scenario(
+  'waiting reopen sees committed close',
+  closeSeptember,
+  (c) => `select public.lock_personal_finance();${reopenSeptember(c)}`,
+  true,
+  (c) => lifecycle(c, 'OPEN:2:1:1'),
+);
+for (const [name, write] of [
+  ['expense', (c) => c.expense(1)],
+  ['income correction', (c) => editIncome(c, 900)],
+  ['savings withdrawal', (c) => c.move('SAVINGS_WITHDRAWAL', 1)],
+  [
+    'allocation',
+    (c) =>
+      `select public.save_budget_allocations('${c.september}','[{"budget_bucket_id":"${c.ordinary}","percentage_basis_points":7000},{"budget_bucket_id":"${c.savings}","percentage_basis_points":3000}]');`,
+  ],
+])
+  await scenario(
+    `reopening permits waiting ${name} under ordinary guards`,
+    (c) => closeSeptember(c) + reopenSeptember(c),
+    write,
+    true,
+    (c) => lifecycle(c, 'OPEN:2:1:1'),
+  );
+await scenario(
+  'reopening rejects a waiting stale close from the old lifecycle',
+  (c) => closeSeptember(c) + reopenSeptember(c),
+  (c) =>
+    `select public.close_personal_budget_period('${c.goal}','${c.september}',0,repeat('a',32),true);`,
+  false,
+  (c) => lifecycle(c, 'OPEN:2:1:1'),
+  /Period lifecycle changed/,
+);
+await scenario(
+  'reopening replay waits and never reopens a later close',
+  (c) =>
+    closeSeptember(c) +
+    `select set_config('fin124.hash',public.get_personal_period_close_context('2026-09-01')->>'reopen_hash',true);` +
+    reopenSeptember(c) +
+    `select public.close_personal_budget_period('${c.goal}','${c.september}',2,
+      public.get_personal_period_close_context('2026-09-01')->>'snapshot_hash',true);`,
+  (
+    c,
+  ) => `select public.lock_personal_finance();select public.reopen_personal_budget_period('${c.category}','${c.september}',1,
+    (select closed_state_hash from public.budget_period_reopenings where id='${c.category}'),true);`,
+  true,
+  (c) => lifecycle(c, 'CLOSED:3:2:1'),
+);
+await scenario(
+  'duplicate reopening produces exactly one event',
+  (c) => closeSeptember(c) + reopenSeptember(c),
+  (
+    c,
+  ) => `select public.lock_personal_finance();select public.reopen_personal_budget_period('${c.category}','${c.september}',1,
+    (select closed_state_hash from public.budget_period_reopenings where id='${c.category}'),true);`,
+  true,
+  (c) => lifecycle(c, 'OPEN:2:1:1'),
 );

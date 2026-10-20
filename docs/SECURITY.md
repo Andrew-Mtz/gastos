@@ -1726,3 +1726,15 @@ append-only to authenticated clients, with no INSERT/UPDATE/DELETE privileges; o
 the authenticated role can execute close. Old exact replay is read-only. Existing
 closed-period guards still cover direct metadata/allocation/transaction restoration,
 FIN-122 correction and recurring-template paths. No production privileges are expanded.
+
+## FIN-124 reopening capability
+
+ADR-076 adds one bounded definer lifecycle RPC with empty search_path, non-null auth.uid(),
+explicit owner validation, READ COMMITTED and owner finance lock before row locks.
+Confirmation, expected version and closed-state fingerprint are mandatory. Exact replay
+checks owner and the full original payload before current lifecycle. Reopening evidence
+is private owner-only SELECT; clients cannot insert/update/delete/truncate it or directly
+change period status/version/closed_at. Household membership grants no access. Existing
+closed-period mutation guards are unchanged. Pending lifecycle requests survive screen
+remount only inside the auth-cleared QueryClient; obsolete responses cannot restore
+private UI or cross account boundaries.
