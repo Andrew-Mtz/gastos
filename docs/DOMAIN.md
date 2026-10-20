@@ -1415,7 +1415,20 @@ Protected savings are excluded from ordinary spendable budget.
 
 Estimated commitments should be displayed separately rather than silently treated as exact.
 
-The exact formula may evolve as the product matures, but it must remain deterministic and explainable.
+FIN-120 / ADR-073 completes this formula: monthly rounded received-income SPENDABLE
+allocation minus all active actual expenses minus additional savings contributions
+plus explicit savings withdrawals minus current confirmed commitments. Goal movements
+are already included once. Negative results remain negative; expected income and
+protected reserves never supply ordinary funds. This is a monthly budget margin,
+not a bank balance or global solvency claim.
+
+Known estimates are separate: show the exact margin before estimates and an explicitly
+approximate margin after known estimates, including zero estimates. With any current
+unknown obligation, older unresolved obligation, or no configured complete plan,
+withhold every numerical availability margin and explain the missing information.
+Invalid/error/refreshing snapshots also withhold the figure. Components remain facts,
+not available money. All inputs must come from one complete consistent server snapshot.
+This decision was made under delegated authority and awaits owner review.
 
 ---
 
@@ -1794,7 +1807,8 @@ The following decisions are intentionally not finalized yet and must not be gues
 9. Exact account-balance model.
 10. Whether soft-deleted financial data is user-restorable through the UI.
 11. Exact audit-log implementation.
-12. Exact formula and treatment of estimated obligations within `SafeToSpend`.
+12. Phase 1 safe-to-spend formula and uncertainty treatment: resolved by ADR-073
+    under delegated authority, pending owner review; later account/payment models remain open.
 
 If an implementation requires one of these decisions, the decision must be made explicitly first.
 

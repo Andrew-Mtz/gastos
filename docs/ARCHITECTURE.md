@@ -2302,3 +2302,19 @@ confirmed, estimated and unknown obligations separately and blocks stale/error
 figures. Its query lives under `recurringOwnerKey`, so every template/actual mutation
 invalidates commitments along with recurring state. No realtime, dependency,
 occurrence ledger, available-balance formula or dashboard is introduced.
+
+
+## FIN-120 consistent monthly availability
+
+One STABLE invoker scalar RPC composes the STABLE savings/consumption and commitment
+read paths with one PostgreSQL statement snapshot. No independent query-cache inputs
+are joined into an availability number. Pure domain calculation applies ADR-073;
+complete owner/period/month/currency payloads and goal reserve partition are validated.
+The small budget-screen card hides every numerical margin on unknown/prior obligations,
+missing configuration, invalid/error data and refresh. Known estimates stay approximate.
+
+The query is a member of the owner-wide recurring financial invalidation family,
+which existing income/expense/savings/goal/allocation and recurring mutations already
+invalidate. Focus and manual budget refresh also invalidate it. Auth cache clearing
+and owner/period query keys prevent private stale snapshots crossing accounts/months.
+No dashboard, persisted aggregate, realtime, dependency or privileged capability added.

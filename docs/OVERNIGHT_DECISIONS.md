@@ -229,3 +229,32 @@ credential/security changes are authorized by this log.
   guards, lifecycle/cache tests, independent review and exact-head full CI/types.
 - Revisit: Pending owner review. Cross-period settlement semantics are intentionally
   unresolved; FIN-120/123/125 must honor this limitation rather than invent rollover.
+
+
+## FIN-120: Complete monthly formula and uncertainty gate
+
+- Question: How do explicit savings movements and estimated/unknown obligations
+  affect safe-to-spend, and how do we avoid racing financial inputs?
+- Options: call all known money safe; subtract estimates as though exact; separate
+  confirmed margin from approximate estimates and withhold margins when incomplete.
+- Decision: Choose the last option. Monthly rounded actual-income SPENDABLE allocation
+  minus actual expenses minus extra contributions plus explicit withdrawals minus
+  current confirmed commitments. Never count goal movements twice. Preserve negatives.
+  Known estimates yield a labeled pre-estimate margin and separate approximate margin;
+  unknown current amounts, prior unresolved obligations or no configured allocation
+  withhold numerical availability. One stable invoker RPC supplies a complete snapshot.
+- Reason: Expected income and protected savings are not spending money; estimates
+  are not exact and an unknown obligation cannot truthfully be treated as zero.
+  A single statement snapshot avoids transient overstatement during concurrent writes.
+- Impact: Read-only monthly budget margin, not cash/account balance or global solvency.
+  No totals persisted, implicit savings use, currency conversion, ordinary rollover,
+  cross-month payment model or FIN-121 dashboard. Existing recurrence tombstones and
+  archived/unallocated spending/commitments remain included under ADR-068–072.
+  Invalid/error/refreshing data hides unsafe cached figures. Owner-wide mutation,
+  auth/month/focus/manual-refresh invalidation must keep the new query current.
+- Verification: Exact domain arithmetic and uncertainty tests; owner/grant/currency,
+  overflow, full aggregate and real concurrent-snapshot SQL checks; UI cache/lifecycle
+  tests; independent bounded review; generated types and exact-head full CI required.
+- Revisit: Accepted under delegated authority, not personally reviewed or confirmed
+  by the owner. Pending owner review of presentation/formula; revisit cross-month
+  payments/accounts later. FIN-123/125 must keep unresolved-obligation safeguards.

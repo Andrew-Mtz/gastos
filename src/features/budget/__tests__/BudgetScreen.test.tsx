@@ -38,6 +38,7 @@ jest.mock('../../income/income-data', () => ({
   ...jest.requireActual('../../income/income-data'),
   readReceivedIncome: jest.fn(),
 }));
+jest.mock('../SafeToSpend', () => ({ SafeToSpend: jest.fn(() => null) }));
 const save = jest.fn<Promise<void>, [unknown]>();
 const cancel = jest.fn();
 const emptyBudget = { period: null, buckets: [], allocations: [] };

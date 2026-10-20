@@ -15,7 +15,7 @@ export const savingsOwnerKey = (profileId: string) =>
 export const savingsKey = (profileId: string, month: string) =>
   [...savingsOwnerKey(profileId), month] as const;
 const minor = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
-const summarySchema = z.object({
+export const savingsSummarySchema = z.object({
   budget_period_id: z.uuid(),
   base_currency: z.string().regex(/^[A-Z]{3}$/),
   opening_protected_minor: minor,
@@ -40,7 +40,7 @@ export async function readSavingsMonth(
   });
   const { data, error } = await (signal ? query.abortSignal(signal) : query);
   if (error) throw error;
-  const row = summarySchema.parse(data);
+  const row = savingsSummarySchema.parse(data);
   if (
     row.budget_period_id !== period.id ||
     row.base_currency !== period.base_currency

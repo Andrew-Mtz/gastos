@@ -2270,6 +2270,49 @@ period rules remain unchanged. Fixed automatic generation remains an open decisi
 
 ---
 
+# ADR-073 — Snapshot-Based Monthly Safe-to-Spend with Explicit Uncertainty
+
+**Status:** Accepted under delegated implementation authority (2026-10-20),
+pending owner review of `OVERNIGHT_DECISIONS.md`. This is not owner confirmation.
+
+The complete Phase 1 formula is the selected month's largest-remainder-rounded
+SPENDABLE allocation of actual received income, minus actual EXPENSE consumption,
+minus additional SAVINGS_CONTRIBUTION, plus explicit SAVINGS_WITHDRAWAL, minus
+unresolved confirmed FIXED commitments in that month. Goals already participate
+through those same savings transactions and are never added/subtracted again.
+Expected income, protected percentage savings, other months' ordinary remainders,
+account balances and other currencies never fund the result. Negative margins stay
+negative; no implicit savings withdrawal or zero clamp is permitted.
+
+The exact base is a monthly budget margin after confirmed commitments, not bank
+cash, global solvency or a guarantee that all future spending is known. With known
+VARIABLE estimates, label the base **margin before estimates** and separately show
+a clearly approximate margin after subtracting those estimates. A zero estimate
+remains an estimate. Neither estimates nor unknowns become actual spending. With
+any current unknown amount, any older unresolved occurrence (ADR-072), or no complete
+configured allocation, withhold all numeric availability margins and explain the
+next action. Component amounts may remain visible as facts, not available money.
+No numerical margin is shown on invalid, failed or refreshing data.
+
+A single STABLE SECURITY INVOKER RPC composes existing stable savings and commitment
+aggregates under PostgreSQL's one calling-statement MVCC snapshot. Nested stable
+reads share that snapshot, so a concurrent payment cannot appear as neither actual
+spending nor a commitment; a contribution cannot combine a new reserve with old
+ordinary funding. This is complete server data, not independent client queries or
+paginated rows. Existing validation, owner RLS, archived/unallocated mappings,
+recurrence cancellation identity and safe-integer bounds remain authoritative.
+The read creates no persisted totals or financial movement and needs no elevated
+privilege. Monetary intermediate/final overflow fails closed.
+
+The owner-scoped query is invalidated by income, expense, savings/goal movements,
+recurring create/stop/resolve, allocation changes, authentication/month changes,
+refocus and explicit refresh. FIN-120 adds a small budget-screen result, not FIN-121's
+dashboard. Cross-period payments, accounts, conversion and automatic fixed generation
+remain deferred. Revisit uncertainty presentation with owner review; FIN-123/125 must
+retain pending-obligation gates rather than silently rolling commitments forward.
+
+---
+
 # Superseding Decisions
 
 When replacing an accepted ADR:
@@ -2323,7 +2366,9 @@ They should be addressed only when needed by the roadmap.
 
 ## Safe-to-Spend
 
-* final treatment of estimated future expenses.
+Phase 1 formula and estimated/unknown-obligation treatment are resolved by ADR-073
+under delegated authority, pending owner review. Later account/cross-period payment
+models remain separate decisions.
 
 ## Infrastructure
 

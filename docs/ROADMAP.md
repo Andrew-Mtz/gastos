@@ -1237,7 +1237,7 @@ UI, safe-to-spend and dashboard remain outside this task.
 
 ## FIN-120 — Safe-to-Spend v1
 
-**Status:** Not Started
+**Status:** Completed
 
 **Depends on:** FIN-113, FIN-114, FIN-119
 
@@ -1258,7 +1258,34 @@ Estimated commitments displayed separately.
 
 ### Important
 
-Before implementation, confirm the final Phase 1 formula against open domain decisions.
+ADR-073 resolves the complete Phase 1 formula and estimated/unknown obligation
+presentation under delegated authority, pending owner review, not personal confirmation.
+Include additional savings contributions and explicit withdrawals exactly once;
+known estimates remain approximate and unknown/prior unresolved obligations withhold
+a numerical availability claim. The single stable server snapshot, pure domain and
+minimal budget-screen card are implemented. FIN-121 dashboard is separate.
+
+### Implementation evidence
+
+The final formula includes actual expenses even under archived/unallocated original
+mappings and never double-counts linked recurring actuals or goal movements. Negative
+margins remain honest. Component facts remain explainable when numeric availability
+is withheld, with navigation to review obligations and no suggestion to backdate.
+Owner/month keys, existing owner-wide financial invalidation, focus and manual refresh
+keep the single snapshot current; refreshing/error data hides cached availability.
+
+Independent bounded review found no P1/P2 finding on tree
+f37651ffaf2106ddc6cef33a5fd0b88a3f8909f9. Full local verification includes 840 Jest tests
+in 47 suites, typecheck, lint and formatting. Disposable PostgreSQL CI passed 1,385
+assertions in 22 files and seventeen real concurrent-session cases, including readers
+whose statement snapshots span concurrent payment/contribution commits. A test-only
+legacy-fixture ALTER initially encountered pending deferred events; explicitly draining
+validated constraints before the fixture resolved it without production-code changes.
+Generated types were copied verbatim from matching-head artifact 12253165116 (source
+head a1370b09f68a8f808ee69d459045a37a8b045099), verifying workflow SHA and ZIP SHA256
+b92be9604b81a290ed20d3940afc745759bb3baf627785043c618f5cb8bee572. Final exact-head full
+quality/database/type-drift CI gates merge. No production deployment/database changes,
+native/device QA, account balances, cross-month payments or FIN-121+ implementation.
 
 ---
 
