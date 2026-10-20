@@ -40,7 +40,7 @@ grant execute on function public.prepare_initial_budget_buckets() to authenticat
 -- Initial setup never replaces an existing plan. Identical retries recover a
 -- lost response; a competing different setup is a conflict, not an overwrite.
 create function public.save_initial_budget(
-  p_starts_on date, p_base_currency text, p_expected_income_minor bigint, p_allocations jsonb
+  p_starts_on date, p_base_currency text, p_expected_income_minor bigint default null, p_allocations jsonb default null
 )
 returns public.budget_periods
 language plpgsql security invoker set search_path = '' as $$
