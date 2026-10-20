@@ -1905,3 +1905,29 @@ Every new lifecycle advances the server version; old exact request replay is rea
 and cannot reopen a later close. Corrections then use existing rules, including savings
 solvency and traceable transaction revisions. Reopening has zero cash, budget, spending
 and savings impact; no automatic reclose or remainder disposition occurs.
+
+## FIN-125 explicit net remainder
+
+ADR-077 preserves 10000bps on received income. Cash-neutral carry is a separate
+same-currency ordinary credit from one completed month to the immediately next month,
+explicitly assigned to a spendable destination bucket or left in an unallocated pool.
+It is not income and never receives a second percentage split or savings allocation.
+Net ordinary remainder adds incoming carry and subtracts outgoing carry. All savings
+contribution funding checks use that same net remainder; protected savings allocations
+and every goal/general historical prefix remain unchanged. Positive gross bucket
+residuals are informative, not independent transfer limits; deficits and unattributed
+extra contributions/withdrawals participate in the global cap.
+
+A confirmed atomic close-and-dispose operation checks live pre-action facts/version,
+creates one additional general savings contribution or carry, and saves immutable
+post-action close evidence. It requires a completed OPEN configured source and no
+selected/prior unresolved obligations. Carry requires the next owned OPEN configured
+same-currency month and an explicit eligible destination. Undisposed money remains
+historical, not automatically usable later. Savings are never rolled twice.
+
+Active outbound carry blocks new source reopening. Explicit reversal and source
+reopening occur together, retaining both histories, only when the destination is OPEN,
+configured, has no selected/prior unresolved obligations and retains sufficient net
+ordinary funds. Downstream carries must be dealt with explicitly; no automatic reversal,
+savings use or backdating. Old exact requests remain read-only after later lifecycle
+changes. Versioned saved summaries are historical evidence, never current authority.
