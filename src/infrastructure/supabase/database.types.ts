@@ -427,6 +427,78 @@ export type Database = {
           },
         ];
       };
+      household_invitations: {
+        Row: {
+          created_at: string;
+          expires_at: string;
+          household_id: string;
+          id: string;
+          issuer_profile_id: string;
+          recipient_code: string;
+          recipient_profile_id: string;
+          resolved_at: string | null;
+          status: string;
+        };
+        Insert: {
+          created_at?: string;
+          expires_at: string;
+          household_id: string;
+          id: string;
+          issuer_profile_id: string;
+          recipient_code: string;
+          recipient_profile_id: string;
+          resolved_at?: string | null;
+          status?: string;
+        };
+        Update: {
+          created_at?: string;
+          expires_at?: string;
+          household_id?: string;
+          id?: string;
+          issuer_profile_id?: string;
+          recipient_code?: string;
+          recipient_profile_id?: string;
+          resolved_at?: string | null;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'household_invitations_household_id_fkey';
+            columns: ['household_id'];
+            isOneToOne: false;
+            referencedRelation: 'households';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'household_invitations_issuer_profile_id_fkey';
+            columns: ['issuer_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'household_invitations_recipient_code_fkey';
+            columns: ['recipient_code'];
+            isOneToOne: false;
+            referencedRelation: 'household_recipient_codes';
+            referencedColumns: ['code'];
+          },
+          {
+            foreignKeyName: 'household_invitations_recipient_profile_code_fkey';
+            columns: ['recipient_profile_id', 'recipient_code'];
+            isOneToOne: false;
+            referencedRelation: 'household_recipient_codes';
+            referencedColumns: ['profile_id', 'code'];
+          },
+          {
+            foreignKeyName: 'household_invitations_recipient_profile_id_fkey';
+            columns: ['recipient_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       household_members: {
         Row: {
           household_id: string;
@@ -464,6 +536,29 @@ export type Database = {
             foreignKeyName: 'household_members_profile_id_fkey';
             columns: ['profile_id'];
             isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      household_recipient_codes: {
+        Row: {
+          code: string;
+          profile_id: string;
+        };
+        Insert: {
+          code?: string;
+          profile_id: string;
+        };
+        Update: {
+          code?: string;
+          profile_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'household_recipient_codes_profile_id_fkey';
+            columns: ['profile_id'];
+            isOneToOne: true;
             referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
@@ -795,6 +890,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      accept_household_invitation: {
+        Args: { p_invitation_id: string };
+        Returns: Json;
+      };
       close_and_dispose_personal_remainder: {
         Args: {
           p_action: string;
@@ -835,6 +934,14 @@ export type Database = {
           p_default_currency: string;
           p_household_id: string;
           p_name: string;
+        };
+        Returns: Json;
+      };
+      create_household_invitation: {
+        Args: {
+          p_household_id: string;
+          p_invitation_id: string;
+          p_recipient_code: string;
         };
         Returns: Json;
       };
@@ -903,6 +1010,7 @@ export type Database = {
         Args: { p_budget_period_id: string };
         Returns: Json;
       };
+      get_my_household_invitations: { Args: never; Returns: Json };
       get_my_household_memberships: { Args: never; Returns: Json };
       get_personal_carry: {
         Args: { p_budget_period_id: string };
@@ -1143,6 +1251,10 @@ export type Database = {
           p_id: string;
           p_preview_hash: string;
         };
+        Returns: Json;
+      };
+      revoke_household_invitation: {
+        Args: { p_invitation_id: string };
         Returns: Json;
       };
       save_budget_allocations: {

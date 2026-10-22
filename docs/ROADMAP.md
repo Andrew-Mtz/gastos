@@ -1717,8 +1717,9 @@ synthetic local/device cases and explicit operational limits, not passed accepta
 
 ## FIN-203 — Household Invitation Flow
 
-**Status:** In Progress — owner decisions approved; source/tests prepared,
-independent review, authentic types, real SQL and exact-head CI pending.
+**Status:** In Progress — source independently reviewed; disposable SQL/RLS,
+concurrency and HTTP checks passed; authentic types integrated. Final reviewed-head
+full CI and native/device acceptance remain pending.
 
 ADR-080 defines directed account-code invitations, OWNER-only creation/cancellation,
 seven-day expiry, explicit recipient acceptance as MEMBER and multiple separate
@@ -1726,6 +1727,24 @@ active households. No email/auth changes or historical same-household reactivati
 The minimal Hogar controls retain stable uncertain requests and isolate session caches.
 SQL/RLS, lifecycle concurrency and real HTTP-to-app-parser tests accompany client
 regressions. FIN-204 and device acceptance remain separate; no production work claimed.
+
+Disposable CI run `39866077696` on source head
+`4798c7082abe7b7ded231d595dd9394633b07d9a` passed 2,516 SQL assertions across 35 files,
+57 finance and 14 existing household concurrency scenarios, 13 invitation races
+plus 6 isolation-level rejection cases, both authenticated HTTP journeys and their
+production-parser checks. Cleanup passed. The run's only failures were the expected
+four missing-RPC typecheck errors and generated-type drift before artifact import.
+
+The 44,788-byte database types were copied verbatim from that run's artifact
+`12463194901`. ZIP SHA256:
+`551c1346a8693e03657890be10aee855b32fb015ea19b13035b6a19deb2fd73d`.
+Generated file SHA256:
+`b5fccfa6d3d369f7c438ea260fb13be89228ace2977bebca4bbe2ecac77f5f03`.
+The generated delta adds the two invitation tables and four RPC signatures; no
+handwritten types or escape casts were added. Exact-head CI, including type drift,
+must pass before merge. Docker remains unavailable locally; real database evidence
+comes from disposable CI. The [short device checklist](HOUSEHOLD_MEMBERSHIP_REVIEW.md#fin-203-short-device-checklist-pending)
+is still unexecuted and does not establish FIN-204 or native acceptance.
 
 ---
 
