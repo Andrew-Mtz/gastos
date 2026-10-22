@@ -2734,3 +2734,38 @@ This is a bounded FIN-202 slice, not a complete membership lifecycle or FIN-204
 privacy-suite completion. Local Docker is unavailable; real SQL/concurrency,
 authentic generated types, independent review, exact-head CI and native acceptance
 remain explicit gates. No production, credentials or real-user data is changed.
+
+
+---
+
+# ADR-080 — Directed Household Invitations With Explicit Recipient Acceptance
+
+**Status:** Owner approved 2026-10-21; implementation under review.
+
+The owner approved recipient-owned account codes (not bearer tokens), active OWNER
+creation/cancellation, seven-day expiry, explicit authenticated MEMBER acceptance,
+and multiple separate active households. Email/auth changes, personal-data sharing,
+leave/removal, role changes, ownership transfer and former same-household reactivation
+are excluded. FIN-202's no-history creation restriction does not restrict joining.
+
+Private code/invitation tables and four reviewed definer RPCs provide the capability
+without arbitrary account lookup or widening Profile/financial access. Create uses
+one stable UUID and exact payload; accept/revoke use stable invitation plus action
+identity. New acceptance checks the intended recipient, pending status, clock-time
+expiry and issuer's current active OWNER membership inside the transaction. It inserts
+MEMBER and records acceptance atomically. An accepted replay confirms the prior result
+only while the recipient remains active; it is not another join or revival. Cancel
+replay still requires current OWNER access. Actor/household locks, shared with FIN-202
+first creation, make concurrent outcomes explicit. READ COMMITTED is required.
+
+Only recent minimal invitation metadata is projected (14-day creation window). The
+inbox has no issuer/member identity; only the issuing active OWNER sees their outbox,
+including the code they entered. Own codes are selectable without a new dependency.
+Unknown/ineligible code errors are indistinguishable. Reversible technical caps are
+20 creations per issuer/24 hours and 20 live pending per household/recipient; these
+are not household cardinality rules or full production antispam protection.
+
+Real SQL/RLS, controlled concurrency, HTTP production-parser and session/cache/UI
+regressions are required. Types must come from the exact disposable CI artifact,
+never hand editing. Independent review, exact-head CI and native/device acceptance
+remain separate gates; FIN-204 owns the broader privacy matrix.

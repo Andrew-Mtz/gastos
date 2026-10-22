@@ -1208,6 +1208,15 @@ Initial product assumptions:
 
 The first version is primarily optimized for couples, but the domain should avoid unnecessary assumptions that permanently restrict households to exactly two members.
 
+FIN-203 / ADR-080 implements owner-approved directed invitations: the recipient
+copies their own account code, an active OWNER invites them, and that recipient
+explicitly accepts in-app within seven days as MEMBER. The code identifies an
+account and grants no access. Multiple active households are allowed and remain
+separate. Personal finances are never shared by joining. Leave/removal, role changes,
+ownership transfer and reactivating former same-household membership remain deferred.
+FIN-202's no-membership-history limit applies only to first-household creation,
+not to joining another household.
+
 ---
 
 # 42. Reports

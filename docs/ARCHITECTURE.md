@@ -2407,7 +2407,7 @@ RLS and revoke all client privileges, with no policies, RPC, definer function,
 Profile projection, financial scope change or application module.
 
 FIN-202 must introduce reviewed active-membership authorization separately.
-FIN-203 invitation semantics require an explicit owner decision; FIN-205 owns
+FIN-203 invitation semantics have the explicit owner decision in ADR-080; FIN-205 owns
 default split storage. Types must come from the exact disposable Supabase CI
 artifact, not a hand-edited approximation. Foundation SQL tests independently
 exercise constraints, SQL grants, default-deny RLS and actual member personal
@@ -2428,3 +2428,16 @@ can be reconciled by an authorized read of the created household. Blur/backgroun
 dismiss unsent editors and hide stale data until foreground/focus revalidation.
 Generated schema types remain an authentic-artifact gate; unavailable local Docker
 must not be bypassed with handwritten types.
+
+
+## FIN-203 minimal invitation integration
+
+The existing Hogar view hosts a small invitations component and strict application
+DTO parsers. Narrow transactional RPCs own lifecycle and membership authorization;
+no direct client table capability, dependency, realtime, email or privileged mobile
+secret is added. Stable create UUID/payload and invitation/action identity for accept
+and revoke survive in-session remounts in the auth-cleared QueryClient. Unknown results
+retain the exact request and reconcile via fresh authorized metadata or replay.
+Parent focus/background revalidation gates all invitation identity rendering; late
+requests cannot recreate a cleared session cache. A real HTTP-to-production-parser
+bridge and a separate controlled two-session harness complement SQL/RLS and UI tests.

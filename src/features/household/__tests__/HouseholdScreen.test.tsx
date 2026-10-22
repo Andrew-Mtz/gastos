@@ -12,6 +12,7 @@ import { useFocusEffect } from 'expo-router';
 import { randomUUID } from 'expo-crypto';
 import { useAuth, type AuthState } from '../../auth/AuthProvider';
 import type { Profile } from '../../auth/auth-data';
+import { readInvitations } from '../invitation-data';
 import { HouseholdScreen } from '../HouseholdScreen';
 import {
   createFirstHousehold,
@@ -22,6 +23,10 @@ import {
   type HouseholdSnapshot,
 } from '../household-data';
 
+jest.mock('../invitation-data', () => ({
+  ...jest.requireActual('../invitation-data'),
+  readInvitations: jest.fn(),
+}));
 jest.mock('../household-data', () => ({
   ...jest.requireActual('../household-data'),
   readHouseholdMemberships: jest.fn(),
@@ -132,6 +137,12 @@ function expectNoSharedIdentity() {
 
 beforeEach(() => {
   jest.resetAllMocks();
+  jest.mocked(readInvitations).mockImplementation(async (profileId) => ({
+    profile_id: profileId,
+    recipient_code: id(99),
+    incoming: [],
+    outgoing: [],
+  }));
   jest.useFakeTimers();
   AppState.currentState = 'active';
   state = { status: 'AUTHENTICATED_READY', userId: profile.id, profile };
@@ -337,8 +348,8 @@ test('renders all authorized households and more than two members without assumi
     screen.queryByRole('button', { name: 'Crear hogar' }),
   ).not.toBeOnTheScreen();
   expect(
-    screen.getByText(
-      /Las invitaciones y los cambios de membresía todavía no están disponibles/,
+    await screen.findByText(
+      /Salir, quitar miembros, cambiar roles y transferir la propiedad aún no están disponibles/,
     ),
   ).toBeOnTheScreen();
 });
@@ -352,7 +363,7 @@ test('prior inactive membership explains the unsupported flow without revealing 
     /Tienes una membresía anterior, pero ninguna activa\./,
   );
   expect(screen.getByRole('status')).toHaveTextContent(
-    /todavía no permite volver a un hogar ni crear otro/,
+    /todavía no permite volver al mismo hogar ni crear otro/,
   );
   expect(screen.getByRole('status')).toHaveTextContent(
     /Tus finanzas personales siguen disponibles/,

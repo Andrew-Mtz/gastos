@@ -172,13 +172,13 @@ an explicit `OWNER` or `MEMBER` label, a finite join timestamp, and an optional
 finite departure timestamp no earlier than joining. Identity, household, Profile,
 and original join time cannot be reassigned. The structural collection has no
 two-person cap, owner-count rule, or single-active-household constraint. This does
-not resolve the still-open MVP cardinality or detailed role policy: the client
-surface remains closed until FIN-202 defines authorization. A creator need not
+not itself resolve MVP cardinality or detailed role policy: FIN-202 opens read
+authorization and FIN-203 / ADR-080 now defines multi-household invitations. A creator need not
 have an ownership membership; no role is inferred or automatically inserted.
 
-Default split weight is deferred to FIN-205. Leaving, rejoining, role changes,
-invitation state, and former-member visibility are not implemented or implicitly
-decided by these fields. Any later rejoin operation must explicitly preserve its
+Default split weight is deferred to FIN-205. Leaving, rejoining, role changes
+and former-member visibility are not implemented or implicitly decided by these
+fields. Directed invitations are separately defined by FIN-203 / ADR-080. Any later rejoin operation must explicitly preserve its
 history rather than rewriting the original join time or silently removing a
 departure marker. FIN-201 creates no financial activity or personal-budget impact.
 
@@ -1818,8 +1818,8 @@ The following invariants are foundational.
 
 The following decisions are intentionally not finalized yet and must not be guessed during implementation:
 
-1. Whether users can belong to multiple active households in MVP.
-2. Exact household invitation lifecycle.
+1. Multiple active households are approved for FIN-203 (ADR-080), with separate scopes.
+2. Directed invitation creation/cancellation/acceptance is defined by ADR-080; departure and rejoining remain deferred.
 3. Whether household categories are global, household-owned, or mapped from personal categories.
 4. Exact representation of credit-card liabilities and statements.
 5. Whether fixed recurring expenses auto-create transactions.
@@ -1961,5 +1961,18 @@ read model remain collections without a two-member or owner-count limit. Creatio
 atomically adds an explicit active OWNER membership, never inferred as authorization
 from createdBy. OWNER/MEMBER share read rights only; role changes and all lifecycle
 operations remain unsupported. Inactive-only history gets a clear unsupported UI
-state, not automatic rejoining, erasure or old-household disclosure. Invitation and
-former-member historical policy remain open. No financial impact is introduced.
+state, not automatic rejoining, erasure or old-household disclosure. FIN-203 /
+ADR-080 now defines invitations; former-member historical policy remains open.
+No financial impact is introduced.
+
+
+## FIN-203 directed invitations (ADR-080)
+
+Only a current active OWNER creates or cancels pending invitations. A recipient-owned
+random account code is an identifier, not a bearer credential. The authenticated
+recipient explicitly accepts a directed invitation within 168 hours as MEMBER,
+regardless of memberships in other households. Any same-household membership history
+blocks a new join; no departure marker or historical identity is rewritten. Acceptance
+and membership insertion commit together. Accepted replay only confirms a prior
+transition while the recipient still has current active membership; it never reopens
+access. All invitation operations have zero cash, budget, spending and savings impact.
