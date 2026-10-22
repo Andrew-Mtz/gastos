@@ -30,6 +30,18 @@ const markers = [
 const runnerErrors = ['ENOENT', 'EACCES', 'ENOBUFS', 'ETIMEDOUT'];
 const signals = ['SIGTERM', 'SIGKILL', 'SIGINT'];
 
+export function startupProcessOptions() {
+  return {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    maxBuffer: 8 * 1024 * 1024,
+    timeout: 10 * 60 * 1000,
+    // The pinned CLI's Node shim forwards SIGTERM to its binary child; SIGKILL
+    // would bypass that forwarding and could leave start racing job cleanup.
+    killSignal: 'SIGTERM',
+  };
+}
+
 export function isDisposableCI(env) {
   return (
     env.CI === 'true' &&
@@ -100,12 +112,8 @@ function main() {
     );
     const migrations = readdirSync(path.join(root, 'supabase/migrations'));
     const result = spawnSync(process.execPath, [cli, 'start'], {
+      ...startupProcessOptions(),
       cwd: root,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-      maxBuffer: 8 * 1024 * 1024,
-      timeout: 10 * 60 * 1000,
-      killSignal: 'SIGKILL',
     });
     const summary = summarizeStart(result, migrations);
     // No raw output is written to disk or uploaded as an artifact.

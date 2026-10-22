@@ -122,8 +122,10 @@ select is(auth.uid(),pg_temp.id(2),'Recipient subject');
 select is((select count(*) from public.household_invitations),0::bigint,'Recipient direct read filtered by RLS despite grant');
 select is((select count(*) from public.household_recipient_codes),0::bigint,'Codes filtered by RLS despite grant');
 select throws_ok('insert into public.household_recipient_codes(profile_id) values(pg_temp.id(29))','42501',null,'RLS WITH CHECK independently rejects code writes');
-select is((with changed as(update public.household_invitations set recipient_profile_id=pg_temp.id(3) returning id)select count(*) from changed),0::bigint,'RLS update independently filters');
-select is((with removed as(delete from public.household_invitations returning id)select count(*) from removed),0::bigint,'RLS delete independently filters');
+with changed as(update public.household_invitations set recipient_profile_id=pg_temp.id(3) returning id)
+select is((select count(*) from changed),0::bigint,'RLS update independently filters');
+with removed as(delete from public.household_invitations returning id)
+select is((select count(*) from removed),0::bigint,'RLS delete independently filters');
 select is(jsonb_array_length(public.get_my_household_invitations()->'incoming'),1,'Only intended recipient receives invitation');
 select is((select array_agg(k order by k) from jsonb_object_keys(public.get_my_household_invitations()->'incoming'->0) k),array['expires_at','household_id','household_name','id','status'],'Prejoin inbox contains no member, issuer, code or personal identity');
 select is((select count(*) from public.households where id=pg_temp.id(200)),0::bigint,'Invitation alone gives no household read');
