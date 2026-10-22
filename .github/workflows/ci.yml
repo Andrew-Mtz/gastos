@@ -70,8 +70,10 @@ jobs:
         run: docker version
 
       - name: Start local Supabase
-        # Startup can print privileged local credentials. Preserve its exit status.
-        run: npm run supabase:start > /dev/null 2>&1
+        # Test the allowlist, then capture startup without printing privileged output.
+        run: |
+          node --test scripts/__tests__/supabase-start-diagnostics.test.mjs
+          node scripts/start-supabase-ci.mjs
 
       - name: Reset local database
         run: npm run db:reset

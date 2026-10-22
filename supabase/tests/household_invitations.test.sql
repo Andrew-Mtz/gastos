@@ -4,6 +4,20 @@ create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_catalog;
 \ir helpers/auth.sql.inc
 select no_plan();
+-- The inline code FK and the composite identity FK must coexist with distinct
+-- names. The latter is essential: two individually valid identities cannot pair.
+select ok(exists(select 1 from pg_constraint
+  where conrelid='public.household_invitations'::regclass
+    and conname='household_invitations_recipient_code_fkey'
+    and contype='f'
+    and pg_get_constraintdef(oid)='FOREIGN KEY (recipient_code) REFERENCES household_recipient_codes(code) ON DELETE RESTRICT'),
+  'Recipient code retains its independent foreign key');
+select ok(exists(select 1 from pg_constraint
+  where conrelid='public.household_invitations'::regclass
+    and conname='household_invitations_recipient_profile_code_fkey'
+    and contype='f'
+    and pg_get_constraintdef(oid)='FOREIGN KEY (recipient_profile_id, recipient_code) REFERENCES household_recipient_codes(profile_id, code) ON DELETE RESTRICT'),
+  'Distinct composite foreign key binds recipient Profile to its own code');
 create function pg_temp.id(n integer) returns uuid language sql immutable as $$
  select ('f2030000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid;
 $$;

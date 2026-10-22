@@ -14,7 +14,7 @@ create table public.household_invitations (
   created_at timestamptz not null default clock_timestamp(),
   expires_at timestamptz not null,
   resolved_at timestamptz,
-  constraint household_invitations_recipient_code_fkey foreign key(recipient_profile_id,recipient_code)
+  constraint household_invitations_recipient_profile_code_fkey foreign key(recipient_profile_id,recipient_code)
     references public.household_recipient_codes(profile_id,code) on delete restrict,
   constraint household_invitations_not_self check (issuer_profile_id <> recipient_profile_id),
   constraint household_invitations_dates check (
