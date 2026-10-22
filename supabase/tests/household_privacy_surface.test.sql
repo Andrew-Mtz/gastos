@@ -85,13 +85,19 @@ insert into privacy_functions values
   ('public.validate_savings_goal_movement()','internal_trigger',false),
   ('public.validate_savings_movement()','internal_trigger',false);
 
+-- The exposed platform placeholder has a distinct contract, not application RPC
+-- privileges. Its exact body/state/behavior are checked below and in membership.
+create temp table privacy_platform_functions(signature text primary key, boundary text not null);
+insert into privacy_platform_functions values
+  ('graphql_public.graphql(text,text,jsonb,jsonb)','platform_graphql_placeholder');
+
 create temp view application_relations as
 select c.oid,c.oid::regclass::text as name,c.relkind,c.relrowsecurity
 from pg_class c join pg_namespace n on n.oid=c.relnamespace
 where n.nspname in ('public','graphql_public') and c.relkind in ('r','p','v','m','f')
   and not exists(select 1 from pg_depend d where d.classid='pg_class'::regclass
     and d.objid=c.oid and d.deptype='e');
-create temp view application_functions as
+create temp view exposed_functions as
 select p.* from pg_proc p join pg_namespace n on n.oid=p.pronamespace
 where n.nspname in ('public','graphql_public')
   and not exists(select 1 from pg_depend d where d.classid='pg_proc'::regclass
@@ -112,17 +118,18 @@ select diag('Unclassified function: '||jsonb_build_object(
     where acl.grantee=0 and acl.privilege_type='EXECUTE'),
   'empty_search_path',coalesce(p.proconfig @> array['search_path=""'],false)
 )::text)
-from application_functions p join pg_namespace n on n.oid=p.pronamespace
+from exposed_functions p join pg_namespace n on n.oid=p.pronamespace
 join pg_language l on l.oid=p.prolang
 where not exists(select 1 from privacy_functions f where to_regprocedure(f.signature)=p.oid)
+  and not exists(select 1 from privacy_platform_functions f where to_regprocedure(f.signature)=p.oid)
 order by n.nspname,p.oid::regprocedure::text;
 
 select set_eq('select oid::regclass::text from application_relations',
   'select to_regclass(name)::text from privacy_relations',
   'Every application table/view in exposed schemas has an explicit privacy classification');
-select set_eq('select oid::regprocedure::text from application_functions',
-  'select to_regprocedure(signature)::text from privacy_functions',
-  'Every application RPC, internal helper and trigger is explicitly classified, including overloads');
+select set_eq('select oid::regprocedure::text from exposed_functions',
+  'select to_regprocedure(signature)::text from privacy_functions union all select to_regprocedure(signature)::text from privacy_platform_functions',
+  'Every exposed function has an explicit application or platform classification, including overloads');
 select ok(c.relrowsecurity,'RLS enabled: '||r.name)
 from privacy_relations r join application_relations c on c.oid=to_regclass(r.name);
 select is(c.relkind::text,'r','No unreviewed view/materialized/foreign relation: '||r.name)
@@ -145,18 +152,49 @@ where boundary='server_only';
 
 select is(has_function_privilege('authenticated',p.oid,'EXECUTE'),f.boundary<>'internal_trigger',
   'Callable surface differs from mere function existence: '||f.signature)
-from privacy_functions f join application_functions p on p.oid=to_regprocedure(f.signature);
+from privacy_functions f join exposed_functions p on p.oid=to_regprocedure(f.signature);
 select ok(not has_function_privilege('anon',p.oid,'EXECUTE'),'No anonymous function execution: '||f.signature)
-from privacy_functions f join application_functions p on p.oid=to_regprocedure(f.signature);
+from privacy_functions f join exposed_functions p on p.oid=to_regprocedure(f.signature);
 select ok(not exists(select 1 from aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) acl
   where acl.grantee=0 and acl.privilege_type='EXECUTE'),'No default PUBLIC execution: '||f.signature)
-from privacy_functions f join application_functions p on p.oid=to_regprocedure(f.signature);
+from privacy_functions f join exposed_functions p on p.oid=to_regprocedure(f.signature);
 select is(p.prorettype='trigger'::regtype,f.boundary='internal_trigger','Trigger is not a Data API RPC: '||f.signature)
-from privacy_functions f join application_functions p on p.oid=to_regprocedure(f.signature);
+from privacy_functions f join exposed_functions p on p.oid=to_regprocedure(f.signature);
 select is(p.prosecdef,f.is_definer,'Definer capability remains explicitly reviewed: '||f.signature)
-from privacy_functions f join application_functions p on p.oid=to_regprocedure(f.signature);
+from privacy_functions f join exposed_functions p on p.oid=to_regprocedure(f.signature);
 select ok(p.proconfig @> array['search_path=""'],'Empty search path: '||f.signature)
-from privacy_functions f join application_functions p on p.oid=to_regprocedure(f.signature);
+from privacy_functions f join exposed_functions p on p.oid=to_regprocedure(f.signature);
+
+-- This is the known inert Supabase placeholder, not an active GraphQL resolver.
+-- A platform upgrade/enabling pg_graphql must fail closed pending its own review.
+create temp view platform_graphql_placeholder as
+select p.* from pg_proc p join privacy_platform_functions f on p.oid=to_regprocedure(f.signature);
+select ok(not exists(select 1 from pg_extension where extname='pg_graphql'),
+  'GraphQL engine is absent; this contract covers only the platform placeholder');
+select is(p.prokind::text,'f','Platform placeholder is a function') from platform_graphql_placeholder p;
+select is(l.lanname::text,'plpgsql','Platform placeholder is PL/pgSQL, not the active SQL resolver')
+from platform_graphql_placeholder p join pg_language l on l.oid=p.prolang;
+select ok(p.prorettype='jsonb'::regtype and not p.proretset,'Platform placeholder returns one JSON response')
+from platform_graphql_placeholder p;
+select ok(not p.prosecdef,'Platform placeholder remains SECURITY INVOKER') from platform_graphql_placeholder p;
+select ok(p.proconfig is null,'Platform placeholder has no function-local settings') from platform_graphql_placeholder p;
+select is(p.proargnames,array['operationName','query','variables','extensions']::text[],
+  'Platform placeholder accepts only the four reviewed GraphQL arguments') from platform_graphql_placeholder p;
+select is(p.pronargdefaults::integer,4,'Platform placeholder retains four default arguments') from platform_graphql_placeholder p;
+select is(pg_get_expr(p.proargdefaults,0),'NULL::text, NULL::text, NULL::jsonb, NULL::jsonb',
+  'Platform placeholder defaults contain only typed NULLs, not executable expressions') from platform_graphql_placeholder p;
+select ok(has_function_privilege(actor,p.oid,'EXECUTE'),'Platform placeholder is callable by '||actor)
+from platform_graphql_placeholder p cross join unnest(array['anon','authenticated']) actor;
+select ok(exists(select 1 from aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) acl
+  where acl.grantee=0 and acl.privilege_type='EXECUTE'),'Platform placeholder retains its reviewed PUBLIC execute')
+from platform_graphql_placeholder p;
+-- Official schema-17.sql at supabase/postgres 920bb634698fef8dee6e78d738330d2dd8e489c5,
+-- blob 84790a4277ce693ad945c1e57c8f9eccc40bff23; remove whitespace only. Checking
+-- the entire body prevents a different function from faking just __typename's error.
+-- Never print prosrc: a mismatch emits only digests and requires source review.
+select is(encode(sha256(convert_to(regexp_replace(p.prosrc,'[[:space:]]','','g'),'UTF8')),'hex'),
+  '5a5a0d33767d2f238cba56551d9a9cccd8299228e1113cf21a44ab6932e78935',
+  'Platform placeholder matches the complete reviewed official body') from platform_graphql_placeholder p;
 
 select * from finish();
 rollback;

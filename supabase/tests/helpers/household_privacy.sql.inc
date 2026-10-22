@@ -140,3 +140,15 @@ begin
   end if;
 end;
 $$;
+
+-- Exercise the real platform entrypoint under each existing A/B/C/anon context.
+-- The complete-body catalog guard prevents this exact error from masking an
+-- active resolver. No extension, grants, service or auth configuration is changed.
+create function pg_temp.assert_graphql_placeholder() returns text
+language sql security invoker as $$
+  select is(graphql_public.graphql('Fin204Surface','query Fin204Surface { __typename }','{}'::jsonb,'{}'::jsonb),
+    '{"errors":[{"message":"pg_graphql extension is not enabled."}]}'::jsonb,
+    'Platform GraphQL entrypoint returns only the disabled-engine error, never data');
+$$;
+revoke all on function pg_temp.assert_graphql_placeholder() from public;
+grant execute on function pg_temp.assert_graphql_placeholder() to authenticated,anon;

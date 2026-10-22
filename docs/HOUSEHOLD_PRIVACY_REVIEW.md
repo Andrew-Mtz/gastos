@@ -13,7 +13,8 @@ authorization policy or package is added.
 ## Current surface and contract
 
 `supabase/tests/household_privacy_surface.test.sql` is the executable inventory of
-**17 tables and 53 application functions** in the configured exposed schemas:
+**17 tables, 53 application functions and one separate platform entrypoint** in
+the configured exposed schemas:
 
 - 13 owner-private sources: profiles, periods, buckets, allocations, categories,
   transactions, savings goals, recurring templates, transaction revisions,
@@ -25,6 +26,10 @@ authorization policy or package is added.
 - 27 personal RPCs, 7 household RPCs and 1 callable actor-lock helper.
 - 18 internal trigger functions, with no client EXECUTE. A function's existence in
   generated types is not evidence that it is a callable API.
+- One platform-only `graphql_public.graphql(text,text,jsonb,jsonb)` placeholder,
+  classified separately without weakening application RPC grant/search-path checks.
+  The contract requires the known PL/pgSQL invoker body, typed-NULL defaults,
+  reviewed PUBLIC/anon/authenticated execution and no installed `pg_graphql` engine.
 
 The test compares the actual migrated PostgreSQL catalogs, including overloads,
 against this explicit inventory. New or removed application tables, views, foreign
@@ -33,7 +38,18 @@ excluded by catalog dependency, not by name. RLS, anonymous/PUBLIC grants, clien
 execution, trigger classification, empty search paths and reviewed definer status
 are checked. The HTTP harness also checks that exposed schemas remain explicitly
 `public` and `graphql_public`; a configuration expansion cannot silently evade the
-catalog scope. This is not separate execution coverage of pg_graphql itself.
+catalog scope. The platform entrypoint is not silently excluded by its name.
+
+The placeholder's full-body SHA256 (whitespace removed) is pinned to
+[Supabase's official PostgreSQL 17 schema](https://github.com/supabase/postgres/blob/920bb634698fef8dee6e78d738330d2dd8e489c5/migrations/schema-17.sql),
+blob `84790a4277ce693ad945c1e57c8f9eccc40bff23`. The same normalized body occurs in
+its historical GraphQL migration. The existing nonempty A/B/C fixtures and real
+anonymous role each call the entrypoint with a valid `__typename` query and require
+the exact disabled-engine JSON error, without a data member. The digest check
+prevents accepting a different body that merely imitates that response. Neither
+an extension nor a grant is changed. This is coverage of the inert placeholder,
+**not privacy acceptance for an active GraphQL resolver**; enabling or changing it
+fails the gate and requires new authorization/behavior tests.
 
 A same-household partner may see the authorized household name/currency and minimal
 active member identities/roles. They cannot read, aggregate, mutate or replay the
@@ -82,19 +98,21 @@ workflow; focused SQL commands are `npm run db:test --
 supabase/tests/household_membership.test.sql` and `npm run db:test --
 supabase/tests/household_privacy_surface.test.sql`.
 
-Initial FIN-204 CI `39869644646` on `21c738d` passed Quality and executed 3,695 SQL
-assertions across 36 files. One catalog-inventory assertion failed with an
-unclassified function OID; its identity is not established by that output.
-The diagnostic change reports canonical signatures and fixed privilege metadata
-without excluding or classifying the unknown object. Concurrency, HTTP and type
-regeneration were skipped after the SQL failure; security acceptance remains open.
+Initial FIN-204 CI `39869644646` and diagnostic CI `39871550494` each executed
+3,695 SQL assertions across 36 files, with only the unclassified-function inventory
+assertion failing. The latter, on `d3a2377`, identified the exact GraphQL signature,
+PL/pgSQL/jsonb invoker shape and PUBLIC/anon/authenticated grants. The correction
+adds the explicit platform contract and real A/B/C/anon calls described above;
+its body, absent-engine and behavior assertions still require execution in CI.
+Concurrency, HTTP and type regeneration were skipped after the inventory failure.
+Security acceptance remains open until the complete corrected-head CI passes.
 
 Local SQL, authenticated HTTP, parser-bridge integration, concurrency and generated
 type regeneration are **not run**: this executor has neither Docker nor psql.
 The inherited generated file matches FIN-203 byte for byte (SHA256
 `b5fccfa6d3d369f7c438ea260fb13be89228ace2977bebca4bbe2ecac77f5f03`). No generated
-types or escape casts were edited. The original FIN-204 test/helper bytes are
-unchanged by the rebase; the two FIN-203 SQL CI fixes are inherited from its base.
+types or escape casts were edited. The two FIN-203 SQL CI fixes are inherited from
+the base; the catalog/platform correction changes only tests and this evidence.
 Local checks on pinned Node 24.14.0 / npm 11.9.0 passed: typecheck, all 1,158 Jest
 tests in 59 suites, zero-warning lint, Prettier, installed Router parser regression,
 8 startup-diagnostics tests, HTTP-script syntax and whitespace checks.
