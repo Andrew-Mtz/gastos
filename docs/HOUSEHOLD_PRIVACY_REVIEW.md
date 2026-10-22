@@ -1,11 +1,11 @@
 # FIN-204 Household Privacy Review
 
-**Status: prepared locally; not integrated or security-accepted.** The FIN-204 delta
+**Status: draft PR #45; not integrated or security-accepted.** The FIN-204 delta
 is rebased onto main `9f38fe9c9a0c0845cc0fb3b82ac8a573105ec294`, which merged FIN-203
 PR #44 with the same tree as reviewed head `663071fcbd7ff02e552e1921f09e509343dbf5ce`.
 Full CI run `39867477923` passed on that exact FIN-203 head. Its authentic generated
 types are inherited unchanged. The original local FIN-204 snapshot is `fadf302`
-(parent `721e460`). FIN-204 publication and verification remain pending; FIN-203's
+(parent `721e460`). FIN-204 verification remains pending; FIN-203's
 green checks do not verify these additional SQL/HTTP tests. No production, real
 accounts, email, credentials or financial data are used. No new feature, schema migration,
 authorization policy or package is added.
@@ -81,6 +81,13 @@ parallel test stack is needed. On an authorized disposable stack, run the comple
 workflow; focused SQL commands are `npm run db:test --
 supabase/tests/household_membership.test.sql` and `npm run db:test --
 supabase/tests/household_privacy_surface.test.sql`.
+
+Initial FIN-204 CI `39869644646` on `21c738d` passed Quality and executed 3,695 SQL
+assertions across 36 files. One catalog-inventory assertion failed with an
+unclassified function OID; its identity is not established by that output.
+The diagnostic change reports canonical signatures and fixed privilege metadata
+without excluding or classifying the unknown object. Concurrency, HTTP and type
+regeneration were skipped after the SQL failure; security acceptance remains open.
 
 Local SQL, authenticated HTTP, parser-bridge integration, concurrency and generated
 type regeneration are **not run**: this executor has neither Docker nor psql.

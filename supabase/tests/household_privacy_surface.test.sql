@@ -97,11 +97,31 @@ where n.nspname in ('public','graphql_public')
   and not exists(select 1 from pg_depend d where d.classid='pg_proc'::regclass
     and d.objid=p.oid and d.deptype='e');
 
-select set_eq('select oid::text from application_relations',
-  'select to_regclass(name)::oid::text from privacy_relations',
+-- Canonical catalog names retain exact identity/overloads while making mismatches
+-- actionable. Diagnostics are metadata only: never function bodies or row data.
+select diag('Unclassified function: '||jsonb_build_object(
+  'schema',n.nspname,
+  'signature',p.oid::regprocedure::text,
+  'kind',p.prokind,
+  'language',l.lanname,
+  'return_type',p.prorettype::regtype::text,
+  'security_definer',p.prosecdef,
+  'anon_execute',has_function_privilege('anon',p.oid,'EXECUTE'),
+  'authenticated_execute',has_function_privilege('authenticated',p.oid,'EXECUTE'),
+  'public_execute',exists(select 1 from aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) acl
+    where acl.grantee=0 and acl.privilege_type='EXECUTE'),
+  'empty_search_path',coalesce(p.proconfig @> array['search_path=""'],false)
+)::text)
+from application_functions p join pg_namespace n on n.oid=p.pronamespace
+join pg_language l on l.oid=p.prolang
+where not exists(select 1 from privacy_functions f where to_regprocedure(f.signature)=p.oid)
+order by n.nspname,p.oid::regprocedure::text;
+
+select set_eq('select oid::regclass::text from application_relations',
+  'select to_regclass(name)::text from privacy_relations',
   'Every application table/view in exposed schemas has an explicit privacy classification');
-select set_eq('select oid::text from application_functions',
-  'select to_regprocedure(signature)::oid::text from privacy_functions',
+select set_eq('select oid::regprocedure::text from application_functions',
+  'select to_regprocedure(signature)::text from privacy_functions',
   'Every application RPC, internal helper and trigger is explicitly classified, including overloads');
 select ok(c.relrowsecurity,'RLS enabled: '||r.name)
 from privacy_relations r join application_relations c on c.oid=to_regclass(r.name);
