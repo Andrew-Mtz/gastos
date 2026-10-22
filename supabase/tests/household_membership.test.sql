@@ -83,11 +83,11 @@ select is((select count(*) from pg_policies where schemaname = 'public'
 -- no INSERT(id) grant for these tables. Populate financial facts and every audit
 -- source below through real owner-authorized operations, avoiding vacuous checks.
 insert into public.budget_periods(id,profile_id,starts_on,ends_on,base_currency)
-select pg_temp.id(n+p),owner_id,make_date(2025,p,1),
-  (make_date(2025,p,1)+interval '1 month -1 day')::date,'USD'
+select pg_temp.id(n+p),owner_id,case when p=3 then (date_trunc('month',statement_timestamp() at time zone 'UTC')+interval '120 months')::date else make_date(2025,p,1) end,
+  (case when p=3 then date_trunc('month',statement_timestamp() at time zone 'UTC')+interval '120 months' else make_date(2025,p,1)::timestamp end+interval '1 month -1 day')::date,'USD'
 from (values (1000,'f0050000-0000-4000-8000-000000000001'::uuid),
   (2000,'f0050000-0000-4000-8000-000000000002'::uuid)) owners(n,owner_id)
-cross join generate_series(1,2) p;
+cross join generate_series(1,6) p;
 insert into public.budget_buckets(id,profile_id,name,type)
 select pg_temp.id(n+b),owner_id,'Private '||kind,kind
 from (values (1000,'f0050000-0000-4000-8000-000000000001'::uuid),
@@ -104,8 +104,8 @@ begin
   perform public.save_budget_allocations(pg_temp.id(n+p),pg_catalog.jsonb_build_array(
     pg_catalog.jsonb_build_object('budget_bucket_id',pg_temp.id(n+10),'percentage_basis_points',8000),
     pg_catalog.jsonb_build_object('budget_bucket_id',pg_temp.id(n+11),'percentage_basis_points',2000)))
-    from generate_series(1,2) p;
-  perform public.register_income(pg_temp.id(n+30),pg_temp.id(n+1),1000,'USD','2025-01-02');
+    from generate_series(1,6) p;
+  perform public.register_income(pg_temp.id(n+30),pg_temp.id(n+1),n+1000,'USD','2025-01-02');
   perform public.register_personal_expense(pg_temp.id(n+31),pg_temp.id(n+1),100,'USD','2025-01-03',pg_temp.id(n+20));
   update public.transactions set description = 'Private audited description' where id = pg_temp.id(n+31);
   perform public.create_personal_savings_goal(pg_temp.id(n+40),'Private savings goal',100,'USD');
@@ -118,6 +118,17 @@ begin
   preview := public.get_personal_carry_reversal_context(pg_temp.id(n+50));
   perform public.reverse_carry_and_reopen_personal_period(pg_temp.id(n+51),pg_temp.id(n+50),1,0,
     preview->>'preview_hash',true);
+  -- FIN-204: retain a valid CLOSED period and an active carry for cross-owner
+  -- lifecycle attempts, alongside the original nonempty history fixture.
+  perform public.register_income(pg_temp.id(n+32),pg_temp.id(n+4),1000,'USD','2025-04-02');
+  preview := public.get_personal_remainder_context('2025-04-01');
+  perform public.close_and_dispose_personal_remainder(pg_temp.id(n+54),pg_temp.id(n+4),0,
+    preview->>'preview_hash','CARRY_BUCKET',100,pg_temp.id(n+5),pg_temp.id(n+10),true);
+  -- June has no outgoing carry and is a valid standalone reopen target.
+  preview := public.get_personal_period_close_context('2025-06-01');
+  perform public.close_personal_budget_period(pg_temp.id(n+55),pg_temp.id(n+6),0,
+    preview->>'snapshot_hash',true);
+  perform public.prepare_initial_budget_buckets();
 end;
 $$;
 create function pg_temp.assert_private_sources(expect_rows boolean) returns setof text
@@ -145,17 +156,26 @@ begin
 end;
 $$;
 
+\ir helpers/household_privacy.sql.inc
+
 set local role authenticated;
 select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000001');
 select is(current_user::text, 'authenticated', 'A setup uses real authenticated role');
 select is(auth.uid(), 'f0050000-0000-4000-8000-000000000001'::uuid, 'A setup uses genuine auth.uid');
 select pg_temp.seed_private(1000);
+select pg_temp.prepare_private_rpc_cases(1000);
 reset role;
 set local role authenticated;
 select pg_temp.set_jwt_subject('f0050000-0000-4000-8000-000000000002');
 select is(current_user::text, 'authenticated', 'B setup uses real authenticated role');
 select is(auth.uid(), 'f0050000-0000-4000-8000-000000000002'::uuid, 'B setup uses genuine auth.uid');
 select pg_temp.seed_private(2000);
+select pg_temp.prepare_private_rpc_cases(2000);
+reset role;
+select pg_temp.set_jwt_subject(null);
+select is(current_user::text,session_user::text,'Privacy baseline uses trusted test role');
+select is(auth.uid(),null::uuid,'Privacy baseline clears identity');
+do $snapshot$ begin perform set_config('fin204.private_before',pg_temp.private_rows()::text,true); end; $snapshot$;
 
 reset role;
 set local role authenticated;
@@ -183,6 +203,7 @@ select is(current_setting('fin202.a_snapshot')::jsonb, jsonb_build_object(
       jsonb_build_object('id',pg_temp.id(114),'profile_id','f0050000-0000-4000-8000-000000000002','display_name','Synthetic partner B','role','OWNER')))
   )), 'Exact complete DTO has only household/member identity, names and role, never private Profile fields');
 select * from pg_temp.assert_private_sources(true);
+select * from pg_temp.assert_private_rpcs(1000,2000);
 select throws_ok($$select public.get_savings_availability(pg_temp.id(2001))$$,'42501',null,'Partner savings RPC remains unauthorized');
 select throws_ok($$select public.get_bucket_consumption(pg_temp.id(2001))$$,'42501',null,'Partner budget RPC remains unauthorized');
 select throws_ok($$select public.get_personal_safe_to_spend(pg_temp.id(2001))$$,'42501',null,'Partner safe-to-spend RPC remains unauthorized');
@@ -213,6 +234,7 @@ select is(auth.uid(),'f0050000-0000-4000-8000-000000000002'::uuid,'Active MEMBER
 select is(public.get_my_household_memberships() - 'profile_id',current_setting('fin202.a_snapshot')::jsonb - 'profile_id',
   'MEMBER sees the identical authorized minimal household snapshot');
 select * from pg_temp.assert_private_sources(true);
+select * from pg_temp.assert_private_rpcs(2000,1000);
 select throws_ok($$select public.get_savings_availability(pg_temp.id(1001))$$,'42501',null,'MEMBER cannot query OWNER savings');
 select throws_ok($$update public.household_members set role='OWNER' where id=pg_temp.id(111)$$,'42501',null,'MEMBER cannot escalate role');
 select throws_ok($$select public.create_first_household(pg_temp.id(300),'Another','USD')$$,'23505',null,'Active membership blocks another creation');
@@ -229,6 +251,47 @@ select results_eq('select id from public.household_members',array[pg_temp.id(115
 select is(public.get_my_household_memberships()#>>'{households,0,id}',pg_temp.id(102)::text,'C projection contains only C authorized household');
 select is(jsonb_array_length(public.get_my_household_memberships()->'households'),1,'C cannot enumerate other households');
 select * from pg_temp.assert_private_sources(false);
+select * from pg_temp.assert_private_rpcs(null,1000);
+select * from pg_temp.assert_private_rpcs(null,2000);
+reset role;
+select pg_temp.set_jwt_subject(null);
+select is(current_user::text,session_user::text,'No-write verification uses trusted role');
+select is(auth.uid(),null::uuid,'No-write verification clears identity');
+select is(pg_temp.private_rows(),current_setting('fin204.private_before')::jsonb,
+  'All partner/stranger attempts leave every private row, amount, lifecycle and audit byte unchanged');
+
+-- psql executes each explicit role transition at top level. The trusted snapshot
+-- is never callable by an authenticated actor; no definer bypass is used in tests.
+-- Each payload already succeeded in an owner probe, with its writes rolled back.
+select format($matrix$
+reset role;
+select pg_temp.set_jwt_subject(null);
+select is(current_user::text,session_user::text,'Trusted before-state: %1$s');
+select is(auth.uid(),null::uuid,'Cleared before-state: %1$s');
+do $snapshot$ begin perform set_config('fin204.attempt_before',pg_temp.private_rows()::text,true); end; $snapshot$;
+set local role authenticated;
+select pg_temp.set_jwt_subject(%2$L);
+select is(current_user::text,'authenticated','Real attacker role: %1$s');
+select is(auth.uid(),%2$L::uuid,'Real attacker identity: %1$s');
+select is(pg_temp.probe_private_mutation(%3$L,false),%4$L,'Cross-owner denial: %1$s');
+reset role;
+select pg_temp.set_jwt_subject(null);
+select is(current_user::text,session_user::text,'Trusted after-state: %1$s');
+select is(auth.uid(),null::uuid,'Cleared after-state: %1$s');
+select is(pg_temp.private_rows(),current_setting('fin204.attempt_before')::jsonb,
+  'No private writes or audit/lifecycle changes: %1$s');
+$matrix$,cases.label||' target '||cases.owner_base||' attacker '||attackers.actor,
+  attackers.actor,cases.command,cases.denied_state)
+from pg_temp.private_rpc_cases cases
+cross join (values
+  ('f0050000-0000-4000-8000-000000000001'::uuid,1000),
+  ('f0050000-0000-4000-8000-000000000002'::uuid,2000),
+  ('f0050000-0000-4000-8000-000000000003'::uuid,3000)
+) attackers(actor,owner_base)
+where attackers.owner_base<>cases.owner_base
+order by cases.owner_base,cases.label,attackers.actor
+\gexec
+
 
 reset role;
 set local role authenticated;

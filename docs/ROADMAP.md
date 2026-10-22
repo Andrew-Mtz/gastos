@@ -1750,6 +1750,18 @@ is still unexecuted and does not establish FIN-204 or native acceptance.
 
 ## FIN-204 — Household Privacy Test Suite
 
+**Status:** Prepared locally on main `9f38fe9` after FIN-203 PR #44 merged with the
+same tree as reviewed head `663071f` (full CI `39867477923` passed). Authentic types
+are inherited unchanged. FIN-204 differential review, SQL/HTTP execution and
+exact-head CI remain pending; native/device acceptance is separate.
+
+The incremental suite adds an explicit actual-catalog privacy inventory, complete
+personal RPC partner/stranger isolation with valid owner-probed payloads and per-
+attempt no-write checks, and extends FIN-203's HTTP-to-production-parser bridge.
+It reuses existing nonempty table/grant/RLS, lifecycle-race and UI/session coverage.
+See [scope, evidence and pending gates](HOUSEHOLD_PRIVACY_REVIEW.md). Preparation
+is not completion and does not authorize publication or later household features.
+
 Prove:
 
 ```text

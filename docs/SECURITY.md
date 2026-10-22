@@ -1821,3 +1821,18 @@ Reversible caps are 20 created invitations per issuer/24 hours (including cancel
 20 live pending per household and 20 per recipient. These are not domain cardinality
 rules or complete public-production abuse protection. No email, credential, auth
 setting, financial sharing or production operation is introduced.
+
+
+## FIN-204 privacy regression contract (prepared, verification pending)
+
+The current exposed application tables/functions are explicitly classified in the
+actual-catalog test, including inaccessible internal triggers, callable actor-only
+helpers and narrow RPCs. A new unclassified surface or broadened schema exposure
+must fail the regression gate. FIN-202's nonempty owner/partner/stranger matrix is
+extended, not replaced: valid owner-probed RPC payloads must fail for the partner
+and stranger without changing any private source, audit or lifecycle row. Month-only
+RPCs must return the caller's own data rather than accepting a caller-selected owner.
+The existing authenticated invitation/parser journey also checks reciprocal private
+income isolation after joining and C's lack of shared access. No new grants, RLS,
+production capability or data sharing is introduced. See
+`HOUSEHOLD_PRIVACY_REVIEW.md` for exact scope and still-pending execution evidence.
