@@ -373,7 +373,8 @@ Search or invitation flows must avoid becoming user-enumeration mechanisms.
 
 # 15. Household Invitations
 
-Invitation behavior is not fully defined yet.
+FIN-203 directed invitation behavior is defined by the owner-approved ADR-080.
+Departure, removal, role changes and rejoining remain outside this capability.
 
 When implemented, invitations must:
 
@@ -1579,9 +1580,9 @@ The following invariants are mandatory.
 The following security decisions are intentionally not finalized and must not be guessed during implementation:
 
 1. Additional authentication providers/capabilities (OAuth/social providers, magic links, MFA, or other future options). Basic MVP email/password authentication is already decided and implemented by FIN-006/ADR-064.
-3. Household invitation token design.
+3. Invitation account-code design is resolved by ADR-080; no bearer token or email lookup is introduced.
 4. Whether former household members retain any historical read access.
-5. Exact household role permissions.
+5. FIN-203 permits active OWNER invitation creation/cancellation and recipient acceptance; later role-management permissions remain open.
 6. Who may edit/delete another member's household-created expense.
 7. Who may record or reverse settlements.
 8. Whether sensitive operations require biometric confirmation.
@@ -1798,3 +1799,25 @@ and never revives departed rows. Missing identity, stranger, inactive and creato
 cases deny access. Client caches hide shared identity during revalidation and clear
 on auth changes; stale requests cannot restore cleared data. SQL tests and review
 are mandatory before any readiness claim. No live grants or hosted changes occur.
+
+
+## FIN-203 directed invitation boundary
+
+Codes and invitation internals have default-deny RLS and no client table/column
+grants. Four narrow empty-search-path definer RPCs derive auth.uid(), expose no
+arbitrary account lookup, and never relax Profile or personal-finance policies.
+The inbox reveals only invitation ID, household ID/name, effective status and expiry;
+the outbox adds only the code entered by its current issuing OWNER. Accepted metadata
+is hidden from a recipient who lost active membership. The context covers the last
+14 days, not unrestricted history. Codes are own-account-only and never authorize access.
+
+Mutations require READ COMMITTED, serialize actor then household, and lock current
+authorizing membership rows. Acceptance shares the FIN-202 actor lock, rechecks
+intended recipient, current issuer OWNER, revocation and clock-time expiry after
+waiting, then inserts only MEMBER. Exact accepted replay requires current recipient
+access but does not redo the transition's expiry/issuer test. Unknown/ineligible
+codes share one error; client messages never render raw infrastructure errors.
+Reversible caps are 20 created invitations per issuer/24 hours (including cancelled),
+20 live pending per household and 20 per recipient. These are not domain cardinality
+rules or complete public-production abuse protection. No email, credential, auth
+setting, financial sharing or production operation is introduced.

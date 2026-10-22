@@ -1616,8 +1616,7 @@ household assumption is encoded.
 Both tables enable RLS with no policies and no client grants. No real households,
 membership UI, RPC, invitation, default split or personal-finance policy change is
 included. FIN-202 owns active access; open cardinality/role/lifecycle decisions must
-be resolved before relevant operations. FIN-203 invitations require an explicit
-owner decision.
+be resolved before relevant operations. FIN-203 invitation decisions are now approved in ADR-080.
 
 The new transactional SQL suite covers constraints, client privilege denial,
 default-deny RLS independent of grants, and actual A/B same-household personal
@@ -1670,7 +1669,7 @@ Hogar. This temporary create-flow limit is not a global cardinality decision.
 
 Inactive-only membership history gets a clear unsupported state. Invitations,
 leave/removal/rejoin, role changes, ownership transfer and historical visibility
-remain unsupported; FIN-203 needs explicit owner decisions. Do not claim a complete
+remain unsupported in FIN-202; FIN-203 decisions are now approved in ADR-080. Do not claim a complete
 membership lifecycle or FIN-204 completion from this slice.
 
 FIN-201 PR #42 is merged as `75f8610b7878479f25763aae50024e2e8e5c9320`.
@@ -1718,9 +1717,15 @@ synthetic local/device cases and explicit operational limits, not passed accepta
 
 ## FIN-203 — Household Invitation Flow
 
-Resolve and implement the invitation lifecycle.
+**Status:** In Progress — owner decisions approved; source/tests prepared,
+independent review, authentic types, real SQL and exact-head CI pending.
 
-This task must settle relevant open security decisions first.
+ADR-080 defines directed account-code invitations, OWNER-only creation/cancellation,
+seven-day expiry, explicit recipient acceptance as MEMBER and multiple separate
+active households. No email/auth changes or historical same-household reactivation.
+The minimal Hogar controls retain stable uncertain requests and isolate session caches.
+SQL/RLS, lifecycle concurrency and real HTTP-to-app-parser tests accompany client
+regressions. FIN-204 and device acceptance remain separate; no production work claimed.
 
 ---
 
@@ -2202,9 +2207,9 @@ FIN-126 current-device acceptance remains open. Automated personal-finance check
 and the merged Inicio stabilization do not constitute physical acceptance or
 diagnose the previously reported margin error. Do not mark FIN-126 complete.
 
-FIN-203 invitation behavior still requires an explicit owner decision before
-implementation. This authorization does not skip FIN-204 privacy verification or
-include later shared-expense functionality. Resolve the still-open membership
-cardinality and role policy before FIN-202 operations depend on them.
+FIN-203 directed invitation/cardinality decisions were explicitly approved by the owner
+on 2026-10-21 (ADR-080). This authorization does not skip FIN-204 privacy verification
+or include later shared-expense functionality. Departure and role-management policy
+remain outside the bounded invitation slice.
 
 FIN-011 remains explicitly deferred by ADR-065.

@@ -1,4 +1,7 @@
-# FIN-202 — Membership Review and Manual Acceptance
+# Household Membership Review and Manual Acceptance
+
+The original FIN-202 review evidence is retained below. The FIN-203 addendum at
+the end defines its separate, still-pending device cases.
 
 **Status:** Bounded implementation in draft PR #43 after FIN-201 PR #42 merged.
 Initial disposable CI passed real SQL/RLS and concurrent-session cases; they are
@@ -17,7 +20,8 @@ role changes, ownership transfer, former-member history or shared finances.
 
 Use only a developer-owned **disposable local Supabase stack** and synthetic test
 identities. Do not use production, a hosted user project, real household members,
-real email recipients or personal financial data. Do not send invitations. This
+real email recipients or personal financial data. The original FIN-202 cases do
+not send invitations; the FIN-203 addendum uses synthetic in-app invitations only. This
 checklist describes future tester actions; it does not authorize an agent to
 create real households or bypass a publication/dependency gate.
 
@@ -176,3 +180,28 @@ visible result without capturing secrets or authentic personal information.
   official regressions. Source review and initial CI do not replace exact-head
   full CI, final review or the manual cases above. No production or real-user data
   was changed.
+
+## FIN-203 short device checklist (pending)
+
+Use only disposable synthetic accounts A (OWNER), B (recipient) and C (unrelated).
+These checks have not been executed on a native device; SQL/HTTP evidence must come
+from the exact CI run, not these instructions.
+
+1. In B's Hogar, select/copy B's own code. In A, invite that code and verify the
+   pending outbox shows the entered code, not another account's private details.
+   B sees only the household name, status and expiry before joining; C sees neither.
+2. Cancel one invitation from A, refresh B and confirm it cannot be accepted.
+   Send another and accept explicitly as B. B becomes MEMBER; A/B can see shared
+   names/roles but not each other's personal income, expenses, budgets or savings.
+3. Give B a separate synthetic household before joining A. Both homes stay separate.
+   For expiry, use a developer-prepared already-expired fixture in the disposable
+   stack only, refresh B and confirm no acceptance succeeds. Never change real rows.
+4. Delay/drop a response, switch tabs and return. Retry must keep the same request.
+   Refresh a committed invite while its response is delayed, then cancel it; the
+   older response must not erase the pending cancellation or its retry state.
+5. Background/foreground and sign out A, then sign in B (also repeat A→A). Codes,
+   pending actions and household metadata must hide until fresh reads, with no old
+   response repopulating a cleared session. Unsent confirmation screens are dismissed.
+
+No email delivery, leave/removal, role editing, ownership transfer or reactivation
+of a previous membership is available. No redesign or financial sharing is implied.

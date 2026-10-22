@@ -1,3 +1,4 @@
+import { HouseholdInvitations } from './HouseholdInvitations';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
@@ -258,8 +259,8 @@ function HouseholdMemberships({ profile }: { profile: Profile }) {
               <>
                 <AppText>Aún no tienes un hogar.</AppText>
                 <AppText>
-                  Puedes preparar tu primer hogar. Las invitaciones todavía no
-                  están disponibles.
+                  Puedes preparar tu primer hogar o aceptar una invitación
+                  abajo.
                 </AppText>
                 <Button
                   disabled={!!pending}
@@ -272,9 +273,10 @@ function HouseholdMemberships({ profile }: { profile: Profile }) {
             {query.data.creation_status === 'PREVIOUS_MEMBERSHIP' && (
               <AppText role="status">
                 Tienes una membresía anterior, pero ninguna activa. Esta versión
-                todavía no permite volver a un hogar ni crear otro después de
-                una membresía anterior. Tus finanzas personales siguen
-                disponibles en las otras secciones.
+                todavía no permite volver al mismo hogar ni crear otro después
+                de una membresía anterior. Sí puedes aceptar una invitación a
+                otro hogar. Tus finanzas personales siguen disponibles en las
+                otras secciones.
               </AppText>
             )}
             {query.data.households.map((household) => (
@@ -293,12 +295,7 @@ function HouseholdMemberships({ profile }: { profile: Profile }) {
                 ))}
               </View>
             ))}
-            {query.data.creation_status === 'ACTIVE_MEMBERSHIP' && (
-              <AppText>
-                Las invitaciones y los cambios de membresía todavía no están
-                disponibles.
-              </AppText>
-            )}
+            <HouseholdInvitations snapshot={query.data} />
           </>
         )
       )}

@@ -85,8 +85,14 @@ jobs:
       - name: Test household authorization concurrency
         run: node scripts/test-household-concurrency.mjs
 
+      - name: Test invitation lifecycle concurrency
+        run: node scripts/test-invitation-concurrency.mjs
+
       - name: Test authenticated personal finance journey
         run: npm run test:finance-api
+
+      - name: Test authenticated invitation journey
+        run: node scripts/test-invitation-flow.mjs
 
       - name: Generate database types
         run: npm run db:types

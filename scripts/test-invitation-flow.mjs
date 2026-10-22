@@ -1,0 +1,430 @@
+import assert from 'node:assert/strict';
+import { Buffer } from 'node:buffer';
+import { randomBytes, randomUUID } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createClient } from '@supabase/supabase-js';
+
+// Authenticated HTTP integration, NOT native/UI E2E. Never accepts a target URL,
+// hosted credentials or production fixture mode. All identities/data are synthetic.
+const root = fileURLToPath(new URL('../', import.meta.url));
+const require = createRequire(import.meta.url);
+const cli = path.join(
+  path.dirname(require.resolve('supabase/package.json')),
+  'dist/supabase.js',
+);
+const clients = [],
+  owners = [];
+let step = 'local-only target preflight';
+let localVerified = false;
+let fixtureDirectory = null;
+const snapshots = [];
+const snapshotRpcs = new Set([
+  'get_my_household_invitations',
+  'get_my_household_memberships',
+]);
+function command(binary, args, input) {
+  const result = spawnSync(binary, args, {
+    cwd: root,
+    input,
+    encoding: 'utf8',
+    timeout: 30000,
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  // Do not include command output: status contains local privileged credentials.
+  assert(!result.error && result.status === 0, 'Local command failed.');
+  return result.stdout;
+}
+function sql(text) {
+  assert(localVerified, 'Local target must be verified before fixture access.');
+  return command(
+    'docker',
+    [
+      'exec',
+      '-i',
+      'supabase_db_gastos',
+      'psql',
+      '-X',
+      '-v',
+      'ON_ERROR_STOP=1',
+      '-A',
+      '-t',
+      '-U',
+      'postgres',
+      '-d',
+      'postgres',
+    ],
+    text,
+  );
+}
+function success(result) {
+  assert.equal(result.error, null, 'Authenticated HTTP operation failed.');
+  return result.data;
+}
+function denied(result, code) {
+  assert(result.error, 'Expected API rejection.');
+  assert.equal(
+    result.error.code,
+    code,
+    'Expected the specific authorization/domain rejection.',
+  );
+}
+async function rpc(client, name, args) {
+  const data = success(await client.rpc(name, args));
+  if (snapshotRpcs.has(name)) snapshots.push({ kind: name, data });
+  return data;
+}
+function passed(label) {
+  console.log(`PASS ${label}`);
+  step = label;
+}
+const uuid = (id) => {
+  assert.match(id, /^[0-9a-f-]{36}$/);
+  return id;
+};
+try {
+  assert.match(
+    readFileSync(path.join(root, 'supabase/config.toml'), 'utf8'),
+    /^project_id = "gastos"$/m,
+  );
+  assert(
+    !process.env.DOCKER_HOST && !process.env.DOCKER_CONTEXT,
+    'Remote Docker overrides are unsupported.',
+  );
+  assert.equal(command('docker', ['context', 'show']).trim(), 'default');
+  const status = JSON.parse(
+    command(process.execPath, [cli, 'status', '--output', 'json']),
+  );
+  assert(
+    ['http://127.0.0.1:54321', 'http://localhost:54321'].includes(
+      status.API_URL,
+    ),
+    'Only this disposable loopback API is allowed.',
+  );
+  const key = status.PUBLISHABLE_KEY ?? status.ANON_KEY;
+  assert.equal(typeof key, 'string');
+  if (!key.startsWith('sb_publishable_')) {
+    const claims = JSON.parse(
+      Buffer.from(key.split('.')[1], 'base64url').toString(),
+    );
+    assert.equal(
+      claims.role,
+      'anon',
+      'Only a public anonymous key may reach the client.',
+    );
+  }
+  assert.equal(
+    command('docker', [
+      'inspect',
+      '--format',
+      '{{.Name}}',
+      'supabase_db_gastos',
+    ]).trim(),
+    '/supabase_db_gastos',
+  );
+  localVerified = true;
+  function client(storage = new Map()) {
+    const value = createClient(status.API_URL, key, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        storage: {
+          getItem: (k) => storage.get(k) ?? null,
+          setItem: (k, v) => storage.set(k, v),
+          removeItem: (k) => storage.delete(k),
+        },
+      },
+    });
+    clients.push(value);
+    return value;
+  }
+  async function identity(name) {
+    const value = client(),
+      email = `fin203-${randomUUID()}@example.test`,
+      password = randomBytes(24).toString('base64url');
+    const created = success(await value.auth.signUp({ email, password }));
+    assert(created.user, 'Synthetic signup must return a user.');
+    const id = uuid(created.user.id);
+    owners.push(id);
+    assert(
+      created.session,
+      'Local confirmation-disabled signup must authenticate.',
+    );
+    success(await value.auth.signOut({ scope: 'local' }));
+    assert.equal(success(await value.auth.getSession()).session, null);
+    const signedIn = success(
+      await value.auth.signInWithPassword({ email, password }),
+    );
+    assert.equal(
+      signedIn.user.id,
+      id,
+      'Real password sign-in must return the synthetic owner.',
+    );
+    success(
+      await value.from('profiles').insert({
+        id,
+        display_name: name,
+        base_currency: 'USD',
+        timezone: 'UTC',
+      }),
+    );
+    return { client: value, id };
+  }
+  step = 'synthetic HTTP invitation lifecycle';
+  const a = await identity('Synthetic invitation A'),
+    b = await identity('Synthetic invitation B'),
+    c = await identity('Synthetic invitation C');
+  const period = success(
+    await a.client
+      .from('budget_periods')
+      .insert({
+        profile_id: a.id,
+        starts_on: '2025-01-01',
+        ends_on: '2025-01-31',
+        base_currency: 'USD',
+      })
+      .select('id')
+      .single(),
+  );
+  const income = await rpc(a.client, 'register_income', {
+    p_transaction_id: randomUUID(),
+    p_budget_period_id: period.id,
+    p_amount_minor: 12345,
+    p_currency: 'USD',
+    p_transaction_date: '2025-01-02',
+  });
+  assert.equal(
+    success(
+      await a.client
+        .from('transactions')
+        .select('amount_minor')
+        .eq('id', income.id)
+        .single(),
+    ).amount_minor,
+    12345,
+  );
+  const first = randomUUID(),
+    second = randomUUID(),
+    invite = randomUUID(),
+    cancelled = randomUUID();
+  await rpc(a.client, 'create_first_household', {
+    p_household_id: first,
+    p_name: 'Synthetic shared home',
+    p_default_currency: 'USD',
+  });
+  await rpc(b.client, 'create_first_household', {
+    p_household_id: second,
+    p_name: 'Synthetic independent home',
+    p_default_currency: 'EUR',
+  });
+  const own = await rpc(b.client, 'get_my_household_invitations');
+  const other = await rpc(c.client, 'get_my_household_invitations');
+  const request = {
+    p_invitation_id: invite,
+    p_household_id: first,
+    p_recipient_code: own.recipient_code,
+  };
+  assert.deepEqual(
+    await rpc(a.client, 'create_household_invitation', request),
+    { invitation_id: invite },
+  );
+  assert.deepEqual(
+    await rpc(a.client, 'create_household_invitation', request),
+    { invitation_id: invite },
+  );
+  const before = await rpc(b.client, 'get_my_household_invitations');
+  assert.equal(before.incoming.length, 1);
+  assert.deepEqual(Object.keys(before.incoming[0]).sort(), [
+    'expires_at',
+    'household_id',
+    'household_name',
+    'id',
+    'status',
+  ]);
+  assert.equal(
+    (await rpc(b.client, 'get_my_household_memberships')).households.length,
+    1,
+  );
+  assert.deepEqual(
+    success(
+      await b.client
+        .from('households')
+        .select('id,name,default_currency')
+        .eq('id', first),
+    ),
+    [],
+  );
+  denied(
+    await c.client.rpc('accept_household_invitation', {
+      p_invitation_id: invite,
+    }),
+    '42501',
+  );
+  denied(await c.client.from('household_recipient_codes').select('*'), '42501');
+  denied(await b.client.from('household_invitations').select('*'), '42501');
+  assert.equal(
+    (await rpc(c.client, 'get_my_household_invitations')).incoming.length,
+    0,
+  );
+  const accepted = { invitation_id: invite, household_id: first };
+  assert.deepEqual(
+    await rpc(b.client, 'accept_household_invitation', {
+      p_invitation_id: invite,
+    }),
+    accepted,
+  );
+  assert.deepEqual(
+    await rpc(b.client, 'accept_household_invitation', {
+      p_invitation_id: invite,
+    }),
+    accepted,
+  );
+  const memberships = await rpc(b.client, 'get_my_household_memberships');
+  assert.equal(memberships.households.length, 2);
+  assert.equal(
+    memberships.households
+      .find((row) => row.id === first)
+      .members.find((row) => row.profile_id === b.id).role,
+    'MEMBER',
+  );
+  assert.deepEqual(
+    success(await b.client.from('profiles').select('id').eq('id', a.id)),
+    [],
+  );
+  for (const outsider of [b, c]) {
+    assert.deepEqual(
+      success(
+        await outsider.client
+          .from('transactions')
+          .select('id,amount_minor')
+          .eq('id', income.id),
+      ),
+      [],
+    );
+    assert.deepEqual(
+      success(
+        await outsider.client
+          .from('budget_periods')
+          .select('id')
+          .eq('id', period.id),
+      ),
+      [],
+    );
+    denied(
+      await outsider.client.rpc('get_received_income', {
+        p_budget_period_id: period.id,
+      }),
+      '42501',
+    );
+    denied(
+      await outsider.client.rpc('register_income', {
+        p_transaction_id: randomUUID(),
+        p_budget_period_id: period.id,
+        p_amount_minor: 1,
+        p_currency: 'USD',
+        p_transaction_date: '2025-01-03',
+      }),
+      '42501',
+    );
+  }
+  assert.equal(
+    await rpc(a.client, 'get_received_income', {
+      p_budget_period_id: period.id,
+    }),
+    12345,
+  );
+  await rpc(a.client, 'get_my_household_invitations');
+  await rpc(b.client, 'get_my_household_invitations');
+  await rpc(a.client, 'create_household_invitation', {
+    p_invitation_id: cancelled,
+    p_household_id: first,
+    p_recipient_code: other.recipient_code,
+  });
+  assert.deepEqual(
+    await rpc(a.client, 'revoke_household_invitation', {
+      p_invitation_id: cancelled,
+    }),
+    { invitation_id: cancelled },
+  );
+  assert.deepEqual(
+    await rpc(a.client, 'revoke_household_invitation', {
+      p_invitation_id: cancelled,
+    }),
+    { invitation_id: cancelled },
+  );
+  denied(
+    await c.client.rpc('accept_household_invitation', {
+      p_invitation_id: cancelled,
+    }),
+    '22023',
+  );
+  await rpc(c.client, 'get_my_household_invitations');
+  passed(
+    'directed invitation, replay, multi-household MEMBER acceptance, cancellation and private Profile isolation over HTTP',
+  );
+  success(await b.client.auth.signOut({ scope: 'local' }));
+  denied(await b.client.rpc('get_my_household_invitations'), '42501');
+  step = 'real HTTP invitation JSON through production application parsers';
+  fixtureDirectory = mkdtempSync(path.join(tmpdir(), 'gastos-fin203-'));
+  const fixturePath = path.join(fixtureDirectory, 'synthetic-invitations.json');
+  writeFileSync(fixturePath, JSON.stringify(snapshots), { mode: 0o600 });
+  const contract = spawnSync(
+    process.execPath,
+    [
+      require.resolve('jest/bin/jest'),
+      '--runInBand',
+      '--runTestsByPath',
+      'scripts/__tests__/invitation-contract.test.ts',
+      '--testMatch',
+      '**/scripts/__tests__/invitation-contract.test.ts',
+    ],
+    {
+      cwd: root,
+      env: { ...process.env, FIN203_SYNTHETIC_SNAPSHOTS: fixturePath },
+      stdio: 'inherit',
+      timeout: 120000,
+    },
+  );
+  assert(
+    !contract.error && contract.status === 0,
+    'Real HTTP application invitation parser bridge failed.',
+  );
+  passed(
+    'HTTP invitation payloads pass real app parsers; no native/device acceptance claim',
+  );
+} catch {
+  console.error(
+    `FAIL FIN-203 at: ${step}. No credentials or request payloads are logged.`,
+  );
+  process.exitCode = 1;
+} finally {
+  if (fixtureDirectory)
+    rmSync(fixtureDirectory, { recursive: true, force: true });
+  await Promise.all(clients.map((value) => value.auth.stopAutoRefresh()));
+  if (localVerified && owners.length) {
+    try {
+      const ids = owners.map((id) => `'${uuid(id)}'`).join(',');
+      sql(`begin;
+        delete from public.transaction_revisions where owner_profile_id in (${ids});
+        delete from public.transactions where owner_profile_id in (${ids});
+        delete from public.budget_periods where profile_id in (${ids});
+        delete from public.household_invitations where issuer_profile_id in (${ids});
+        delete from public.household_members where profile_id in (${ids});
+        delete from public.households where created_by in (${ids});
+        delete from public.household_recipient_codes where profile_id in (${ids});
+        delete from public.profiles where id in (${ids});
+        delete from auth.users where id in (${ids});commit;`);
+      console.log('PASS exact per-run synthetic invitation fixtures removed');
+    } catch {
+      console.error(
+        'FAIL synthetic invitation cleanup; disposable CI teardown required.',
+      );
+      process.exitCode = 1;
+    }
+  }
+}
