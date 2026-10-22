@@ -1,14 +1,13 @@
 # FIN-204 Household Privacy Review
 
-**Status: draft PR #45; not integrated or security-accepted.** The FIN-204 delta
-is rebased onto main `9f38fe9c9a0c0845cc0fb3b82ac8a573105ec294`, which merged FIN-203
-PR #44 with the same tree as reviewed head `663071fcbd7ff02e552e1921f09e509343dbf5ce`.
-Full CI run `39867477923` passed on that exact FIN-203 head. Its authentic generated
-types are inherited unchanged. The original local FIN-204 snapshot is `fadf302`
-(parent `721e460`). FIN-204 verification remains pending; FIN-203's
-green checks do not verify these additional SQL/HTTP tests. No production, real
-accounts, email, credentials or financial data are used. No new feature, schema migration,
-authorization policy or package is added.
+**Status: automated privacy suite validated.** See [PR #45](https://github.com/Andrew-Mtz/gastos/pull/45)
+for integration status. Full CI `39872830246` passed on source head `6c6ed7f583915b4237cfe24f5ce419501d0e8928`.
+The base is main `9f38fe9c9a0c0845cc0fb3b82ac8a573105ec294`, which merged FIN-203
+PR #44 with the same tree as reviewed head `663071fcbd7ff02e552e1921f09e509343dbf5ce`
+after green exact-head CI `39867477923`. Merge requires independent review and
+complete CI on the exact final head, including documentation. Native acceptance and an active GraphQL
+engine are not covered. No production, real accounts, email, credentials or real
+financial data are used; no product feature, migration or authorization policy is added.
 
 ## Current surface and contract
 
@@ -98,30 +97,33 @@ workflow; focused SQL commands are `npm run db:test --
 supabase/tests/household_membership.test.sql` and `npm run db:test --
 supabase/tests/household_privacy_surface.test.sql`.
 
-Initial FIN-204 CI `39869644646` and diagnostic CI `39871550494` each executed
-3,695 SQL assertions across 36 files, with only the unclassified-function inventory
-assertion failing. The latter, on `d3a2377`, identified the exact GraphQL signature,
-PL/pgSQL/jsonb invoker shape and PUBLIC/anon/authenticated grants. The correction
-adds the explicit platform contract and real A/B/C/anon calls described above;
-its body, absent-engine and behavior assertions still require execution in CI.
-Concurrency, HTTP and type regeneration were skipped after the inventory failure.
-Security acceptance remains open until the complete corrected-head CI passes.
+Full CI `39872830246` on `6c6ed7f583915b4237cfe24f5ce419501d0e8928` passed:
 
-Local SQL, authenticated HTTP, parser-bridge integration, concurrency and generated
-type regeneration are **not run**: this executor has neither Docker nor psql.
-The inherited generated file matches FIN-203 byte for byte (SHA256
-`b5fccfa6d3d369f7c438ea260fb13be89228ace2977bebca4bbe2ecac77f5f03`). No generated
-types or escape casts were edited. The two FIN-203 SQL CI fixes are inherited from
-the base; the catalog/platform correction changes only tests and this evidence.
-Local checks on pinned Node 24.14.0 / npm 11.9.0 passed: typecheck, all 1,158 Jest
-tests in 59 suites, zero-warning lint, Prettier, installed Router parser regression,
-8 startup-diagnostics tests, HTTP-script syntax and whitespace checks.
-The normal Jest run does not execute the real-HTTP parser bridge; that integration
-result remains pending, not counted as a local pass.
+- 3,712 SQL assertions across 36 files, including the catalog and actual
+  placeholder calls under A/B/C/anon roles.
+- 57 finance and 14 household concurrency scenarios, 13 invitation races and
+  6 isolation-level rejection cases.
+- Both authenticated HTTP journeys and production-parser bridges: 2 finance
+  parser tests and 3 invitation/privacy parser tests.
+- Quality: typecheck, zero-warning lint, formatting, 1,158 Jest tests in 59 suites,
+  installed Router parser regression, plus 8 startup-diagnostics tests.
+- Generated-type comparison with zero drift and disposable-stack cleanup.
 
-Before readiness: independently review this rebase, then run full SQL/HTTP/
-concurrency/type-drift and application CI on the exact final FIN-204 source head.
-FIN-203's merge resolves the dependency gate, not FIN-204's own verification gates.
-Native/device acceptance remains the separate pending checklist in
-`HOUSEHOLD_MEMBERSHIP_REVIEW.md`. Shared expenses/default splits (FIN-205+) and
-historical membership access remain out of scope.
+The initial inventory failure identified Supabase's exposed GraphQL placeholder,
+not an additional application RPC. Its explicit platform classification, complete
+body/defaults/state guards and real-role behavior checks resolved the failure
+without changing grants, RLS or application RPC expectations.
+
+The run's authentic type artifact `12467656110` was downloaded and verified.
+ZIP SHA256: `4f5a37a84e1ec76ad11a628e836817774398c3b424ec3dbefc6eb73de552f739`.
+The generated 44,788-byte file matches main byte for byte, SHA256
+`b5fccfa6d3d369f7c438ea260fb13be89228ace2977bebca4bbe2ecac77f5f03`.
+No generated types or escape casts were edited. Database, HTTP and concurrency
+results come from disposable CI, not local execution: this executor still lacks
+Docker and psql. Local application checks also passed on Node 24.14.0 / npm 11.9.0;
+the separate real-HTTP parser tests above are CI evidence, not part of local Jest.
+
+Merge requires independent review and complete CI on the exact final FIN-204 head. Native/device acceptance remains the separate
+pending checklist in `HOUSEHOLD_MEMBERSHIP_REVIEW.md`. An active GraphQL resolver,
+shared expenses/default splits (FIN-205+) and historical membership access remain
+outside the executed scope.

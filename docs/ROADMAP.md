@@ -1717,9 +1717,9 @@ synthetic local/device cases and explicit operational limits, not passed accepta
 
 ## FIN-203 — Household Invitation Flow
 
-**Status:** In Progress — source independently reviewed; disposable SQL/RLS,
-concurrency and HTTP checks passed; authentic types integrated. Final reviewed-head
-full CI and native/device acceptance remain pending.
+**Status:** Merged via PR #44 into main `9f38fe9`; independently reviewed head
+`663071fcbd7ff02e552e1921f09e509343dbf5ce` passed full exact-head CI `39867477923`.
+The merge preserves that tree. Native/device acceptance remains pending.
 
 ADR-080 defines directed account-code invitations, OWNER-only creation/cancellation,
 seven-day expiry, explicit recipient acceptance as MEMBER and multiple separate
@@ -1728,39 +1728,33 @@ The minimal Hogar controls retain stable uncertain requests and isolate session 
 SQL/RLS, lifecycle concurrency and real HTTP-to-app-parser tests accompany client
 regressions. FIN-204 and device acceptance remain separate; no production work claimed.
 
-Disposable CI run `39866077696` on source head
-`4798c7082abe7b7ded231d595dd9394633b07d9a` passed 2,516 SQL assertions across 35 files,
-57 finance and 14 existing household concurrency scenarios, 13 invitation races
-plus 6 isolation-level rejection cases, both authenticated HTTP journeys and their
-production-parser checks. Cleanup passed. The run's only failures were the expected
-four missing-RPC typecheck errors and generated-type drift before artifact import.
-
-The 44,788-byte database types were copied verbatim from that run's artifact
-`12463194901`. ZIP SHA256:
-`551c1346a8693e03657890be10aee855b32fb015ea19b13035b6a19deb2fd73d`.
-Generated file SHA256:
-`b5fccfa6d3d369f7c438ea260fb13be89228ace2977bebca4bbe2ecac77f5f03`.
-The generated delta adds the two invitation tables and four RPC signatures; no
-handwritten types or escape casts were added. Exact-head CI, including type drift,
-must pass before merge. Docker remains unavailable locally; real database evidence
-comes from disposable CI. The [short device checklist](HOUSEHOLD_MEMBERSHIP_REVIEW.md#fin-203-short-device-checklist-pending)
-is still unexecuted and does not establish FIN-204 or native acceptance.
+The final run passed SQL/RLS, concurrency, both authenticated HTTP/parser flows,
+Quality, generated-type comparison and cleanup. Authentic 44,788-byte types were
+imported from artifact `12463194901`, without handwritten types or escape casts;
+file SHA256 is `b5fccfa6d3d369f7c438ea260fb13be89228ace2977bebca4bbe2ecac77f5f03`.
+Docker remains unavailable locally; real database evidence comes from disposable
+CI. The [short device checklist](HOUSEHOLD_MEMBERSHIP_REVIEW.md#fin-203-short-device-checklist-pending)
+is still unexecuted and does not establish native acceptance.
 
 ---
 
 ## FIN-204 — Household Privacy Test Suite
 
-**Status:** Prepared locally on main `9f38fe9` after FIN-203 PR #44 merged with the
-same tree as reviewed head `663071f` (full CI `39867477923` passed). Authentic types
-are inherited unchanged. FIN-204 differential review, SQL/HTTP execution and
-exact-head CI remain pending; native/device acceptance is separate.
+**Status:** Automated privacy suite validated in CI `39872830246` on head
+`6c6ed7f583915b4237cfe24f5ce419501d0e8928`, based on merged FIN-203 main `9f38fe9`.
+See [PR #45](https://github.com/Andrew-Mtz/gastos/pull/45) for integration status.
+Merge requires independent review and complete CI on the exact final head,
+including documentation. Native acceptance and an active GraphQL engine are
+outside the executed scope.
 
 The incremental suite adds an explicit actual-catalog privacy inventory, complete
 personal RPC partner/stranger isolation with valid owner-probed payloads and per-
 attempt no-write checks, and extends FIN-203's HTTP-to-production-parser bridge.
 It reuses existing nonempty table/grant/RLS, lifecycle-race and UI/session coverage.
-See [scope, evidence and pending gates](HOUSEHOLD_PRIVACY_REVIEW.md). Preparation
-is not completion and does not authorize publication or later household features.
+CI passed 3,712 SQL assertions/36 files, all existing concurrency scenarios,
+both authenticated HTTP/parser journeys, Quality and cleanup, with zero type drift.
+See [scope, executed evidence and remaining gates](HOUSEHOLD_PRIVACY_REVIEW.md).
+This does not establish native acceptance or authorize later household features.
 
 Prove:
 
