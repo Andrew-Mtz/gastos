@@ -1801,9 +1801,22 @@ Example:
 
 ## FIN-206 — Shared Expense Domain Calculation
 
+**Status:** Implemented, locally verified and independently reviewed. Integration requires complete CI on the exact head.
+
 Implement deterministic shared split calculation and responsibility amounts.
 
 Must use largest-remainder behavior.
+
+The pure calculation composes FIN-205 share validation and FIN-102 allocation for
+a positive Money total, with canonical membership UUID ordering, explicit zero
+shares and one unchanged currency. Payer and trusted membership authorization
+remain separate; no persistence, financial effects, UI or dependency changes.
+
+Local Node 24.14.0 / npm 11.9.0 verification passed typecheck, lint, formatting,
+all 1306 Jest tests across 63 suites and the installed Router parser regression.
+The 101 new tests cover safe bounds, invalid/forged data, exact conservation,
+permutation/locale independence, immutability and all 10001 two-member basis-point
+distributions. No database changes or native/device validation are included.
 
 ---
 

@@ -990,6 +990,22 @@ sum(responsibilityAmountMinor) = sharedExpense.amountMinor
 
 The stored amount is the authoritative historical responsibility after deterministic rounding.
 
+FIN-206 provides only the pure `calculateSharedExpenseSplit` calculation. It takes
+one positive safe-integer Money total and explicit membership UUID/basis-point
+shares, revalidating all values, uniqueness and the exact 10000 total. Zero shares
+remain present. It normalizes UUID case and sorts by canonical UUID with a
+locale-independent comparison before FIN-102 largest remainder, so input order
+cannot change responsibility. Results are frozen Money amounts in that one
+explicit currency and sum exactly to the expense, including safe-integer bounds.
+
+`memberId` retains FIN-205 membership identity, not Profile identity. Calculation
+does not establish existence, current membership, full household-roster coverage
+or permission. Trusted persistence must separately enforce the applicable household
+authorization and participant rules and map membership to Profile where required.
+Payer is not an input to responsibility.
+No template, history, cash, budget, spending or savings state is read or changed;
+historical persistence, payer checks, effects and conversion remain later tasks.
+
 ---
 
 # 26. Payer vs Responsible Member
