@@ -26,6 +26,7 @@ const snapshots = [];
 const snapshotRpcs = new Set([
   'get_my_household_invitations',
   'get_my_household_memberships',
+  'get_personal_dashboard',
 ]);
 function command(binary, args, input) {
   const result = spawnSync(binary, args, {
@@ -73,9 +74,10 @@ function denied(result, code) {
     'Expected the specific authorization/domain rejection.',
   );
 }
-async function rpc(client, name, args) {
+async function rpc(client, name, args, expectedOwner) {
   const data = success(await client.rpc(name, args));
-  if (snapshotRpcs.has(name)) snapshots.push({ kind: name, data });
+  if (snapshotRpcs.has(name))
+    snapshots.push({ kind: name, data, expected_owner: expectedOwner });
   return data;
 }
 function passed(label) {
@@ -87,10 +89,20 @@ const uuid = (id) => {
   return id;
 };
 try {
-  assert.match(
-    readFileSync(path.join(root, 'supabase/config.toml'), 'utf8'),
-    /^project_id = "gastos"$/m,
+  const configuration = readFileSync(
+    path.join(root, 'supabase/config.toml'),
+    'utf8',
   );
+  assert.match(configuration, /^project_id = "gastos"$/m);
+  // Keep the real-catalog privacy inventory aligned with every exposed schema.
+  // A new schema requires explicit classification and authorization coverage.
+  const apiConfiguration = configuration
+    .split(/^\[api\]$/m)[1]
+    ?.split(/^\[/m)[0];
+  assert(apiConfiguration, 'The API configuration must exist.');
+  const exposed = apiConfiguration.match(/^schemas\s*=\s*(\[[^\n]+\])/m)?.[1];
+  assert(exposed, 'Exposed schemas must remain explicit.');
+  assert.deepEqual(JSON.parse(exposed), ['public', 'graphql_public']);
   assert(
     !process.env.DOCKER_HOST && !process.env.DOCKER_CONTEXT,
     'Remote Docker overrides are unsupported.',
@@ -179,35 +191,40 @@ try {
   const a = await identity('Synthetic invitation A'),
     b = await identity('Synthetic invitation B'),
     c = await identity('Synthetic invitation C');
-  const period = success(
-    await a.client
-      .from('budget_periods')
-      .insert({
-        profile_id: a.id,
-        starts_on: '2025-01-01',
-        ends_on: '2025-01-31',
-        base_currency: 'USD',
-      })
-      .select('id')
-      .single(),
-  );
-  const income = await rpc(a.client, 'register_income', {
-    p_transaction_id: randomUUID(),
-    p_budget_period_id: period.id,
-    p_amount_minor: 12345,
-    p_currency: 'USD',
-    p_transaction_date: '2025-01-02',
-  });
-  assert.equal(
-    success(
-      await a.client
-        .from('transactions')
-        .select('amount_minor')
-        .eq('id', income.id)
+  async function privateIncome(actor, amount) {
+    const period = success(
+      await actor.client
+        .from('budget_periods')
+        .insert({
+          profile_id: actor.id,
+          starts_on: '2025-01-01',
+          ends_on: '2025-01-31',
+          base_currency: 'USD',
+        })
+        .select('id')
         .single(),
-    ).amount_minor,
-    12345,
-  );
+    );
+    const income = await rpc(actor.client, 'register_income', {
+      p_transaction_id: randomUUID(),
+      p_budget_period_id: period.id,
+      p_amount_minor: amount,
+      p_currency: 'USD',
+      p_transaction_date: '2025-01-02',
+    });
+    assert.equal(
+      success(
+        await actor.client
+          .from('transactions')
+          .select('amount_minor')
+          .eq('id', income.id)
+          .single(),
+      ).amount_minor,
+      amount,
+    );
+    return { actor, period, income, amount };
+  }
+  const privateA = await privateIncome(a, 12345),
+    privateB = await privateIncome(b, 67890);
   const first = randomUUID(),
     second = randomUUID(),
     invite = randomUUID(),
@@ -296,47 +313,114 @@ try {
     success(await b.client.from('profiles').select('id').eq('id', a.id)),
     [],
   );
-  for (const outsider of [b, c]) {
-    assert.deepEqual(
-      success(
-        await outsider.client
-          .from('transactions')
-          .select('id,amount_minor')
-          .eq('id', income.id),
-      ),
-      [],
-    );
-    assert.deepEqual(
-      success(
-        await outsider.client
-          .from('budget_periods')
-          .select('id')
-          .eq('id', period.id),
-      ),
-      [],
-    );
-    denied(
-      await outsider.client.rpc('get_received_income', {
-        p_budget_period_id: period.id,
+  assert.deepEqual(
+    success(await b.client.from('households').select('id').order('id')).map(
+      (row) => row.id,
+    ),
+    [first, second].sort(),
+  );
+  assert.deepEqual(
+    success(
+      await c.client.from('households').select('id,name,default_currency'),
+    ),
+    [],
+  );
+  assert.deepEqual(
+    success(
+      await c.client
+        .from('household_members')
+        .select('id,household_id,profile_id,role'),
+    ),
+    [],
+  );
+  assert.deepEqual(
+    (await rpc(c.client, 'get_my_household_memberships')).households,
+    [],
+  );
+  for (const victim of [privateA, privateB]) {
+    for (const outsider of [victim.actor === a ? b : a, c]) {
+      assert.deepEqual(
+        success(
+          await outsider.client
+            .from('transactions')
+            .select('id,amount_minor')
+            .eq('id', victim.income.id),
+        ),
+        [],
+      );
+      assert.deepEqual(
+        success(
+          await outsider.client
+            .from('budget_periods')
+            .select('id')
+            .eq('id', victim.period.id),
+        ),
+        [],
+      );
+      assert.deepEqual(
+        success(
+          await outsider.client
+            .from('profiles')
+            .select('id')
+            .eq('id', victim.actor.id),
+        ),
+        [],
+      );
+      denied(
+        await outsider.client.rpc('get_received_income', {
+          p_budget_period_id: victim.period.id,
+        }),
+        '42501',
+      );
+      const before = success(
+        await victim.actor.client.from('transactions').select('*'),
+      );
+      denied(
+        await outsider.client.rpc('register_income', {
+          p_transaction_id: randomUUID(),
+          p_budget_period_id: victim.period.id,
+          p_amount_minor: 1,
+          p_currency: 'USD',
+          p_transaction_date: '2025-01-03',
+        }),
+        '42501',
+      );
+      assert.deepEqual(
+        success(await victim.actor.client.from('transactions').select('*')),
+        before,
+        'Rejected HTTP mutation leaves owner financial rows unchanged.',
+      );
+    }
+    assert.equal(
+      await rpc(victim.actor.client, 'get_received_income', {
+        p_budget_period_id: victim.period.id,
       }),
-      '42501',
+      victim.amount,
     );
-    denied(
-      await outsider.client.rpc('register_income', {
-        p_transaction_id: randomUUID(),
-        p_budget_period_id: period.id,
-        p_amount_minor: 1,
-        p_currency: 'USD',
-        p_transaction_date: '2025-01-03',
-      }),
-      '42501',
+    const dashboard = await rpc(
+      victim.actor.client,
+      'get_personal_dashboard',
+      {
+        p_month: '2025-01-01',
+      },
+      victim.actor.id,
     );
+    assert.equal(dashboard.owner_profile_id, victim.actor.id);
+    assert.equal(dashboard.period.id, victim.period.id);
+    assert.equal(dashboard.received_income_minor, victim.amount);
   }
-  assert.equal(
-    await rpc(a.client, 'get_received_income', {
-      p_budget_period_id: period.id,
-    }),
-    12345,
+  const strangerDashboard = await rpc(
+    c.client,
+    'get_personal_dashboard',
+    {
+      p_month: '2025-01-01',
+    },
+    c.id,
+  );
+  assert.equal(strangerDashboard.owner_profile_id, c.id);
+  assert.equal(strangerDashboard.period, null);
+  passed(
+    'FIN-204 reciprocal private finance isolation, own dashboard results and stranger household denial',
   );
   await rpc(a.client, 'get_my_household_invitations');
   await rpc(b.client, 'get_my_household_invitations');

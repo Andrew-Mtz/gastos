@@ -191,7 +191,8 @@ Disposable CI `39866077696` on `4798c708` passed real SQL/RLS, 13 invitation rac
 plus 6 isolation rejections, and both authenticated HTTP/parser journeys. Authentic
 types from artifact `12463194901` are integrated. The
 [FIN-203 evidence](ROADMAP.md#fin-203--household-invitation-flow) records the full head,
-counts and checksums; final-head full CI and this device checklist remain pending.
+checksums and integration: final-head CI `39867477923` passed and PR #44 merged.
+This device checklist remains pending.
 
 1. In B's Hogar, select/copy B's own code. In A, invite that code and verify the
    pending outbox shows the entered code, not another account's private details.
