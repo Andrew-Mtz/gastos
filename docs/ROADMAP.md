@@ -1885,9 +1885,22 @@ Verification details and pending native checks: [FIN-208 checklist](SHARED_EXPEN
 
 ## FIN-209 — Shared Expense History
 
-Display authorized household expenses.
+**Status:** Implemented. Initial disposable CI validated SQL/RLS, concurrency and
+HTTP/parser behavior on source `ea9d073`; its authentic generated types are imported
+verbatim. Final-head full CI and independent artifact review remain integration
+gates. No native acceptance or production deployment is claimed.
 
-No personal financial data may leak.
+Read-only history from each authorized Hogar, bounded date/UUID keyset pagination,
+fresh authorized detail and original immutable amount/currency/responsibility.
+Current active-member labels reuse FIN-202's minimum projection in the same database
+snapshot. Historical identities missing from that current roster use neutral labels;
+this does not grant former-member access or decide a departure/rejoin lifecycle.
+
+No personal financial data may leak. No direct HOUSEHOLD transaction SELECT, private
+budget/category joins, mixed-currency totals, edits/deletion, balances, FIN-210/211
+financial effects, filtering, offline persistence or UI redesign.
+
+Verification and pending gates: [FIN-209 checklist](SHARED_EXPENSE_HISTORY_REVIEW.md).
 
 ---
 

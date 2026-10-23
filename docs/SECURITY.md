@@ -1892,3 +1892,21 @@ No function signature, grant, table, private policy or exposed DTO field changes
 A trusted configuration change serializes on the same household row; original
 historical currency is neither rewritten nor used to grant access. Client validation
 is UX, not this enforcement. Currency mismatch must roll back without a partial trio.
+
+
+## FIN-209 history read boundary
+
+Two narrowly scoped authenticated-only definer reads add no direct financial access:
+list_shared_expenses and get_shared_expense_history_detail. Empty search paths,
+non-null auth.uid(), current exact-household membership and READ COMMITTED snapshots
+are mandatory. Listing authorizes before cursor validation and emits only the FIN-207
+minimal DTO; detail independently invokes the original authorized point read.
+The already authorized FIN-202 active-member projection supplies only ID/display name
+inside the same statement snapshot. No arbitrary Profile lookup or private fields
+are exposed, including after another participant departs. Historical identity remains
+stored; no inactive requester gains access through authorship, payer or old cursor.
+
+Every new RPC is catalogued in FIN-204. Negative SQL/RLS, actual-grant/write denials,
+overlapping households, foreign/private cursors, revocation, immutable history and
+same-snapshot names are required gates. Client caches are scoped, cancelled and hidden
+during fresh reads; they never authorize access or reconcile an unverified write.

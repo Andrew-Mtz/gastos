@@ -512,6 +512,94 @@ try {
       [],
     );
   }
+  // FIN-209: actual authenticated scalar pages and detail use the production parsers.
+  const secondSharedId = randomUUID();
+  success(
+    await b.client.rpc('create_shared_expense', {
+      ...sharedRequest,
+      p_request_id: secondSharedId,
+      p_transaction_date: '2025-01-03',
+    }),
+  );
+  async function history(actor, household, before = null, limit = 1) {
+    const data = success(
+      await actor.client.rpc('list_shared_expenses', {
+        p_household_id: household,
+        p_limit: limit,
+        ...(before ? { p_before_expense_id: before } : {}),
+      }),
+    );
+    snapshots.push({
+      kind: 'list_shared_expenses',
+      data,
+      expected_owner: actor.id,
+      expected_household: household,
+      expected_cursor: before,
+      expected_limit: limit,
+    });
+    return data;
+  }
+  for (const actor of [a, b]) {
+    const firstPage = await history(actor, first);
+    assert.equal(firstPage.expenses.length, 1);
+    assert.equal(firstPage.expenses[0].expense_id, secondSharedId);
+    assert.equal(firstPage.next_cursor, secondSharedId);
+    const lastPage = await history(actor, first, firstPage.next_cursor);
+    assert.equal(lastPage.expenses[0].expense_id, sharedRequest.p_request_id);
+    assert.equal(lastPage.next_cursor, null);
+    assert.deepEqual(lastPage.expenses[0].splits, sharedCreated.splits);
+    const data = success(
+      await actor.client.rpc('get_shared_expense_history_detail', {
+        p_household_id: first,
+        p_expense_id: sharedRequest.p_request_id,
+      }),
+    );
+    snapshots.push({
+      kind: 'get_shared_expense_history_detail',
+      data,
+      expected_owner: actor.id,
+      expected_household: first,
+      expected_expense: sharedRequest.p_request_id,
+    });
+    assert.deepEqual(data.expense.splits, sharedCreated.splits);
+    assert.equal(data.members.length, 2);
+  }
+  assert.deepEqual((await history(b, second)).expenses, []);
+  denied(
+    await c.client.rpc('list_shared_expenses', { p_household_id: first }),
+    '42501',
+  );
+  denied(
+    await c.client.rpc('get_shared_expense_history_detail', {
+      p_household_id: first,
+      p_expense_id: sharedRequest.p_request_id,
+    }),
+    '42501',
+  );
+  denied(
+    await b.client.rpc('list_shared_expenses', {
+      p_household_id: second,
+      p_before_expense_id: sharedRequest.p_request_id,
+    }),
+    '22023',
+  );
+  denied(
+    await a.client.rpc('list_shared_expenses', {
+      p_household_id: first,
+      p_before_expense_id: privateA.income.id,
+    }),
+    '22023',
+  );
+  denied(
+    await a.client.rpc('get_shared_expense_history_detail', {
+      p_household_id: first,
+      p_expense_id: privateA.income.id,
+    }),
+    '42501',
+  );
+  passed(
+    'FIN-209 real HTTP bounded history, independent detail authorization and private cursor rejection',
+  );
   denied(
     await c.client.rpc('get_shared_expense', {
       p_household_id: first,
@@ -589,6 +677,12 @@ try {
       beforeShared[index],
       'Shared actor/payer never alter current personal read models',
     );
+  const afterTemplate = await history(a, first, secondSharedId);
+  assert.deepEqual(
+    afterTemplate.expenses[0].splits,
+    sharedCreated.splits,
+    'History never recalculates old responsibility from a new template',
+  );
   passed(
     'FIN-207 authenticated create/read/replay, template conflict, private isolation and unchanged personal dashboards',
   );
@@ -737,6 +831,17 @@ try {
   );
   success(await b.client.auth.signOut({ scope: 'local' }));
   denied(await b.client.rpc('get_my_household_invitations'), '42501');
+  denied(
+    await b.client.rpc('list_shared_expenses', { p_household_id: first }),
+    '42501',
+  );
+  denied(
+    await b.client.rpc('get_shared_expense_history_detail', {
+      p_household_id: first,
+      p_expense_id: sharedRequest.p_request_id,
+    }),
+    '42501',
+  );
   step = 'real HTTP invitation JSON through production application parsers';
   fixtureDirectory = mkdtempSync(path.join(tmpdir(), 'gastos-fin203-'));
   const fixturePath = path.join(fixtureDirectory, 'synthetic-invitations.json');

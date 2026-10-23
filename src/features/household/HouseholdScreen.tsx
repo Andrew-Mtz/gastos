@@ -1,3 +1,4 @@
+import { HouseholdExpenseHistory } from './HouseholdExpenseHistory';
 import { HouseholdSharedExpense } from './HouseholdSharedExpense';
 import { HouseholdDefaultSplit } from './HouseholdDefaultSplit';
 import { HouseholdInvitations } from './HouseholdInvitations';
@@ -301,6 +302,11 @@ function HouseholdMemberships({ profile }: { profile: Profile }) {
                   householdName={household.name}
                   currency={household.default_currency}
                   timezone={profile.timezone}
+                />
+                <HouseholdExpenseHistory
+                  profileId={profile.id}
+                  householdId={household.id}
+                  householdName={household.name}
                 />
                 <HouseholdDefaultSplit
                   profileId={profile.id}

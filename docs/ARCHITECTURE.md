@@ -2492,3 +2492,26 @@ write did not commit. Focus/background and parent refresh discard unsent drafts 
 hide cached receipts until renewed access/readback; cleared cache identity prevents
 late responses from reviving an earlier session. Process-restart recovery/offline
 storage and a searchable expense history remain outside this bounded task.
+
+
+## FIN-209 bounded read-only history
+
+One stable, empty-search-path definer RPC returns a scalar JSON page of 1–50
+expenses (client 20), ordered by financial date then UUID descending. A UUID cursor
+must resolve to a live shared record in the requested, currently authorized household;
+nonexistent, private and foreign cursors share one error. A same-snapshot detail
+wrapper composes FIN-207's unchanged point DTO with FIN-202's existing authorized
+member projection, narrowed to membership ID and display name. Both history reads
+reject snapshot isolation. No financial table grants, personal RLS or write path changes.
+
+Strict feature-local parsers reuse FIN-207's stored-split validation, reject whole
+malformed pages and verify pagination continuity. Active roster names are presentation
+only, never inputs to historical responsibility. Names refresh with each page/detail,
+not from parent props; newly joined or departed identities do not change the snapshot.
+
+TanStack Query keys isolate profile, household and detail identity. History opens on
+request, refresh resets to the first page, and loading/error states hide cached values.
+Hogar focus/background revalidation unmounts the history; cleanup aborts/removes its
+queries and auth clearing prevents late-response resurrection. Only a verified FIN-208
+receipt invalidates history; history cannot settle or discard an uncertain entry.
+No new dependencies, realtime, persistent cache, generic repository or native redesign.

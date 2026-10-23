@@ -501,3 +501,94 @@ for (const isolation of ['repeatable read', 'serializable'])
       assert.equal((await c.sharedState()).expenses, 1);
     },
   );
+
+// FIN-209 reads do not lock writers or reveal a partially committed trio.
+await sharedFixtures(
+  'FIN-209 history observes only complete committed expenses',
+  async (c) => {
+    const writer = c.start(`begin;${c.expense()}select 'FIN209_HELD';`, {
+      marker: 'FIN209_HELD',
+      hold: true,
+    });
+    await writer.ready;
+    const before = await run(
+      `begin;${auth(c.partner)}select 'PAGE:'||public.list_shared_expenses('${c.household}')::text;commit;`,
+    );
+    assert.deepEqual(taggedJSON(before, 'PAGE').expenses, []);
+    const hidden = await c.start(
+      `begin;${auth(c.partner)}select public.get_shared_expense_history_detail('${c.household}','${c.expenseId}');commit;`,
+    ).result;
+    assert.notEqual(hidden.code, 0);
+    assert.match(hidden.error, /ERROR:\s+42501:/);
+    writer.finish('commit;');
+    const written = await writer.result;
+    assert.equal(written.code, 0, written.error);
+    const after = taggedJSON(
+      await run(
+        `begin;${auth(c.partner)}select 'PAGE:'||public.list_shared_expenses('${c.household}')::text;commit;`,
+      ),
+      'PAGE',
+    );
+    assert.equal(after.expenses.length, 1);
+    assert.equal(after.expenses[0].expense_id, c.expenseId);
+    assert.equal(after.expenses[0].splits.length, 2);
+    assert.equal(
+      after.expenses[0].splits.reduce(
+        (sum, row) => sum + row.responsibility_amount_minor,
+        0,
+      ),
+      101,
+    );
+  },
+);
+await sharedFixtures(
+  'FIN-209 next read rechecks membership after another session commits departure',
+  async (c) => {
+    await run(`begin;${c.expense()}commit;`);
+    const reader = c.start(
+      `begin;${auth(c.partner)}select 'PAGE:'||public.list_shared_expenses('${c.household}')::text;select 'FIN209_READ';`,
+      { marker: 'FIN209_READ', hold: true },
+    );
+    await reader.ready;
+    await run(
+      `begin;update public.household_members set left_at=clock_timestamp() where id='${c.partnerMember}';commit;`,
+    );
+    reader.finish(
+      `select public.list_shared_expenses('${c.household}','${c.expenseId}');commit;`,
+    );
+    const denied = await reader.result;
+    assert.notEqual(denied.code, 0);
+    assert.match(denied.error, /ERROR:\s+42501:/);
+    const detailDenied = await c.start(
+      `begin;${auth(c.partner)}select public.get_shared_expense_history_detail('${c.household}','${c.expenseId}');commit;`,
+    ).result;
+    assert.notEqual(detailDenied.code, 0);
+    assert.match(detailDenied.error, /ERROR:\s+42501:/);
+    const owner = taggedJSON(
+      await run(
+        `begin;${auth(c.actor)}select 'DETAIL:'||public.get_shared_expense_history_detail('${c.household}','${c.expenseId}')::text;commit;`,
+      ),
+      'DETAIL',
+    );
+    assert.equal(owner.members.length, 1);
+    assert.equal(owner.expense.payer_member_id, c.partnerMember);
+    assert.equal(owner.expense.splits.length, 2);
+  },
+);
+for (const isolation of ['repeatable read', 'serializable'])
+  await sharedFixtures(
+    `FIN-209 history rejects stale ${isolation} authorization`,
+    async (c) => {
+      await run(`begin;${c.expense()}commit;`);
+      for (const read of [
+        `public.list_shared_expenses('${c.household}')`,
+        `public.get_shared_expense_history_detail('${c.household}','${c.expenseId}')`,
+      ]) {
+        const denied = await c.start(
+          `begin isolation level ${isolation};${auth(c.actor)}select ${read};commit;`,
+        ).result;
+        assert.notEqual(denied.code, 0);
+        assert.match(denied.error, /ERROR:\s+25001:/);
+      }
+    },
+  );

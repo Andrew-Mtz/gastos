@@ -635,3 +635,25 @@ test.each(['blur', 'background'] as const)(
     expect(screen.queryByText('Confirmar gasto en Casa')).not.toBeOnTheScreen();
   },
 );
+
+test('history invalidation waits for an authoritative matching receipt, not create acknowledgement', async () => {
+  const readback = deferred<SharedExpense>();
+  jest.mocked(readSharedExpense).mockReturnValueOnce(readback.promise);
+  const cache = client();
+  const invalidation = jest.spyOn(cache, 'invalidateQueries');
+  await open(cache);
+  const user = await review();
+  await confirm(user);
+  expect(createSharedExpense).toHaveBeenCalledTimes(1);
+  expect(invalidation).not.toHaveBeenCalledWith({
+    queryKey: ['shared-expense-history', id(1), id(20)],
+  });
+  const original = saved;
+  if (!original)
+    throw new Error('Synthetic create must have saved its exact receipt.');
+  await act(async () => readback.resolve(original));
+  await screen.findByText('Gasto registrado');
+  expect(invalidation).toHaveBeenCalledWith({
+    queryKey: ['shared-expense-history', id(1), id(20)],
+  });
+});
