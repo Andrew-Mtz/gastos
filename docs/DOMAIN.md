@@ -2001,3 +2001,14 @@ blocks a new join; no departure marker or historical identity is rewritten. Acce
 and membership insertion commit together. Accepted replay only confirms a prior
 transition while the recipient still has current active membership; it never reopens
 access. All invitation operations have zero cash, budget, spending and savings impact.
+
+## FIN-207 immutable shared persistence (ADR-082)
+
+One atomic HOUSEHOLD transaction/header/split snapshot stores actual original
+amount/currency/date, a separate payer membership and actor provenance. It has no
+personal owner, budget period, category, goal or recurring identity. The saved
+current default revision and its complete membership roster determine immutable
+basis points and exact rounded responsibilities, including zero. Later configuration
+or roster changes never reinterpret that record. A retry confirms the same original
+request, not a fresh application of the current default. No personal budget/cash,
+savings or balance calculation changes before the separately assigned later tasks.

@@ -2805,3 +2805,60 @@ generated-type drift, on the exact final head. Real database evidence and authen
 types come from disposable CI, never local inference or handwritten replacements.
 Native acceptance remains pending. See [executed evidence](HOUSEHOLD_SPLIT_REVIEW.md)
 and [PR #46](https://github.com/Andrew-Mtz/gastos/pull/46) for integration status.
+
+---
+
+# ADR-082 — Atomic Default-Template Shared Expense Persistence
+
+**Status:** Bounded FIN-207 local preparation. Independent source review and disposable
+SQL/HTTP/concurrency execution, authentic generated types, exact-head full CI and
+publication approval are separate gates. No production or native acceptance claim.
+
+FIN-207 persists one HOUSEHOLD EXPENSE transaction, a linked shared-expense header
+and the complete historical responsibility snapshot in one PostgreSQL RPC. Active
+OWNER and MEMBER callers may create. The actor is immutable audit provenance, not
+personal ownership or necessarily the payer. One explicit active same-household
+membership is the payer; responsibility comes only from the current reviewed default
+revision. There is no custom split, category, entry UI, history feed, correction,
+settlement, balance or personal budget/cash integration in this task.
+
+Existing PERSONAL rows retain their owner, period, categories, calculations and
+RLS. New HOUSEHOLD rows require owner/period/category/goal/recurrence to be null,
+plus household and actor; no personal relation is inferred. SELECT on transactions
+remains personal-only. Two default-deny server-only tables and a point-read RPC
+expose the minimal authorized expense snapshot without private Profile joins.
+Current active membership authorizes both reads and retries, never authorship,
+payer status, invitation or a membership in an overlapping different household.
+
+The request UUID is also the expense/transaction identity. The immutable payload
+includes household, actor, payer, default revision ID/version, canonical complete
+roster, original amount/currency/date and exact optional description. New writes
+require the latest revision and matching active roster. An exact old retry returns
+its saved snapshot after template/roster/payer changes while the actor still has
+access; it never recalculates, creates another row, or restores a departed member.
+Any changed payload conflicts. Unknown outcomes must retain that same request.
+
+Trusted SQL computes largest remainder using exact NUMERIC intermediates and
+canonical membership UUID ordering, matching FIN-206 through MAX_SAFE_INTEGER.
+Explicit zero shares remain stored. Composite foreign keys bind header, transaction,
+template version, payer and participants to one household. A non-callable definer
+deferred constraint checks the complete linked trio, roster, percentages, total and
+exact rounding. Snapshot updates are rejected, including shared monetary updates;
+FIN-220 must separately define correction/deletion. Trusted full-fixture cleanup
+is not a client deletion or retention policy.
+
+Mutations require READ COMMITTED. They acquire the existing caller finance lock
+before the FIN-203/205 household advisory lock, then household FOR UPDATE and every
+membership row in canonical order FOR SHARE. This preserves the transactions
+statement-trigger lock order; no path first holds the household lock while waiting
+for personal finance. Fresh statements recheck membership, current roster and
+revision after waits. Shared inserts do not execute the unrelated personal savings
+integrity calculation. Personal writes keep their existing statement-level guard.
+The narrow definer RPCs are needed because clients cannot write the dependent tables;
+auth.uid(), fixed empty search paths and explicit current authorization bound them.
+
+Currency storage preserves original amounts without conversion or aggregation. This
+persistence contract does not authorize visible multi-currency entry. The user's
+existing period-currency-only personal entry policy remains unchanged. FIN-208 must
+resolve any shared-entry currency choices explicitly; future conversion remains
+separate work. No shared financial effects are applied before FIN-210/211.

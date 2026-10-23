@@ -1822,6 +1822,17 @@ distributions. No database changes or native/device validation are included.
 
 ## FIN-207 — Shared Expense Persistence
 
+**Status:** Local implementation prepared under ADR-082; publication, authentic
+schema types, real disposable SQL/HTTP/concurrency execution and final exact-head
+review/CI remain pending. No native/device or production claim.
+
+The bounded slice persists the atomic HOUSEHOLD transaction/header/full historical
+split snapshot from the current default template. Current active members may create
+and read a single authorized record; payer and responsibility are separate. Exact
+retry, version/roster conflicts, immutable history, no direct writes and unchanged
+personal read models are explicit contracts. No FIN-208 UI/custom split/categories,
+FIN-209 history, FIN-210/211 effects or currency conversion is included.
+
 Implement atomic persistence for:
 
 ```text

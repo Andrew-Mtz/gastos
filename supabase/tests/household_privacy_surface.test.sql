@@ -29,7 +29,9 @@ insert into privacy_relations values
   ('public.household_recipient_codes','server_only'),
   ('public.household_invitations','server_only'),
   ('public.household_split_revisions','server_only'),
-  ('public.household_split_shares','server_only');
+  ('public.household_split_shares','server_only'),
+  ('public.shared_expenses','server_only'),
+  ('public.shared_expense_splits','server_only');
 
 create temp table privacy_functions(signature text primary key, boundary text not null, is_definer boolean not null);
 insert into privacy_functions values
@@ -37,6 +39,9 @@ insert into privacy_functions values
   ('public.get_household_default_split(uuid)','household_rpc',true),
   ('public.save_household_default_split(uuid,uuid,integer,uuid[],jsonb)','household_rpc',true),
   ('public.check_household_split_revision()','internal_trigger',true),
+  ('public.check_shared_expense_integrity()','internal_trigger',true),
+  ('public.get_shared_expense(uuid,uuid)','household_rpc',true),
+  ('public.create_shared_expense(uuid,uuid,uuid,uuid,integer,uuid[],bigint,text,date,text)','household_rpc',true),
   ('public.audit_transaction_revision()','internal_trigger',true),
   ('public.check_budget_allocation_total()','internal_trigger',false),
   ('public.check_savings_integrity()','internal_trigger',false),
