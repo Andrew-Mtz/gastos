@@ -942,7 +942,9 @@ Member A = 7000 basis points
 Member B = 3000 basis points
 ```
 
-The household default is only a template for future expenses.
+The household default is the required template for new expenses. The user clarified
+on 2026-10-23 that no per-expense override is allowed, including for OWNERs; any
+active member may register, independently of who paid.
 
 ### Rule
 
@@ -2012,3 +2014,13 @@ basis points and exact rounded responsibilities, including zero. Later configura
 or roster changes never reinterpret that record. A retry confirms the same original
 request, not a fresh application of the current default. No personal budget/cash,
 savings or balance calculation changes before the separately assigned later tasks.
+
+
+## FIN-208 bounded shared entry
+
+New shared expenses use the configured household currency, enforced by the existing
+atomic RPC under its household lock after resolving exact historical replay. Replay
+retains the original currency even if later household configuration differs. The
+UI records a positive amount, financial date, active payer and optional description,
+previews FIN-206 responsibility and explicitly confirms before creating. No custom
+splits, private budget/category relation, conversion or financial effects are added.

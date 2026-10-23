@@ -453,21 +453,11 @@ Examples:
 
 The default split is used as a template when creating shared expenses.
 
-Individual expenses may override the household default.
-
-Example:
-
-Default:
-
-```text
-70 / 30
-```
-
-Specific expense:
-
-```text
-50 / 50
-```
+User clarification (2026-10-23, FIN-208): all active members may register expenses,
+always using the current general OWNER-controlled template. Payer and registering
+member do not change responsibility. No individual expense may override that split,
+including an expense entered by the OWNER. Salary examples explain manually chosen
+percentages, not permission to infer percentages from private income.
 
 Historical expenses must preserve the split used when they were created.
 
@@ -747,6 +737,11 @@ UYU 2,000 internet
 USD 40 subscriptions
 ```
 
+For initial household entry (FIN-208, user decision 2026-10-23), every new expense
+uses the household's configured currency. There is no currency selector, implicit
+conversion, or personal-budget lookup. Personal period-currency restrictions remain
+unchanged. Conversion is deferred across the app.
+
 Each transaction must preserve its original currency and original amount.
 
 Historical transaction values must not change merely because current exchange rates change.
@@ -759,7 +754,10 @@ Users should define a base currency for reporting.
 
 When transactions need to be consolidated into a base currency, the application should preserve the exchange rate used for that transaction or calculation.
 
-Historical financial reports must remain stable.
+Historical financial reports must remain stable. Future conversion must retain the
+original amount/currency, applied rate with its date/source, and immutable converted
+historical amount. A later rate update must not revalue already recorded expenses;
+no rate provider or conversion is implemented by FIN-208.
 
 Exchange rates may initially be entered manually if automatic exchange-rate functionality is not yet implemented.
 
@@ -1321,7 +1319,7 @@ The product specification describes the intended product; the roadmap defines wh
 * membership;
 * default split;
 * shared expenses;
-* custom splits;
+* automatic use of the OWNER-controlled household split;
 * payer tracking;
 * responsibility tracking;
 * balances;

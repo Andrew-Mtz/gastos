@@ -1882,3 +1882,13 @@ payload before returning its historical receipt. The FIN-204 actual-catalog inve
 explicitly classifies these new tables/functions. Real negative RLS, grants, rollback,
 concurrent authorization/template/roster changes and private read-model regressions
 remain required execution gates, not inferred security claims.
+
+
+## FIN-208 fixed-currency entry boundary
+
+The existing create_shared_expense definer adds only a new-record check against the
+locked household's default_currency, after current authorization and exact replay.
+No function signature, grant, table, private policy or exposed DTO field changes.
+A trusted configuration change serializes on the same household row; original
+historical currency is neither rewritten nor used to grant access. Client validation
+is UX, not this enforcement. Currency mismatch must roll back without a partial trio.

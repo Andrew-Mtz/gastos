@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 
-// Local disposable Supabase only. FIN-205 template and FIN-207 persistence concurrency. There is deliberately no URL, target override,
+// Local disposable Supabase only. FIN-205 templates and FIN-207/208 expense concurrency. There is deliberately no URL, target override,
 // hosted credential, or dependency. UUIDs belong solely to this invocation and
 // cleanup removes only these synthetic fixtures, including failed/racing writes.
 assert(
@@ -388,6 +388,13 @@ await sharedFixtures(
   },
 );
 for (const [name, mutation, denial, wait] of [
+  [
+    'FIN-208 household currency change',
+    (c) =>
+      `update public.households set default_currency='EUR' where id='${c.household}';`,
+    '23514',
+    'transactionid',
+  ],
   ['template revision', (c) => c.save(c.next, 1), '40001', 'advisory'],
   ['accepted invitation', (c) => c.accept(), '40001', 'advisory'],
   [
@@ -442,6 +449,7 @@ for (const [name, mutation, denial, wait] of [
           taggedJSON(replay.output, 'EXPENSE').payer_member_id,
           c.partnerMember,
         );
+        assert.equal(taggedJSON(replay.output, 'EXPENSE').currency, 'USD');
       }
     },
   );

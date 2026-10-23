@@ -1843,7 +1843,7 @@ The bounded slice persists the atomic HOUSEHOLD transaction/header/full historic
 split snapshot from the current default template. Current active members may create
 and read a single authorized record; payer and responsibility are separate. Exact
 retry, version/roster conflicts, immutable history, no direct writes and unchanged
-personal read models are explicit contracts. No FIN-208 UI/custom split/categories,
+personal read models are explicit contracts. No entry UI, custom split or categories,
 FIN-209 history, FIN-210/211 effects or currency conversion is included.
 
 Implement atomic persistence for:
@@ -1862,14 +1862,24 @@ Security review required.
 
 ## FIN-208 — Register Shared Expense
 
-Create the initial shared-expense UI/use case.
+**Status:** Implemented and locally verified. Independent final-head review and full
+CI (including disposable SQL/HTTP/concurrency) remain required before integration.
+Native acceptance and production deployment are not claimed.
+
+Create the initial shared-expense UI/use case (ADR-083, explicit user clarification
+2026-10-23). Earlier optional custom-split wording is superseded, not implemented.
 
 Initial UX:
 
-* one payer;
-* percentage split;
-* default household split;
-* optional custom split.
+* any active member can register in the selected household;
+* positive amount, financial date, one active payer and optional description;
+* fixed household currency, no conversion or private budget/category dependency;
+* automatic current OWNER-controlled template, with no per-expense override;
+* exact FIN-206 responsibility preview, explicit confirmation and persisted receipt;
+* current template/roster checks, stable uncertain retries and isolated lifecycle.
+
+No history feed, cash/debt/budget effects, currency conversion, taxonomy or redesign.
+Verification details and pending native checks: [FIN-208 checklist](SHARED_EXPENSE_ENTRY_REVIEW.md).
 
 ---
 

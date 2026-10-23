@@ -87,6 +87,14 @@ select pg_temp.set_jwt_subject(pg_temp.id(1));select is(auth.uid(),pg_temp.id(1)
 insert into before_personal values(auth.uid(),pg_temp.personal_snapshot(1));
 select throws_ok('select pg_temp.create_expense(50)','40001',null,'Unconfigured never invents a default');
 select public.save_household_default_split(pg_temp.id(30),pg_temp.id(20),0,pg_temp.roster(),pg_temp.shares());
+-- FIN-208 adds a new-entry currency constraint without broadening any capability.
+select throws_ok($$select public.create_shared_expense(pg_temp.id(60),pg_temp.id(20),pg_temp.id(41),pg_temp.id(30),1,pg_temp.roster(),101,'UYU','2025-01-02')$$,'23514',null,'New entry rejects currency different from household');
+reset role;
+select is((select count(*) from public.transactions where id=pg_temp.id(60)),0::bigint,'Currency rejection leaves no transaction');
+select is((select count(*) from public.shared_expenses where id=pg_temp.id(60)),0::bigint,'Currency rejection leaves no header');
+select is((select count(*) from public.shared_expense_splits where shared_expense_id=pg_temp.id(60)),0::bigint,'Currency rejection leaves no split');
+set local role authenticated;select pg_temp.set_jwt_subject(pg_temp.id(1));
+select is(current_user::text,'authenticated','Currency gate tested with real authenticated role');select is(auth.uid(),pg_temp.id(1),'Currency gate actor');
 select lives_ok('select pg_temp.create_expense(50)','OWNER creates shared trio');
 select lives_ok('set constraints all immediate','Deferred shared checks run after definer under authenticated role');set constraints all deferred;
 select is(pg_temp.create_expense(50),public.get_shared_expense(pg_temp.id(20),pg_temp.id(50)),'Exact request replay returns historical receipt');
@@ -121,10 +129,26 @@ select throws_ok('select pg_temp.create_expense(60)','40001',null,'Old version c
 select is(pg_temp.create_expense(50)#>>'{splits,0,responsibility_amount_minor}','71','Old exact replay preserves original percentages after default change');
 select is(pg_temp.create_expense(53,1,41,32,2)#>>'{splits,0,responsibility_amount_minor}','1','Equal remainder goes to lowest canonical membership UUID');
 select is(pg_temp.create_expense(53,1,41,32,2)#>>'{splits,1,responsibility_amount_minor}','0','Tie does not prefer payer');
+-- Trusted fixture configuration changes are not a new client currency-edit capability.
+reset role;
+update public.households set default_currency='UYU' where id=pg_temp.id(20);
+set local role authenticated;select pg_temp.set_jwt_subject(pg_temp.id(1));
+select is(current_user::text,'authenticated','Changed household currency role');select is(auth.uid(),pg_temp.id(1),'Changed household currency subject');
+select throws_ok('select pg_temp.create_expense(60,101,40,32,2)','23514',null,'Old currency cannot create after configuration change');
+select is(pg_temp.create_expense(50)->>'currency','USD','Old exact USD replay remains valid under new UYU configuration');
 select is(public.create_shared_expense(pg_temp.id(54),pg_temp.id(20),pg_temp.id(40),pg_temp.id(32),2,
  array[pg_temp.id(42),pg_temp.id(41),pg_temp.id(40)],1,'UYU','2025-01-02','Original amount'),
  public.create_shared_expense(pg_temp.id(54),pg_temp.id(20),pg_temp.id(40),pg_temp.id(32),2,
  pg_temp.roster(),1,'UYU','2025-01-02','Original amount'),'Original currency preserved without conversion; canonical roster retry');
+reset role;
+update public.households set default_currency='USD' where id=pg_temp.id(20);
+set local role authenticated;select pg_temp.set_jwt_subject(pg_temp.id(1));
+select is(current_user::text,'authenticated','Historical currency replay role');select is(auth.uid(),pg_temp.id(1),'Historical currency replay subject');
+select is(public.create_shared_expense(pg_temp.id(54),pg_temp.id(20),pg_temp.id(40),pg_temp.id(32),2,
+ pg_temp.roster(),1,'UYU','2025-01-02','Original amount')->>'currency','UYU','Historical UYU exact replay survives later USD configuration');
+select is(public.get_shared_expense(pg_temp.id(20),pg_temp.id(54))->>'currency','UYU','Point read never relabels historical currency');
+select throws_ok($$select public.create_shared_expense(pg_temp.id(54),pg_temp.id(20),pg_temp.id(40),pg_temp.id(32),2,
+ pg_temp.roster(),1,'USD','2025-01-02','Original amount')$$,'23505',null,'Current currency cannot overwrite historical replay payload');
 select is(pg_temp.personal_snapshot(1),(select value from before_personal where profile_id=auth.uid()),'Even different original shared currency never changes personal USD numbers');
 select pg_temp.set_jwt_subject(pg_temp.id(2));select is(auth.uid(),pg_temp.id(2),'Active MEMBER B in both households');
 insert into before_personal values(auth.uid(),pg_temp.personal_snapshot(2));

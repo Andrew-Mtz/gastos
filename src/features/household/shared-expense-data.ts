@@ -14,7 +14,7 @@ const description = z
   .nullable();
 const version = z.number().int().min(1).max(2147483647);
 
-// Persistence input only: FIN-208 owns entry UI and its currency/category policy.
+// Persistence input: FIN-208 restricts new entry to household currency, no category.
 // Caller supplies template identity, never authoritative responsibility amounts.
 export const sharedExpenseRequestSchema = z
   .strictObject({

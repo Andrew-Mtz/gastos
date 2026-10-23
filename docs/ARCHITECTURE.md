@@ -2175,7 +2175,7 @@ Session persistence and the root Auth lifecycle are resolved by ADR-064.
 The following decisions are intentionally unresolved and must not be guessed:
 
 3. Exact E2E testing framework.
-5. Initial default-template shared-expense persistence is resolved by ADR-082; custom entry and later effects remain separately scoped.
+5. Initial default-template shared-expense persistence is resolved by ADR-082; FIN-208 adds default-only entry; later effects remain separately scoped.
 7. Exact state strategy for unsaved multi-step forms.
 8. Exact AI provider.
 9. Exact speech-to-text provider.
@@ -2474,3 +2474,21 @@ PERSONAL-only schema without rewriting existing rows, granting household access 
 personal rows or feeding shared amounts into current personal read models. The
 existing authenticated household HTTP/parser and controlled concurrency harnesses
 are extended, rather than duplicating their setup or the complete personal suite.
+
+
+## FIN-208 entry and receipt lifecycle
+
+A small Hogar child uses RHF/Zod, FIN-206 calculation and the existing FIN-207 create/
+point-read adapters. New writes re-read the active template before review and again
+before confirmation. A changed template requires explicit review, never silent replay
+with new values. The RPC independently enforces the same template and fixed household
+currency under the existing lock protocol; its signature and grants do not change.
+
+Account/household-scoped QueryClient state retains an exact submitted UUID/payload
+through in-session remounts and uncertain results. Rapid taps cannot create concurrent
+requests. A successful matching point read, not the create acknowledgement alone,
+provides the displayed receipt. A failed read/retry never proves an uncertain original
+write did not commit. Focus/background and parent refresh discard unsent drafts and
+hide cached receipts until renewed access/readback; cleared cache identity prevents
+late responses from reviving an earlier session. Process-restart recovery/offline
+storage and a searchable expense history remain outside this bounded task.
