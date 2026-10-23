@@ -168,26 +168,33 @@ test('UUID case is canonical and description remains exact, with Unicode code-po
       .description,
   ).toBe('  x  ');
 });
-test('create forwards only validated original inputs and parses the real receipt', async () => {
-  jest
-    .mocked(supabase.rpc)
-    .mockResolvedValueOnce({ data: response(), error: null } as never);
-  await expect(createSharedExpense(id(1), request())).resolves.toEqual(
-    response(),
-  );
-  expect(supabase.rpc).toHaveBeenCalledWith('create_shared_expense', {
-    p_request_id: id(50),
-    p_household_id: id(20),
-    p_payer_member_id: id(41),
-    p_template_id: id(30),
-    p_template_version: 1,
-    p_roster: request().roster,
-    p_amount_minor: 101,
-    p_currency: 'USD',
-    p_transaction_date: '2026-10-01',
-    p_description: null,
-  });
-});
+test.each([null, '', '  Original description  '])(
+  'create preserves description %j while omitting only null for SQL DEFAULT NULL',
+  async (description) => {
+    const receipt = { ...response(), description };
+    jest
+      .mocked(supabase.rpc)
+      .mockResolvedValueOnce({ data: receipt, error: null } as never);
+    await expect(
+      createSharedExpense(id(1), { ...request(), description }),
+    ).resolves.toEqual(receipt);
+    expect(supabase.rpc).toHaveBeenCalledWith('create_shared_expense', {
+      p_request_id: id(50),
+      p_household_id: id(20),
+      p_payer_member_id: id(41),
+      p_template_id: id(30),
+      p_template_version: 1,
+      p_roster: request().roster,
+      p_amount_minor: 101,
+      p_currency: 'USD',
+      p_transaction_date: '2026-10-01',
+      ...(description === null ? {} : { p_description: description }),
+    });
+    const args = jest.mocked(supabase.rpc).mock.calls[0][1];
+    if (description === null) expect(args).not.toHaveProperty('p_description');
+    else expect(args).toHaveProperty('p_description', description);
+  },
+);
 test('read is cancellable, scopes response to current reader, and propagates unknown transport outcomes', async () => {
   const signal = new AbortController().signal;
   const abortSignal = jest

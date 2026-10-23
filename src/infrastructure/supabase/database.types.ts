@@ -817,6 +817,104 @@ export type Database = {
           },
         ];
       };
+      shared_expense_splits: {
+        Row: {
+          basis_points: number;
+          household_id: string;
+          member_id: string;
+          responsibility_amount_minor: number;
+          shared_expense_id: string;
+        };
+        Insert: {
+          basis_points: number;
+          household_id: string;
+          member_id: string;
+          responsibility_amount_minor: number;
+          shared_expense_id: string;
+        };
+        Update: {
+          basis_points?: number;
+          household_id?: string;
+          member_id?: string;
+          responsibility_amount_minor?: number;
+          shared_expense_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'shared_expense_splits_household_id_member_id_fkey';
+            columns: ['household_id', 'member_id'];
+            isOneToOne: false;
+            referencedRelation: 'household_members';
+            referencedColumns: ['household_id', 'id'];
+          },
+          {
+            foreignKeyName: 'shared_expense_splits_household_id_shared_expense_id_fkey';
+            columns: ['household_id', 'shared_expense_id'];
+            isOneToOne: false;
+            referencedRelation: 'shared_expenses';
+            referencedColumns: ['household_id', 'id'];
+          },
+        ];
+      };
+      shared_expenses: {
+        Row: {
+          household_id: string;
+          id: string;
+          payer_member_id: string;
+          split_strategy: string;
+          template_id: string;
+          template_version: number;
+          transaction_id: string;
+        };
+        Insert: {
+          household_id: string;
+          id: string;
+          payer_member_id: string;
+          split_strategy?: string;
+          template_id: string;
+          template_version: number;
+          transaction_id: string;
+        };
+        Update: {
+          household_id?: string;
+          id?: string;
+          payer_member_id?: string;
+          split_strategy?: string;
+          template_id?: string;
+          template_version?: number;
+          transaction_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'shared_expenses_household_id_fkey';
+            columns: ['household_id'];
+            isOneToOne: false;
+            referencedRelation: 'households';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shared_expenses_household_id_payer_member_id_fkey';
+            columns: ['household_id', 'payer_member_id'];
+            isOneToOne: false;
+            referencedRelation: 'household_members';
+            referencedColumns: ['household_id', 'id'];
+          },
+          {
+            foreignKeyName: 'shared_expenses_household_id_template_id_template_version_fkey';
+            columns: ['household_id', 'template_id', 'template_version'];
+            isOneToOne: false;
+            referencedRelation: 'household_split_revisions';
+            referencedColumns: ['household_id', 'id', 'version'];
+          },
+          {
+            foreignKeyName: 'shared_expenses_household_id_transaction_id_fkey';
+            columns: ['household_id', 'transaction_id'];
+            isOneToOne: false;
+            referencedRelation: 'transactions';
+            referencedColumns: ['household_id', 'id'];
+          },
+        ];
+      };
       transaction_revisions: {
         Row: {
           action: string;
@@ -867,14 +965,16 @@ export type Database = {
       transactions: {
         Row: {
           amount_minor: number;
-          budget_period_id: string;
+          budget_period_id: string | null;
           category_id: string | null;
           created_at: string;
+          created_by: string | null;
           currency: string;
           deleted_at: string | null;
           description: string | null;
+          household_id: string | null;
           id: string;
-          owner_profile_id: string;
+          owner_profile_id: string | null;
           recurring_month: string | null;
           recurring_template_id: string | null;
           revision: number;
@@ -888,14 +988,16 @@ export type Database = {
         };
         Insert: {
           amount_minor: number;
-          budget_period_id: string;
+          budget_period_id?: string | null;
           category_id?: string | null;
           created_at?: string;
+          created_by?: string | null;
           currency: string;
           deleted_at?: string | null;
           description?: string | null;
+          household_id?: string | null;
           id?: string;
-          owner_profile_id: string;
+          owner_profile_id?: string | null;
           recurring_month?: string | null;
           recurring_template_id?: string | null;
           revision?: number;
@@ -909,14 +1011,16 @@ export type Database = {
         };
         Update: {
           amount_minor?: number;
-          budget_period_id?: string;
+          budget_period_id?: string | null;
           category_id?: string | null;
           created_at?: string;
+          created_by?: string | null;
           currency?: string;
           deleted_at?: string | null;
           description?: string | null;
+          household_id?: string | null;
           id?: string;
-          owner_profile_id?: string;
+          owner_profile_id?: string | null;
           recurring_month?: string | null;
           recurring_template_id?: string | null;
           revision?: number;
@@ -937,11 +1041,32 @@ export type Database = {
             referencedColumns: ['id', 'profile_id'];
           },
           {
+            foreignKeyName: 'transactions_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
             foreignKeyName: 'transactions_goal_owner_fkey';
             columns: ['savings_goal_id', 'owner_profile_id'];
             isOneToOne: false;
             referencedRelation: 'savings_goals';
             referencedColumns: ['id', 'owner_profile_id'];
+          },
+          {
+            foreignKeyName: 'transactions_household_actor_fkey';
+            columns: ['household_id', 'created_by'];
+            isOneToOne: false;
+            referencedRelation: 'household_members';
+            referencedColumns: ['household_id', 'profile_id'];
+          },
+          {
+            foreignKeyName: 'transactions_household_id_fkey';
+            columns: ['household_id'];
+            isOneToOne: false;
+            referencedRelation: 'households';
+            referencedColumns: ['id'];
           },
           {
             foreignKeyName: 'transactions_owner_profile_id_fkey';
@@ -1087,6 +1212,21 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      create_shared_expense: {
+        Args: {
+          p_amount_minor: number;
+          p_currency: string;
+          p_description?: string;
+          p_household_id: string;
+          p_payer_member_id: string;
+          p_request_id: string;
+          p_roster: string[];
+          p_template_id: string;
+          p_template_version: number;
+          p_transaction_date: string;
+        };
+        Returns: Json;
+      };
       get_bucket_consumption: {
         Args: { p_budget_period_id: string };
         Returns: Json;
@@ -1138,6 +1278,10 @@ export type Database = {
         Args: { p_budget_period_id: string };
         Returns: Json;
       };
+      get_shared_expense: {
+        Args: { p_expense_id: string; p_household_id: string };
+        Returns: Json;
+      };
       is_active_household_member: {
         Args: { p_household_id: string };
         Returns: boolean;
@@ -1174,14 +1318,16 @@ export type Database = {
         };
         Returns: {
           amount_minor: number;
-          budget_period_id: string;
+          budget_period_id: string | null;
           category_id: string | null;
           created_at: string;
+          created_by: string | null;
           currency: string;
           deleted_at: string | null;
           description: string | null;
+          household_id: string | null;
           id: string;
-          owner_profile_id: string;
+          owner_profile_id: string | null;
           recurring_month: string | null;
           recurring_template_id: string | null;
           revision: number;
@@ -1212,14 +1358,16 @@ export type Database = {
         };
         Returns: {
           amount_minor: number;
-          budget_period_id: string;
+          budget_period_id: string | null;
           category_id: string | null;
           created_at: string;
+          created_by: string | null;
           currency: string;
           deleted_at: string | null;
           description: string | null;
+          household_id: string | null;
           id: string;
-          owner_profile_id: string;
+          owner_profile_id: string | null;
           recurring_month: string | null;
           recurring_template_id: string | null;
           revision: number;
@@ -1252,14 +1400,16 @@ export type Database = {
         };
         Returns: {
           amount_minor: number;
-          budget_period_id: string;
+          budget_period_id: string | null;
           category_id: string | null;
           created_at: string;
+          created_by: string | null;
           currency: string;
           deleted_at: string | null;
           description: string | null;
+          household_id: string | null;
           id: string;
-          owner_profile_id: string;
+          owner_profile_id: string | null;
           recurring_month: string | null;
           recurring_template_id: string | null;
           revision: number;
@@ -1301,14 +1451,16 @@ export type Database = {
         };
         Returns: {
           amount_minor: number;
-          budget_period_id: string;
+          budget_period_id: string | null;
           category_id: string | null;
           created_at: string;
+          created_by: string | null;
           currency: string;
           deleted_at: string | null;
           description: string | null;
+          household_id: string | null;
           id: string;
-          owner_profile_id: string;
+          owner_profile_id: string | null;
           recurring_month: string | null;
           recurring_template_id: string | null;
           revision: number;

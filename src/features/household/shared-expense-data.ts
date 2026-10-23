@@ -148,7 +148,9 @@ export async function createSharedExpense(
     p_amount_minor: request.amountMinor,
     p_currency: request.currency,
     p_transaction_date: request.transactionDate,
-    p_description: request.description,
+    ...(request.description === null
+      ? {}
+      : { p_description: request.description }),
   });
   if (error) throw error;
   return mapSharedExpenseReceipt(profileId, request, data);
