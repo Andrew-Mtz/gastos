@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 
-// Local disposable Supabase only. FIN-205 default-split concurrency. There is deliberately no URL, target override,
+// Local disposable Supabase only. FIN-205 template and FIN-207 persistence concurrency. There is deliberately no URL, target override,
 // hosted credential, or dependency. UUIDs belong solely to this invocation and
 // cleanup removes only these synthetic fixtures, including failed/racing writes.
 assert(
@@ -179,6 +179,10 @@ async function fixtures(name, action) {
     for (const process of c.sessions) process.finish();
     await Promise.allSettled(c.sessions.map((process) => process.result));
     await run(`begin;
+      delete from public.shared_expense_splits where household_id='${c.household}';
+      delete from public.shared_expenses where household_id='${c.household}';
+      delete from public.transactions where household_id='${c.household}' or owner_profile_id in ('${c.actor}','${c.partner}');
+      delete from public.budget_periods where profile_id in ('${c.actor}','${c.partner}');
       delete from public.household_split_shares where household_id='${c.household}';
       delete from public.household_split_revisions where household_id='${c.household}';
       delete from public.household_invitations where household_id='${c.household}';
@@ -332,3 +336,160 @@ for (const isolation of ['repeatable read', 'serializable'])
     assert.match(result.error, /ERROR:\s+25001:/);
     assert.equal((await c.state()).revisions, 0);
   });
+
+// FIN-207 shares this exact barrier/fixture harness; no duplicate financial suite.
+async function sharedFixtures(name, action) {
+  await fixtures(`FIN-207 ${name}`, async (c) => {
+    c.expenseId = randomUUID();
+    c.otherExpenseId = randomUUID();
+    c.personalId = randomUUID();
+    c.periodId = randomUUID();
+    await run(`begin;${c.save()}commit;`);
+    c.expense = (
+      id = c.expenseId,
+      amount = 101,
+    ) => `${auth(c.actor)}select 'EXPENSE:'||public.create_shared_expense(
+      '${id}','${c.household}','${c.partnerMember}','${c.request}',1,
+      array['${c.ownerMember}'::uuid,'${c.partnerMember}'::uuid],${amount},'USD','2025-01-02')::text;`;
+    c.sharedState = async () =>
+      JSON.parse(
+        await run(`select jsonb_build_object(
+      'transactions',(select count(*) from public.transactions where household_id='${c.household}'),
+      'expenses',(select count(*) from public.shared_expenses where household_id='${c.household}'),
+      'splits',(select count(*) from public.shared_expense_splits where household_id='${c.household}'),
+      'sum',(select sum(responsibility_amount_minor) from public.shared_expense_splits where shared_expense_id='${c.expenseId}'))`),
+      );
+    await action(c);
+  });
+}
+await sharedFixtures(
+  'identical concurrent retries commit exactly one complete trio',
+  async (c) => {
+    const result = await race(c, c.expense(), c.expense());
+    assert.equal(taggedJSON(result.output, 'EXPENSE').expense_id, c.expenseId);
+    assert.deepEqual(await c.sharedState(), {
+      transactions: 1,
+      expenses: 1,
+      splits: 2,
+      sum: 101,
+    });
+  },
+);
+await sharedFixtures(
+  'mismatched concurrent retry cannot overwrite original',
+  async (c) => {
+    await race(c, c.expense(), c.expense(c.expenseId, 102), { code: '23505' });
+    assert.deepEqual(await c.sharedState(), {
+      transactions: 1,
+      expenses: 1,
+      splits: 2,
+      sum: 101,
+    });
+  },
+);
+for (const [name, mutation, denial, wait] of [
+  ['template revision', (c) => c.save(c.next, 1), '40001', 'advisory'],
+  ['accepted invitation', (c) => c.accept(), '40001', 'advisory'],
+  [
+    'actor departure',
+    (c) =>
+      `update public.household_members set left_at=clock_timestamp() where id='${c.ownerMember}';`,
+    '42501',
+    'transactionid',
+  ],
+  [
+    'payer departure',
+    (c) =>
+      `update public.household_members set left_at=clock_timestamp() where id='${c.partnerMember}';`,
+    '40001',
+    'transactionid',
+  ],
+  ['trusted member insertion', (c) => c.insert(), '40001', 'transactionid'],
+]) {
+  await sharedFixtures(
+    `${name} before expense is revalidated after demonstrated wait`,
+    async (c) => {
+      await race(c, mutation(c), c.expense(), { code: denial, wait });
+      assert.deepEqual(await c.sharedState(), {
+        transactions: 0,
+        expenses: 0,
+        splits: 0,
+        sum: null,
+      });
+    },
+  );
+  await sharedFixtures(
+    `expense before ${name} preserves its exact historical receipt`,
+    async (c) => {
+      await race(c, c.expense(), mutation(c), { wait });
+      assert.deepEqual(await c.sharedState(), {
+        transactions: 1,
+        expenses: 1,
+        splits: 2,
+        sum: 101,
+      });
+      const replay = await c.start(`begin;${c.expense()}commit;`).result;
+      if (name === 'actor departure') {
+        assert.notEqual(replay.code, 0);
+        assert.match(replay.error, /ERROR:\s+42501:/);
+      } else {
+        assert.equal(replay.code, 0, replay.error);
+        assert.equal(
+          taggedJSON(replay.output, 'EXPENSE').template_id,
+          c.request,
+        );
+        assert.equal(
+          taggedJSON(replay.output, 'EXPENSE').payer_member_id,
+          c.partnerMember,
+        );
+      }
+    },
+  );
+}
+await sharedFixtures(
+  'OWNER demotion retains active MEMBER creation capability',
+  async (c) => {
+    await race(
+      c,
+      `update public.household_members set role='MEMBER' where id='${c.ownerMember}';`,
+      c.expense(),
+      { wait: 'transactionid' },
+    );
+    assert.equal((await c.sharedState()).expenses, 1);
+  },
+);
+for (const personalFirst of [true, false])
+  await sharedFixtures(
+    `personal registration ${personalFirst ? 'before' : 'after'} shared creation has consistent lock order`,
+    async (c) => {
+      await run(`begin;insert into public.budget_periods(id,profile_id,starts_on,ends_on,base_currency)
+      values('${c.periodId}','${c.actor}','2025-01-01','2025-01-31','USD');commit;`);
+      const personal = `${auth(c.actor)}select public.register_income('${c.personalId}','${c.periodId}',12345,'USD','2025-01-02');`;
+      await race(
+        c,
+        personalFirst ? personal : c.expense(),
+        personalFirst ? c.expense() : personal,
+      );
+      assert.equal((await c.sharedState()).expenses, 1);
+      const income = await run(
+        `begin;${auth(c.actor)}select 'INCOME:'||public.get_received_income('${c.periodId}');commit;`,
+      );
+      assert(
+        income.includes('INCOME:12345'),
+        'Shared persistence must not alter personal income',
+      );
+    },
+  );
+for (const isolation of ['repeatable read', 'serializable'])
+  await sharedFixtures(
+    `expense rejects ${isolation} even for exact replay`,
+    async (c) => {
+      await run(`begin;${c.expense()}commit;`);
+      const result = await c.start(
+        `begin isolation level ${isolation};${c.expense()}commit;`,
+      ).result;
+      assert.notEqual(result.code, 0);
+      assert.match(result.error, /ERROR:\s+25001:/);
+      assert.equal((await c.sharedState()).expenses, 1);
+    },
+  );

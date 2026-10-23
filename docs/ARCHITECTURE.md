@@ -2175,7 +2175,7 @@ Session persistence and the root Auth lifecycle are resolved by ADR-064.
 The following decisions are intentionally unresolved and must not be guessed:
 
 3. Exact E2E testing framework.
-5. Exact transaction/RPC implementation for shared expenses.
+5. Initial default-template shared-expense persistence is resolved by ADR-082; custom entry and later effects remain separately scoped.
 7. Exact state strategy for unsaved multi-step forms.
 8. Exact AI provider.
 9. Exact speech-to-text provider.
@@ -2458,3 +2458,19 @@ percentage equality. Retrying an old committed request confirms that receipt, th
 refreshes the current version. Focus/background revalidation hides cached shares and
 unmounts drafts; old-account responses cannot repopulate cleared data. A known roster/
 version conflict discards the rejected request and requires a new explicit review.
+
+## FIN-207 persistence-only boundary
+
+ADR-082 resolves the initial shared-expense RPC implementation: an atomic trusted
+create and one authorized point read, with strict feature-local DTO parsers and thin
+Supabase adapters. FIN-206 validates returned historical responsibility independently
+of SQL. No UI, cache/hook layer, generic repository, dependency or history feature is
+added. The default-template identity/version/full roster belongs to the original
+request; mutable current configuration is never a read/replay dependency.
+
+Existing transactions remain the monetary source while new server-only header and
+split tables preserve shared attribution. Scoped constraints explicitly evolve the
+PERSONAL-only schema without rewriting existing rows, granting household access to
+personal rows or feeding shared amounts into current personal read models. The
+existing authenticated household HTTP/parser and controlled concurrency harnesses
+are extended, rather than duplicating their setup or the complete personal suite.

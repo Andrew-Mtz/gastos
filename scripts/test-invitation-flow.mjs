@@ -417,6 +417,165 @@ try {
   passed(
     'FIN-205 explicit owner split, join-stale review, member reads, denial and immutable historical replay over HTTP',
   );
+  // FIN-207 reuses the authenticated household journey, with no UI/history scope.
+  const sharedRequest = {
+    p_request_id: randomUUID(),
+    p_household_id: first,
+    p_payer_member_id: ownerMember,
+    p_template_id: reviewedSplit.p_request_id,
+    p_template_version: 2,
+    p_roster: sharedRoster.map((row) => row.id),
+    p_amount_minor: 101,
+    p_currency: 'USD',
+    p_transaction_date: '2025-01-02',
+    p_description: 'Synthetic shared expense',
+  };
+  const appSharedRequest = {
+    id: sharedRequest.p_request_id,
+    householdId: first,
+    payerMemberId: ownerMember,
+    templateId: sharedRequest.p_template_id,
+    templateVersion: 2,
+    roster: sharedRequest.p_roster,
+    amountMinor: 101,
+    currency: 'USD',
+    transactionDate: '2025-01-02',
+    description: sharedRequest.p_description,
+  };
+  const beforeShared = await Promise.all(
+    [a, b].map(async (actor) =>
+      success(
+        await actor.client.rpc('get_personal_dashboard', {
+          p_month: '2025-01-01',
+        }),
+      ),
+    ),
+  );
+  const sharedCreated = success(
+    await b.client.rpc('create_shared_expense', sharedRequest),
+  );
+  snapshots.push({
+    kind: 'create_shared_expense',
+    expected_owner: b.id,
+    expected_request: appSharedRequest,
+    data: sharedCreated,
+  });
+  assert.equal(sharedCreated.created_by, b.id);
+  assert.equal(sharedCreated.payer_member_id, ownerMember);
+  assert.equal(
+    sharedCreated.splits.reduce(
+      (sum, row) => sum + row.responsibility_amount_minor,
+      0,
+    ),
+    101,
+  );
+  for (const actor of [a, b]) {
+    const data = success(
+      await actor.client.rpc('get_shared_expense', {
+        p_household_id: first,
+        p_expense_id: sharedRequest.p_request_id,
+      }),
+    );
+    snapshots.push({
+      kind: 'get_shared_expense',
+      expected_owner: actor.id,
+      expected_household: first,
+      expected_expense: sharedRequest.p_request_id,
+      data,
+    });
+    assert.equal(data.profile_id, actor.id);
+    assert.deepEqual(data.splits, sharedCreated.splits);
+    assert.deepEqual(
+      success(
+        await actor.client
+          .from('transactions')
+          .select('id')
+          .eq('id', sharedRequest.p_request_id),
+      ),
+      [],
+    );
+  }
+  denied(
+    await c.client.rpc('get_shared_expense', {
+      p_household_id: first,
+      p_expense_id: sharedRequest.p_request_id,
+    }),
+    '42501',
+  );
+  denied(
+    await c.client.rpc('create_shared_expense', {
+      ...sharedRequest,
+      p_request_id: randomUUID(),
+    }),
+    '42501',
+  );
+  denied(
+    await a.client.rpc('get_shared_expense', {
+      p_household_id: first,
+      p_expense_id: privateA.income.id,
+    }),
+    '42501',
+  );
+  denied(
+    await b.client.rpc('get_shared_expense', {
+      p_household_id: second,
+      p_expense_id: sharedRequest.p_request_id,
+    }),
+    '42501',
+  );
+  denied(
+    await b.client.rpc('create_shared_expense', {
+      ...sharedRequest,
+      p_amount_minor: 102,
+    }),
+    '23505',
+  );
+  success(
+    await a.client.rpc('save_household_default_split', {
+      ...reviewedSplit,
+      p_request_id: randomUUID(),
+      p_expected_version: 2,
+      p_shares: sharedRoster.map((row) => ({
+        member_id: row.id,
+        basis_points: 5000,
+      })),
+    }),
+  );
+  const sharedReplay = success(
+    await b.client.rpc('create_shared_expense', sharedRequest),
+  );
+  snapshots.push({
+    kind: 'create_shared_expense',
+    expected_owner: b.id,
+    expected_request: appSharedRequest,
+    data: sharedReplay,
+  });
+  assert.deepEqual(
+    sharedReplay,
+    sharedCreated,
+    'Exact retry after template change must return original responsibility',
+  );
+  denied(
+    await b.client.rpc('create_shared_expense', {
+      ...sharedRequest,
+      p_request_id: randomUUID(),
+    }),
+    '40001',
+  );
+  for (const [index, actor] of [a, b].entries())
+    assert.deepEqual(
+      success(
+        await actor.client.rpc('get_personal_dashboard', {
+          p_month: '2025-01-01',
+        }),
+      ),
+      beforeShared[index],
+      'Shared actor/payer never alter current personal read models',
+    );
+  passed(
+    'FIN-207 authenticated create/read/replay, template conflict, private isolation and unchanged personal dashboards',
+  );
+
   assert.deepEqual(
     success(await b.client.from('profiles').select('id').eq('id', a.id)),
     [],
@@ -602,6 +761,9 @@ try {
     try {
       const ids = owners.map((id) => `'${uuid(id)}'`).join(',');
       sql(`begin;
+        delete from public.shared_expense_splits where household_id in (select id from public.households where created_by in (${ids}));
+        delete from public.shared_expenses where household_id in (select id from public.households where created_by in (${ids}));
+        delete from public.transactions where household_id in (select id from public.households where created_by in (${ids}));
         delete from public.transaction_revisions where owner_profile_id in (${ids});
         delete from public.transactions where owner_profile_id in (${ids});
         delete from public.budget_periods where profile_id in (${ids});

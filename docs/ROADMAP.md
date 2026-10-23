@@ -1822,6 +1822,30 @@ distributions. No database changes or native/device validation are included.
 
 ## FIN-207 — Shared Expense Persistence
 
+**Status:** Initial disposable SQL/HTTP/concurrency CI and independent source review
+passed on published head `cc19018e2788f563b3f375b689429a99a46267f4` under ADR-082.
+Authentic generated types are imported. Final exact-head review and complete CI
+remain required before merge. No native/device or production claim.
+See [PR #48](https://github.com/Andrew-Mtz/gastos/pull/48) for integration status.
+
+Initial CI `39896225014` passed migrations, 4,127 SQL assertions across 38 files,
+all concurrency suites including 17 new shared-persistence scenarios, and both
+authenticated HTTP journeys with their two personal/five household parser tests.
+Its failures were the expected pre-import RPC typecheck errors and generated-type
+drift; this is not an overall green CI claim. The unchanged 52,883-byte type file
+came from exact-head artifact `12476938586`, with SHA-256
+`31a5155601aab7539523195fbbd98f6f8f31f0505e150ae66836367c26d87fe6`.
+The typed adapter now omits only a null description for SQL DEFAULT NULL while
+preserving empty and nonempty original strings. SQL source and financial semantics
+are unchanged. Final-head CI must verify generated-type drift and all checks again.
+
+The bounded slice persists the atomic HOUSEHOLD transaction/header/full historical
+split snapshot from the current default template. Current active members may create
+and read a single authorized record; payer and responsibility are separate. Exact
+retry, version/roster conflicts, immutable history, no direct writes and unchanged
+personal read models are explicit contracts. No FIN-208 UI/custom split/categories,
+FIN-209 history, FIN-210/211 effects or currency conversion is included.
+
 Implement atomic persistence for:
 
 ```text

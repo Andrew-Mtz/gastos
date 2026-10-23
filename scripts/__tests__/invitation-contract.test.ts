@@ -1,4 +1,9 @@
 import { readFileSync } from 'node:fs';
+import {
+  mapSharedExpense,
+  mapSharedExpenseReceipt,
+  sharedExpenseRequestSchema,
+} from '../../src/features/household/shared-expense-data';
 import { z } from 'zod';
 import {
   mapSplitReceipt,
@@ -21,10 +26,13 @@ const samples = z
         'get_personal_dashboard',
         'get_household_default_split',
         'save_household_default_split',
+        'create_shared_expense',
+        'get_shared_expense',
       ]),
       data: z.unknown(),
       expected_owner: z.uuid().optional(),
       expected_household: z.uuid().optional(),
+      expected_expense: z.uuid().optional(),
       expected_request: z.unknown().optional(),
     }),
   )
@@ -125,4 +133,38 @@ test('real HTTP split snapshots pass strict production parsers through unconfigu
     );
   expect(receipts.map((row) => row.version)).toEqual([1, 2, 2, 1]);
   expect(receipts[0]).toEqual(receipts[3]);
+});
+
+test('real HTTP shared persistence receipts and authorized point reads pass production financial and scope validation', () => {
+  const receipts = samples
+    .filter((sample) => sample.kind === 'create_shared_expense')
+    .map((sample) =>
+      mapSharedExpenseReceipt(
+        z.uuid().parse(sample.expected_owner),
+        sharedExpenseRequestSchema.parse(sample.expected_request),
+        sample.data,
+      ),
+    );
+  expect(receipts).toHaveLength(2);
+  expect(receipts[1]).toEqual(receipts[0]);
+  expect(receipts[0].template_version).toBe(2);
+  expect(receipts[0].splits.map((row) => row.basis_points).sort()).toEqual([
+    3000, 7000,
+  ]);
+  const reads = samples
+    .filter((sample) => sample.kind === 'get_shared_expense')
+    .map((sample) =>
+      mapSharedExpense(
+        z.uuid().parse(sample.expected_owner),
+        z.uuid().parse(sample.expected_household),
+        z.uuid().parse(sample.expected_expense),
+        sample.data,
+      ),
+    );
+  expect(reads).toHaveLength(2);
+  expect(new Set(reads.map((row) => row.profile_id)).size).toBe(2);
+  for (const read of reads) {
+    expect(read.splits).toEqual(receipts[0].splits);
+    expect(read.expense_id).toBe(receipts[0].expense_id);
+  }
 });

@@ -1862,3 +1862,23 @@ roster, expected version and canonical shares; it returns only the original rece
 and never reapplies it. Later lifecycle operations must preserve this lock protocol.
 Current-roster IDs do not define future leave/rejoin ABA semantics: rejoin remains
 unsupported. The FIN-204 catalog explicitly classifies every new table/function.
+
+## FIN-207 shared persistence boundary (ADR-082)
+
+No household policy is added to transactions and no personal policy is broadened.
+Shared headers/splits have RLS and no client table/column privileges or policies.
+Only two empty-search-path definer RPCs create/read a bounded snapshot, deriving the
+actor/viewer from auth.uid() and requiring active membership in the exact household.
+Payer and source template/roster are revalidated under the FIN-203/205 lock protocol;
+the existing personal statement lock is acquired first. READ COMMITTED is mandatory.
+Inactive authors/payers get no read or replay rights. Membership overlap is not
+transitive authorization. The DTO includes no private Profile fields or categories.
+
+A trigger-only definer checks immutable same-household linkage and exact historical
+conservation/rounding at commit under the real caller role. It cannot be called as
+RPC or mutate records. The creation RPC accepts no client responsibility amounts,
+owner, actor or personal-period fields. Replay compares the full canonical original
+payload before returning its historical receipt. The FIN-204 actual-catalog inventory
+explicitly classifies these new tables/functions. Real negative RLS, grants, rollback,
+concurrent authorization/template/roster changes and private read-model regressions
+remain required execution gates, not inferred security claims.
