@@ -2776,7 +2776,8 @@ remain separate gates; FIN-204 owns the broader privacy matrix.
 # ADR-081 — Explicit Owner-Managed Default Household Split
 
 **Status:** OWNER-only modification approved by the user on 2026-10-23; bounded
-FIN-205 implementation prepared, verification and independent review pending.
+FIN-205 source review and initial SQL/concurrency/HTTP CI passed; authentic types
+imported. Final exact-head review/CI and native acceptance remain separate gates.
 
 A default split is only a future-expense template. Active OWNERs can save and all
 active members can read. Every current membership has one explicit integer share
@@ -2799,5 +2800,8 @@ updates before fresh authorization/roster checks. No leave/rejoin feature is add
 future same-ID reactivation needs explicit lifecycle/ABA semantics. The mobile view
 uses existing RHF/Zod/QueryClient patterns, explicit confirmation and stable pending
 requests. FIN-206 calculations, expenses, balances, categories and FIN-221 history UI
-remain excluded. Real SQL/concurrency/HTTP-parser CI, authentic generated types,
-independent review and native acceptance are separate gates, never inferred locally.
+remain excluded. Merge requires independent review and complete CI, including
+generated-type drift, on the exact final head. Real database evidence and authentic
+types come from disposable CI, never local inference or handwritten replacements.
+Native acceptance remains pending. See [executed evidence](HOUSEHOLD_SPLIT_REVIEW.md)
+and [PR #46](https://github.com/Andrew-Mtz/gastos/pull/46) for integration status.

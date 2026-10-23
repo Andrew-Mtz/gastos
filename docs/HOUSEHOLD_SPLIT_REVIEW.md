@@ -46,13 +46,31 @@ permission was used. This document distinguishes authored coverage from executio
 
 ## Execution gates
 
-Local aggregate Jest passed 62 suites / 1,205 tests. Lint (zero warnings), format,
-Router parser verification, eight startup-diagnostic unit tests and both harness
-syntax checks passed. Typecheck remains blocked only by the two new RPC names
-missing from the still-unchanged generated types. Final-head CI remains authoritative.
-No Docker, PostgreSQL, SQL tests, concurrency harness or authenticated HTTP journey was
-run locally. CI must execute them on the final source head and generate genuine schema
-types; generated files must not be approximated by hand. Independent review follows.
+Disposable CI [run 39881197339](https://github.com/Andrew-Mtz/gastos/actions/runs/39881197339)
+on source head `a35040c9df59a4f73e4954fc30a586cde893490a` passed migration,
+3,913 SQL assertions across 37 files, all finance/household/invitation concurrency
+scenarios and all 16 default-split scenarios. Both authenticated HTTP journeys
+passed their production-parser bridges (two finance and four household parser
+tests); type generation and cleanup passed. Only the expected two missing-RPC
+typecheck errors and generated-type drift failed before importing the artifact.
+
+The authentic 47,592-byte types were imported verbatim from artifact `12470249983`
+of that source run. File SHA256:
+`7a0d7ab98206d7a79b69e982989152df78329a8ee97c404c13682d6e0e63d094`.
+Verified artifact ZIP SHA256:
+`1a01ef282edfc09a15731cebccaf7a56b86ea33a746fabd127f557d72133d64f`.
+No handwritten generated types or escape casts are used; product and SQL source
+remain unchanged from the verified source head.
+
+After importing authentic types, local typecheck, aggregate Jest (62 suites / 1,205
+tests), lint (zero warnings), format, Router parser verification, eight startup-
+diagnostic unit tests and both harness syntax checks passed on Node 24.14.0 / npm
+11.9.0. No Docker, PostgreSQL, SQL tests, concurrency harness or
+authenticated HTTP journey was run locally; database evidence comes from disposable CI.
+Independent source review passed. Review of the final types/documentation delta and
+complete CI, including generated-type drift, must pass on the exact final head
+before merge. See [PR #46](https://github.com/Andrew-Mtz/gastos/pull/46) for integration
+status; the initial run does not establish final-head readiness or a completed merge.
 
 Native acceptance remains unrun: test physical-device decimal keyboard, scroll/focus,
 percentage review, rapid taps, background/foreground, logout/account switch, loss of

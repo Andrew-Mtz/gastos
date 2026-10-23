@@ -129,11 +129,12 @@ shared expenses/default splits (FIN-205+) and historical membership access remai
 outside the executed scope.
 
 
-## FIN-205 additive surface (execution pending)
+## FIN-205 additive surface
 
-The proposed default-split capability extends the explicit inventory to 19 tables
+The default-split capability extends the explicit inventory to 19 tables
 and 56 application functions: two server-only tables, two household RPCs and one
 non-callable definer integrity trigger. The unchanged 13-source personal matrix,
 all prior catalog checks and GraphQL placeholder classification remain required.
-This is an additive contract, not a claim that the historical FIN-204 CI tested new
-code. See [FIN-205 verification gates](HOUSEHOLD_SPLIT_REVIEW.md).
+FIN-205 CI `39881197339` exercised this additive surface and the unchanged personal
+matrix; historical FIN-204 CI is not evidence for new code. Final-head review/CI
+remain required. See [FIN-205 executed evidence and gates](HOUSEHOLD_SPLIT_REVIEW.md).
