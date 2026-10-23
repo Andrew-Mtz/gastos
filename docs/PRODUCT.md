@@ -473,6 +473,12 @@ Historical expenses must preserve the split used when they were created.
 
 Changing the household's default split must not modify past expenses.
 
+FIN-205 / ADR-081 allows only a current active OWNER to configure this template;
+all active members may read it. Every active member receives an explicit percentage
+(including 0), totaling 100%. There is no automatic default. A changed composition
+makes the template obsolete until the OWNER explicitly reviews and saves all shares.
+This feature creates no expenses, balances, transfers or personal-budget changes.
+
 ---
 
 # 13. Payer vs Responsibility

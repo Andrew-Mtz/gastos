@@ -1770,6 +1770,16 @@ This task is mandatory before progressing deeply into household features.
 
 ## FIN-205 — Default Household Split
 
+**Status:** Implementation prepared under ADR-081; exact-head database/HTTP/concurrency
+CI, authentic generated types, independent review and native acceptance pending.
+
+Owner-only explicit percentage templates, active-member read access, integer basis
+points totaling 10000, unique full active roster including explicit zero, optimistic
+versions, exact retry receipts and stale-roster review are implemented. No defaults,
+redistribution, expense calculation, money movement or history UI are introduced.
+The FIN-204 catalog and existing personal matrix remain fail-closed and intact.
+See [contract and verification gates](HOUSEHOLD_SPLIT_REVIEW.md).
+
 Implement percentage-based default split using basis points.
 
 Example:

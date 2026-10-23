@@ -27,6 +27,7 @@ const snapshotRpcs = new Set([
   'get_my_household_invitations',
   'get_my_household_memberships',
   'get_personal_dashboard',
+  'get_household_default_split',
 ]);
 function command(binary, args, input) {
   const result = spawnSync(binary, args, {
@@ -77,7 +78,12 @@ function denied(result, code) {
 async function rpc(client, name, args, expectedOwner) {
   const data = success(await client.rpc(name, args));
   if (snapshotRpcs.has(name))
-    snapshots.push({ kind: name, data, expected_owner: expectedOwner });
+    snapshots.push({
+      kind: name,
+      data,
+      expected_owner: expectedOwner,
+      expected_household: args?.p_household_id,
+    });
   return data;
 }
 function passed(label) {
@@ -234,6 +240,54 @@ try {
     p_name: 'Synthetic shared home',
     p_default_currency: 'USD',
   });
+  const ownerMember = success(
+    await a.client.rpc('get_my_household_memberships'),
+  ).households.find((row) => row.id === first).members[0].id;
+  const firstSplitRequest = {
+    p_request_id: randomUUID(),
+    p_household_id: first,
+    p_expected_version: 0,
+    p_roster: [ownerMember],
+    p_shares: [{ member_id: ownerMember, basis_points: 10000 }],
+  };
+  async function saveSplit(actor, args) {
+    const data = await rpc(actor.client, 'save_household_default_split', args);
+    snapshots.push({
+      kind: 'save_household_default_split',
+      data,
+      expected_request: {
+        id: args.p_request_id,
+        householdId: args.p_household_id,
+        expectedVersion: args.p_expected_version,
+        roster: args.p_roster,
+        shares: args.p_shares,
+      },
+    });
+    return data;
+  }
+  assert.equal(
+    (
+      await rpc(
+        a.client,
+        'get_household_default_split',
+        { p_household_id: first },
+        a.id,
+      )
+    ).status,
+    'UNCONFIGURED',
+  );
+  await saveSplit(a, firstSplitRequest);
+  assert.equal(
+    (
+      await rpc(
+        a.client,
+        'get_household_default_split',
+        { p_household_id: first },
+        a.id,
+      )
+    ).status,
+    'READY',
+  );
   await rpc(b.client, 'create_first_household', {
     p_household_id: second,
     p_name: 'Synthetic independent home',
@@ -308,6 +362,60 @@ try {
       .find((row) => row.id === first)
       .members.find((row) => row.profile_id === b.id).role,
     'MEMBER',
+  );
+  const staleSplit = await rpc(
+    b.client,
+    'get_household_default_split',
+    { p_household_id: first },
+    b.id,
+  );
+  assert.equal(staleSplit.status, 'STALE');
+  assert.equal(staleSplit.template, null);
+  assert.equal(staleSplit.version, 1);
+  const sharedRoster = memberships.households.find(
+    (row) => row.id === first,
+  ).members;
+  const reviewedSplit = {
+    p_request_id: randomUUID(),
+    p_household_id: first,
+    p_expected_version: 1,
+    p_roster: sharedRoster.map((row) => row.id),
+    p_shares: sharedRoster.map((row) => ({
+      member_id: row.id,
+      basis_points: row.profile_id === a.id ? 7000 : 3000,
+    })),
+  };
+  denied(
+    await b.client.rpc('save_household_default_split', reviewedSplit),
+    '42501',
+  );
+  denied(
+    await c.client.rpc('get_household_default_split', {
+      p_household_id: first,
+    }),
+    '42501',
+  );
+  denied(await a.client.from('household_split_revisions').select('*'), '42501');
+  denied(await b.client.from('household_split_shares').select('*'), '42501');
+  const receipt = await saveSplit(a, reviewedSplit);
+  assert.equal(receipt.version, 2);
+  assert.deepEqual(await saveSplit(a, reviewedSplit), receipt);
+  assert.equal((await saveSplit(a, firstSplitRequest)).version, 1);
+  const currentSplit = await rpc(
+    b.client,
+    'get_household_default_split',
+    { p_household_id: first },
+    b.id,
+  );
+  assert.equal(currentSplit.status, 'READY');
+  assert.equal(currentSplit.version, 2);
+  assert.equal(
+    currentSplit.template.shares.find((row) => row.member_id === ownerMember)
+      .basis_points,
+    7000,
+  );
+  passed(
+    'FIN-205 explicit owner split, join-stale review, member reads, denial and immutable historical replay over HTTP',
   );
   assert.deepEqual(
     success(await b.client.from('profiles').select('id').eq('id', a.id)),
@@ -497,6 +605,8 @@ try {
         delete from public.transaction_revisions where owner_profile_id in (${ids});
         delete from public.transactions where owner_profile_id in (${ids});
         delete from public.budget_periods where profile_id in (${ids});
+        delete from public.household_split_shares where household_id in (select id from public.households where created_by in (${ids}));
+        delete from public.household_split_revisions where created_by in (${ids});
         delete from public.household_invitations where issuer_profile_id in (${ids});
         delete from public.household_members where profile_id in (${ids});
         delete from public.households where created_by in (${ids});

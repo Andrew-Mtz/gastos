@@ -2441,3 +2441,20 @@ retain the exact request and reconcile via fresh authorized metadata or replay.
 Parent focus/background revalidation gates all invitation identity rendering; late
 requests cannot recreate a cleared session cache. A real HTTP-to-production-parser
 bridge and a separate controlled two-session harness complement SQL/RLS and UI tests.
+
+
+## FIN-205 default-split integration
+
+Hogar mounts one small default-split component per authorized household. Pure domain
+validation reuses basis points; feature-local strict DTOs, React Hook Form/Zod and
+TanStack Query reuse existing form/state patterns. The database owns optimistic
+version checks, current-roster validation, atomic revision/entries and stable receipts.
+No monetary allocation, dependency, realtime, generic repository or history UI is added.
+
+Unconfigured and obsolete templates never prefill an implicit distribution. The owner
+reviews explicit values and confirms before saving. Pending UUID/payload survives
+in-session remount only in auth-cleared cache; network uncertainty never settles by
+percentage equality. Retrying an old committed request confirms that receipt, then
+refreshes the current version. Focus/background revalidation hides cached shares and
+unmounts drafts; old-account responses cannot repopulate cleared data. A known roster/
+version conflict discards the rejected request and requires a new explicit review.

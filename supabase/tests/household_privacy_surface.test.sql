@@ -27,11 +27,16 @@ insert into privacy_relations values
   ('public.households','active_household'),
   ('public.household_members','active_household'),
   ('public.household_recipient_codes','server_only'),
-  ('public.household_invitations','server_only');
+  ('public.household_invitations','server_only'),
+  ('public.household_split_revisions','server_only'),
+  ('public.household_split_shares','server_only');
 
 create temp table privacy_functions(signature text primary key, boundary text not null, is_definer boolean not null);
 insert into privacy_functions values
   ('public.accept_household_invitation(uuid)','household_rpc',true),
+  ('public.get_household_default_split(uuid)','household_rpc',true),
+  ('public.save_household_default_split(uuid,uuid,integer,uuid[],jsonb)','household_rpc',true),
+  ('public.check_household_split_revision()','internal_trigger',true),
   ('public.audit_transaction_revision()','internal_trigger',true),
   ('public.check_budget_allocation_total()','internal_trigger',false),
   ('public.check_savings_integrity()','internal_trigger',false),
