@@ -2859,6 +2859,29 @@ auth.uid(), fixed empty search paths and explicit current authorization bound th
 
 Currency storage preserves original amounts without conversion or aggregation. This
 persistence contract does not authorize visible multi-currency entry. The user's
-existing period-currency-only personal entry policy remains unchanged. FIN-208 must
-resolve any shared-entry currency choices explicitly; future conversion remains
-separate work. No shared financial effects are applied before FIN-210/211.
+existing period-currency-only personal entry policy remains unchanged. ADR-083 now
+resolves FIN-208 shared entry to the configured household currency; future conversion
+remains separate work. No shared financial effects are applied before FIN-210/211.
+
+
+---
+
+# ADR-083 — Default-Only Shared Entry in the Household Currency
+
+**Status:** Explicit user clarification, 2026-10-23. Implementation and verification
+status belongs to FIN-208; this does not claim native acceptance or deployment.
+
+All active members may register household expenses. Only the OWNER controls the
+general percentages; every new expense automatically uses that current template,
+regardless of the actor or payer. No per-expense custom split is allowed, even for
+the OWNER. This supersedes the earlier optional-override product/roadmap wording;
+it does not describe a custom capability as having shipped. Salary examples do not
+authorize automatic salary-derived percentages or access to private income.
+
+New entries use only the household's configured currency. The existing RPC enforces
+that rule under its existing locks after exact historical replay, so a later trusted
+configuration change cannot relabel history or break an authorized identical retry.
+No visible multi-currency selector, personal-budget dependency, or conversion is added.
+Future FX must preserve original amount/currency, the applied rate/date/source and
+immutable converted amount at entry. Later rates must not change old expenses.
+Provider selection, conversion and FIN-209/210/211 remain deferred.

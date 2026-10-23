@@ -451,6 +451,23 @@ try {
       ),
     ),
   );
+  // FIN-208: bypassing the fixed-currency form still fails at the trusted RPC.
+  const wrongCurrencyId = randomUUID();
+  denied(
+    await b.client.rpc('create_shared_expense', {
+      ...sharedRequest,
+      p_request_id: wrongCurrencyId,
+      p_currency: 'EUR',
+    }),
+    '23514',
+  );
+  denied(
+    await b.client.rpc('get_shared_expense', {
+      p_household_id: first,
+      p_expense_id: wrongCurrencyId,
+    }),
+    '42501',
+  );
   const sharedCreated = success(
     await b.client.rpc('create_shared_expense', sharedRequest),
   );

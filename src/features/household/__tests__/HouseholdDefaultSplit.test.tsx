@@ -21,6 +21,9 @@ import {
   type SplitSnapshot,
 } from '../split-data';
 import { splitId as id, splitSnapshot } from './split-fixtures';
+jest.mock('../HouseholdSharedExpense', () => ({
+  HouseholdSharedExpense: () => null,
+}));
 jest.mock('../HouseholdInvitations', () => ({
   HouseholdInvitations: () => null,
 }));

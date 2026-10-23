@@ -1,3 +1,4 @@
+import { HouseholdSharedExpense } from './HouseholdSharedExpense';
 import { HouseholdDefaultSplit } from './HouseholdDefaultSplit';
 import { HouseholdInvitations } from './HouseholdInvitations';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -219,12 +220,12 @@ function HouseholdMemberships({ profile }: { profile: Profile }) {
       />
     );
   return (
-    <Screen scroll>
+    <FormScreen>
       <AppText variant="title">Hogar</AppText>
       <AppText>
-        Solo se comparten el hogar, su reparto y los nombres y roles de sus
-        miembros activos. Tus ingresos, gastos, presupuesto y ahorro personales
-        siguen privados.
+        Solo se comparten el hogar, su reparto, sus gastos compartidos y los
+        nombres y roles de sus miembros activos. Tus ingresos, gastos,
+        presupuesto y ahorro personales siguen privados.
       </AppText>
       {notice && <AppText role="status">{notice}</AppText>}
       {pending && (
@@ -294,6 +295,13 @@ function HouseholdMemberships({ profile }: { profile: Profile }) {
                     {member.role === 'OWNER' ? 'Propietario' : 'Miembro'}
                   </AppText>
                 ))}
+                <HouseholdSharedExpense
+                  profileId={profile.id}
+                  householdId={household.id}
+                  householdName={household.name}
+                  currency={household.default_currency}
+                  timezone={profile.timezone}
+                />
                 <HouseholdDefaultSplit
                   profileId={profile.id}
                   householdId={household.id}
@@ -313,7 +321,7 @@ function HouseholdMemberships({ profile }: { profile: Profile }) {
       >
         Actualizar hogar
       </Button>
-    </Screen>
+    </FormScreen>
   );
 }
 function HouseholdEditor({

@@ -23,6 +23,9 @@ import {
   type HouseholdSnapshot,
 } from '../household-data';
 
+jest.mock('../HouseholdSharedExpense', () => ({
+  HouseholdSharedExpense: () => null,
+}));
 jest.mock('../HouseholdDefaultSplit', () => ({
   HouseholdDefaultSplit: () => null,
 }));

@@ -24,6 +24,9 @@ import {
   pendingInvitationKey,
   type InvitationContext,
 } from '../invitation-data';
+jest.mock('../HouseholdSharedExpense', () => ({
+  HouseholdSharedExpense: () => null,
+}));
 jest.mock('../household-data', () => ({
   ...jest.requireActual('../household-data'),
   readHouseholdMemberships: jest.fn(),
