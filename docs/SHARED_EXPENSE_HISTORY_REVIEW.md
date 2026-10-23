@@ -37,8 +37,8 @@
 - [x] Existing local-only two-session harness extended for committed-only visibility,
   a fresh read after concurrent revocation, retained participant identity and isolation rejection.
 - [x] Existing authenticated HTTP journey feeds actual list/detail JSON into production parsers.
-- [ ] Actual PostgreSQL/RLS, concurrency and authenticated HTTP execution on exact head.
-- [ ] Authentic database.types.ts from exact-head disposable CI artifact, committed verbatim.
+- [x] Actual PostgreSQL/RLS, concurrency and authenticated HTTP execution on source head ea9d073.
+- [x] Authentic database.types.ts from that exact-head CI artifact, imported verbatim.
 - [ ] Exact-final-head full CI, independent source/artifact review and publication approval.
 - [ ] Native/device acceptance. No device runtime is available in this task.
 
@@ -46,14 +46,25 @@
 
 Node 24.14.0 / npm 11.9.0, EXPO_NO_TELEMETRY=1:
 
-- Full final local Jest: 1,458 tests in 68 suites passed, including the new receipt-to-history invalidation regression.
-- Lint, formatting, installed Router parser, both modified Node harness syntax checks
+- Full local Jest after the authentic type import: 1,458 tests in 68 suites passed, including the receipt-to-history invalidation regression.
+- Typecheck, lint, formatting, installed Router parser, both modified Node harness syntax checks
   and git diff --check passed.
-- Typecheck ran and failed only with TS2345 on list_shared_expenses and
-  get_shared_expense_history_detail, absent from the prior generated database schema.
-  No handwritten type, unsafe cast or suppression substitutes for the exact-head artifact.
-- Docker and psql are not installed locally. Actual SQL/RLS, concurrency and authenticated
-  HTTP-to-parser tests remain unrun here and require the disposable CI gate.
+- Authentic generated types resolve the two previously missing RPC signatures without
+  handwritten types, casts, suppressions or application changes.
+- Docker and psql remain unavailable locally; real database verification ran only in
+  disposable CI, not against production.
 - Independent source review resolved stale display labels via same-snapshot projection;
-  exact-commit and generated-artifact/CI review remain separate integration gates.
-No production database, deployment, secret, real data or external publication changed.
+  final-commit artifact review and full CI remain separate integration gates.
+
+## Initial disposable CI and artifact evidence
+
+Run 39908199722 on source ea9d0738dd37388faaf58e1e42ce7e9c76a453d3 passed
+migrations, 4,259 SQL assertions across 39 files, all concurrency harnesses (including
+four new history cases), and authenticated HTTP/parser suites (2 + 6 tests).
+Its only failures were the two missing generated RPC signatures in Quality and the
+expected generated-type drift at the final database comparison.
+
+Artifact 12482440068 from that exact run contains one database.types.ts, 53,213 bytes,
+imported byte-for-byte with only 12 generated lines added. File SHA-256:
+108b66893b6dbabee197b718becce0dd50f2914b853c617a7353645370d358d0.
+No production database, deployment, secret or real data changed. Final-head CI remains pending.

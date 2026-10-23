@@ -1885,9 +1885,10 @@ Verification details and pending native checks: [FIN-208 checklist](SHARED_EXPEN
 
 ## FIN-209 — Shared Expense History
 
-**Status:** Local implementation prepared; exact-head generated types, independent
-review and disposable SQL/HTTP/concurrency CI remain integration gates. No native
-acceptance or production deployment is claimed.
+**Status:** Implemented. Initial disposable CI validated SQL/RLS, concurrency and
+HTTP/parser behavior on source `ea9d073`; its authentic generated types are imported
+verbatim. Final-head full CI and independent artifact review remain integration
+gates. No native acceptance or production deployment is claimed.
 
 Read-only history from each authorized Hogar, bounded date/UUID keyset pagination,
 fresh authorized detail and original immutable amount/currency/responsibility.

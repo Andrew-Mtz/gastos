@@ -1282,9 +1282,21 @@ export type Database = {
         Args: { p_expense_id: string; p_household_id: string };
         Returns: Json;
       };
+      get_shared_expense_history_detail: {
+        Args: { p_expense_id: string; p_household_id: string };
+        Returns: Json;
+      };
       is_active_household_member: {
         Args: { p_household_id: string };
         Returns: boolean;
+      };
+      list_shared_expenses: {
+        Args: {
+          p_before_expense_id?: string;
+          p_household_id: string;
+          p_limit?: number;
+        };
+        Returns: Json;
       };
       lock_personal_finance: { Args: never; Returns: undefined };
       prepare_initial_budget_buckets: {
