@@ -23,6 +23,9 @@ import {
   type HouseholdSnapshot,
 } from '../household-data';
 
+jest.mock('../HouseholdDefaultSplit', () => ({
+  HouseholdDefaultSplit: () => null,
+}));
 jest.mock('../invitation-data', () => ({
   ...jest.requireActual('../invitation-data'),
   readInvitations: jest.fn(),

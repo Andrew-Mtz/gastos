@@ -28,6 +28,9 @@ jest.mock('../household-data', () => ({
   ...jest.requireActual('../household-data'),
   readHouseholdMemberships: jest.fn(),
 }));
+jest.mock('../HouseholdDefaultSplit', () => ({
+  HouseholdDefaultSplit: () => null,
+}));
 jest.mock('../invitation-data', () => ({
   ...jest.requireActual('../invitation-data'),
   readInvitations: jest.fn(),

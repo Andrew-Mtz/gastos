@@ -1770,6 +1770,25 @@ This task is mandatory before progressing deeply into household features.
 
 ## FIN-205 — Default Household Split
 
+**Status:** Initial database/HTTP/concurrency CI and independent source review passed;
+authentic generated types imported. Merge requires final-head review/CI; native
+acceptance remains pending.
+See [PR #46](https://github.com/Andrew-Mtz/gastos/pull/46) for integration status.
+
+Owner-only explicit percentage templates, active-member read access, integer basis
+points totaling 10000, unique full active roster including explicit zero, optimistic
+versions, exact retry receipts and stale-roster review are implemented. No defaults,
+redistribution, expense calculation, money movement or history UI are introduced.
+The FIN-204 catalog and existing personal matrix remain fail-closed and intact.
+Initial disposable CI `39881197339` passed 3,913 SQL assertions/37 files, all existing
+concurrency suites plus 16 split scenarios, both HTTP journeys and their production
+parsers (two finance/four household), type generation and cleanup. Its only failures
+were expected missing-RPC typecheck errors and pre-import type drift. Authentic
+47,592-byte types came from artifact `12470249983`; product/SQL source is unchanged.
+Merge requires independent review and complete CI on the exact final head, including
+the types/documentation delta. No production rollout or native acceptance is claimed.
+See [contract, artifact hashes and verification gates](HOUSEHOLD_SPLIT_REVIEW.md).
+
 Implement percentage-based default split using basis points.
 
 Example:

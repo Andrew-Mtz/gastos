@@ -176,7 +176,7 @@ not itself resolve MVP cardinality or detailed role policy: FIN-202 opens read
 authorization and FIN-203 / ADR-080 now defines multi-household invitations. A creator need not
 have an ownership membership; no role is inferred or automatically inserted.
 
-Default split weight is deferred to FIN-205. Leaving, rejoining, role changes
+FIN-205 stores default percentages in separate versioned household templates, not membership fields. Leaving, rejoining, role changes
 and former-member visibility are not implemented or implicitly decided by these
 fields. Directed invitations are separately defined by FIN-203 / ADR-080. Any later rejoin operation must explicitly preserve its
 history rather than rewriting the original join time or silently removing a
@@ -947,6 +947,15 @@ The household default is only a template for future expenses.
 ### Rule
 
 Changing the household default split must not modify any existing shared expense.
+
+FIN-205 / ADR-081 stores a complete, explicit roster of membership identities and
+integer basis-point shares summing to 10000. Only active OWNERs save; active members
+read. Zero shares are valid; missing, duplicate or foreign identities are not.
+The current roster and an expected template version must match at save time.
+Composition changes produce STALE, with no usable default or redistribution until
+a reviewed replacement is saved. Roles affect authorization, not percentage values.
+Stable request receipts preserve retry semantics without exposing a history UI.
+No cash, budget, spending or savings impact is introduced.
 
 ---
 

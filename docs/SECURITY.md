@@ -1836,3 +1836,29 @@ The existing authenticated invitation/parser journey also checks reciprocal priv
 income isolation after joining and C's lack of shared access. No new grants, RLS,
 production capability or data sharing is introduced. See
 `HOUSEHOLD_PRIVACY_REVIEW.md` for exact scope and still-pending execution evidence.
+
+
+## FIN-205 default-split boundary (ADR-081)
+
+Two server-only RLS tables hold revision receipts and shares; no table/column grant
+or policy opens direct access. Two empty-search-path definer RPCs authorize current
+active membership for reads and OWNER for saves/replays. The read uses one statement
+snapshot and projects only the active roster, version, state and a usable current
+template. STALE returns no historical member IDs/names or percentages. Composite
+foreign keys bind shares to their revision and membership in the same household.
+
+The deferred integrity trigger is also a non-client-callable definer: PostgreSQL 17
+runs deferred events with the commit role, outside the save RPC's elevated context.
+It checks roster equality and exact total; update triggers prohibit in-place rewrites.
+API revisions are append-only; privileged fixture/administrative deletion is not an
+exposed lifecycle and can remove whole revisions. No production retention/deletion
+policy is decided here. Grants, RLS and every personal-finance policy stay intact.
+
+Save requires READ COMMITTED, takes the existing household-invitations advisory lock,
+locks the household FOR UPDATE (including FK insertion phantoms), then all existing
+membership rows in ID order FOR SHARE. New statements recheck active OWNER, roster
+and version after waits. Exact replay checks current OWNER and the original actor,
+roster, expected version and canonical shares; it returns only the original receipt
+and never reapplies it. Later lifecycle operations must preserve this lock protocol.
+Current-roster IDs do not define future leave/rejoin ABA semantics: rejoin remains
+unsupported. The FIN-204 catalog explicitly classifies every new table/function.

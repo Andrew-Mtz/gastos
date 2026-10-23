@@ -90,6 +90,9 @@ jobs:
       - name: Test invitation lifecycle concurrency
         run: node scripts/test-invitation-concurrency.mjs
 
+      - name: Test default split concurrency
+        run: node scripts/test-split-concurrency.mjs
+
       - name: Test authenticated personal finance journey
         run: npm run test:finance-api
 

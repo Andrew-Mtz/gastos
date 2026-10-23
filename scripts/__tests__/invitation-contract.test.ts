@@ -1,5 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { z } from 'zod';
+import {
+  mapSplitReceipt,
+  mapSplitSnapshot,
+  splitRequestSchema,
+} from '../../src/features/household/split-data';
 import { mapDashboard } from '../../src/features/dashboard/dashboard-data';
 import { mapInvitationContext } from '../../src/features/household/invitation-data';
 import { mapHouseholdSnapshot } from '../../src/features/household/household-data';
@@ -14,9 +19,13 @@ const samples = z
         'get_my_household_invitations',
         'get_my_household_memberships',
         'get_personal_dashboard',
+        'get_household_default_split',
+        'save_household_default_split',
       ]),
       data: z.unknown(),
       expected_owner: z.uuid().optional(),
+      expected_household: z.uuid().optional(),
+      expected_request: z.unknown().optional(),
     }),
   )
   .nonempty()
@@ -85,4 +94,35 @@ test('after joining, production dashboard parser accepts only its authenticated 
     return result.period ? result.receivedIncome.amountMinor : null;
   });
   expect(values).toEqual([12345, 67890, null]);
+});
+
+test('real HTTP split snapshots pass strict production parsers through unconfigured, ready and join-stale states', () => {
+  const splitSamples = samples.filter(
+    (sample) => sample.kind === 'get_household_default_split',
+  );
+  const parsed = splitSamples.map((sample) =>
+    mapSplitSnapshot(
+      z.uuid().parse(sample.expected_owner),
+      z.uuid().parse(sample.expected_household),
+      sample.data,
+    ),
+  );
+  expect(parsed.map((row) => row.status)).toEqual([
+    'UNCONFIGURED',
+    'READY',
+    'STALE',
+    'READY',
+  ]);
+  expect(parsed.map((row) => row.version)).toEqual([0, 1, 1, 2]);
+  expect(parsed[2].template).toBeNull();
+  const receipts = samples
+    .filter((sample) => sample.kind === 'save_household_default_split')
+    .map((sample) =>
+      mapSplitReceipt(
+        splitRequestSchema.parse(sample.expected_request),
+        sample.data,
+      ),
+    );
+  expect(receipts.map((row) => row.version)).toEqual([1, 2, 2, 1]);
+  expect(receipts[0]).toEqual(receipts[3]);
 });

@@ -1,3 +1,4 @@
+import { HouseholdDefaultSplit } from './HouseholdDefaultSplit';
 import { HouseholdInvitations } from './HouseholdInvitations';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
@@ -221,9 +222,9 @@ function HouseholdMemberships({ profile }: { profile: Profile }) {
     <Screen scroll>
       <AppText variant="title">Hogar</AppText>
       <AppText>
-        Solo se comparten el hogar y los nombres y roles de sus miembros
-        activos. Tus ingresos, gastos, presupuesto y ahorro personales siguen
-        privados.
+        Solo se comparten el hogar, su reparto y los nombres y roles de sus
+        miembros activos. Tus ingresos, gastos, presupuesto y ahorro personales
+        siguen privados.
       </AppText>
       {notice && <AppText role="status">{notice}</AppText>}
       {pending && (
@@ -293,6 +294,10 @@ function HouseholdMemberships({ profile }: { profile: Profile }) {
                     {member.role === 'OWNER' ? 'Propietario' : 'Miembro'}
                   </AppText>
                 ))}
+                <HouseholdDefaultSplit
+                  profileId={profile.id}
+                  householdId={household.id}
+                />
               </View>
             ))}
             <HouseholdInvitations snapshot={query.data} />

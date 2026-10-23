@@ -564,6 +564,87 @@ export type Database = {
           },
         ];
       };
+      household_split_revisions: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          expected_version: number;
+          household_id: string;
+          id: string;
+          roster: string[];
+          version: number;
+        };
+        Insert: {
+          created_at?: string;
+          created_by: string;
+          expected_version: number;
+          household_id: string;
+          id: string;
+          roster: string[];
+          version: number;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string;
+          expected_version?: number;
+          household_id?: string;
+          id?: string;
+          roster?: string[];
+          version?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'household_split_revisions_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'household_split_revisions_household_id_fkey';
+            columns: ['household_id'];
+            isOneToOne: false;
+            referencedRelation: 'households';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      household_split_shares: {
+        Row: {
+          basis_points: number;
+          household_id: string;
+          member_id: string;
+          revision_id: string;
+        };
+        Insert: {
+          basis_points: number;
+          household_id: string;
+          member_id: string;
+          revision_id: string;
+        };
+        Update: {
+          basis_points?: number;
+          household_id?: string;
+          member_id?: string;
+          revision_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'household_split_shares_household_id_member_id_fkey';
+            columns: ['household_id', 'member_id'];
+            isOneToOne: false;
+            referencedRelation: 'household_members';
+            referencedColumns: ['household_id', 'id'];
+          },
+          {
+            foreignKeyName: 'household_split_shares_household_id_revision_id_fkey';
+            columns: ['household_id', 'revision_id'];
+            isOneToOne: false;
+            referencedRelation: 'household_split_revisions';
+            referencedColumns: ['household_id', 'id'];
+          },
+        ];
+      };
       households: {
         Row: {
           created_at: string;
@@ -1010,6 +1091,10 @@ export type Database = {
         Args: { p_budget_period_id: string };
         Returns: Json;
       };
+      get_household_default_split: {
+        Args: { p_household_id: string };
+        Returns: Json;
+      };
       get_my_household_invitations: { Args: never; Returns: Json };
       get_my_household_memberships: { Args: never; Returns: Json };
       get_personal_carry: {
@@ -1274,6 +1359,16 @@ export type Database = {
           isOneToOne: false;
           isSetofReturn: true;
         };
+      };
+      save_household_default_split: {
+        Args: {
+          p_expected_version: number;
+          p_household_id: string;
+          p_request_id: string;
+          p_roster: string[];
+          p_shares: Json;
+        };
+        Returns: Json;
       };
       save_initial_budget: {
         Args: {
