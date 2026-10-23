@@ -1,3 +1,4 @@
+import { sharedExpenseHistoryKey } from './shared-expense-history-data';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
@@ -118,6 +119,13 @@ function SharedExpenseEntry({
     receipt.isFetchedAfterMount
       ? receipt.data
       : null;
+  const confirmedId = confirmed?.expense_id;
+  useEffect(() => {
+    if (confirmedId)
+      void client.invalidateQueries({
+        queryKey: sharedExpenseHistoryKey(profileId, householdId),
+      });
+  }, [client, confirmedId, profileId, householdId]);
   const [editing, setEditing] = useState(false);
   const [review, setReview] = useState<SharedExpenseReview | null>(null);
   const [notice, setNotice] = useState<string | null>(null);

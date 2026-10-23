@@ -2024,3 +2024,14 @@ retains the original currency even if later household configuration differs. The
 UI records a positive amount, financial date, active payer and optional description,
 previews FIN-206 responsibility and explicitly confirms before creating. No custom
 splits, private budget/category relation, conversion or financial effects are added.
+
+
+## FIN-209 historical read presentation
+
+History and detail use each expense's stored original amount/currency, payer and
+responsibility snapshot, including explicit zero shares. Later default, roster or
+household-currency changes do not reinterpret or combine those values. Current active
+member names are display-only. Where a historical identity is no longer in that
+fresh authorized roster, a neutral label retains the original membership identifier;
+it does not invent an old name or expand former-member access. No personal budget,
+cash, debt, savings, category, FX or financial correction behavior is introduced.

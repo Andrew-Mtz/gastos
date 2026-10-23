@@ -41,6 +41,8 @@ insert into privacy_functions values
   ('public.check_household_split_revision()','internal_trigger',true),
   ('public.check_shared_expense_integrity()','internal_trigger',true),
   ('public.get_shared_expense(uuid,uuid)','household_rpc',true),
+  ('public.list_shared_expenses(uuid,uuid,integer)','household_rpc',true),
+  ('public.get_shared_expense_history_detail(uuid,uuid)','household_rpc',true),
   ('public.create_shared_expense(uuid,uuid,uuid,uuid,integer,uuid[],bigint,text,date,text)','household_rpc',true),
   ('public.audit_transaction_revision()','internal_trigger',true),
   ('public.check_budget_allocation_total()','internal_trigger',false),

@@ -1,3 +1,7 @@
+import {
+  mapSharedExpensePage,
+  mapSharedExpenseHistoryDetail,
+} from '../../src/features/household/shared-expense-history-data';
 import { readFileSync } from 'node:fs';
 import {
   mapSharedExpense,
@@ -28,12 +32,16 @@ const samples = z
         'save_household_default_split',
         'create_shared_expense',
         'get_shared_expense',
+        'list_shared_expenses',
+        'get_shared_expense_history_detail',
       ]),
       data: z.unknown(),
       expected_owner: z.uuid().optional(),
       expected_household: z.uuid().optional(),
       expected_expense: z.uuid().optional(),
       expected_request: z.unknown().optional(),
+      expected_cursor: z.uuid().nullable().optional(),
+      expected_limit: z.number().int().optional(),
     }),
   )
   .nonempty()
@@ -166,5 +174,53 @@ test('real HTTP shared persistence receipts and authorized point reads pass prod
   for (const read of reads) {
     expect(read.splits).toEqual(receipts[0].splits);
     expect(read.expense_id).toBe(receipts[0].expense_id);
+  }
+});
+
+test('real HTTP paginated history and same-snapshot detail pass strict production scope/money/roster parsers', () => {
+  const pages = samples
+    .filter((sample) => sample.kind === 'list_shared_expenses')
+    .map((sample) =>
+      mapSharedExpensePage(
+        z.uuid().parse(sample.expected_owner),
+        z.uuid().parse(sample.expected_household),
+        sample.data,
+        sample.expected_cursor ?? null,
+        sample.expected_limit,
+      ),
+    );
+  expect(pages.length).toBeGreaterThanOrEqual(6);
+  expect(pages.some((page) => page.expenses.length === 0)).toBe(true);
+  expect(pages.some((page) => page.next_cursor !== null)).toBe(true);
+  expect(
+    pages.some(
+      (page) => page.next_cursor === null && page.expenses.length === 1,
+    ),
+  ).toBe(true);
+  const details = samples
+    .filter((sample) => sample.kind === 'get_shared_expense_history_detail')
+    .map((sample) =>
+      mapSharedExpenseHistoryDetail(
+        z.uuid().parse(sample.expected_owner),
+        z.uuid().parse(sample.expected_household),
+        z.uuid().parse(sample.expected_expense),
+        sample.data,
+      ),
+    );
+  expect(details).toHaveLength(2);
+  for (const detail of details) {
+    expect(detail.members).toHaveLength(2);
+    expect(
+      detail.expense.splits.map((share) => share.basis_points).sort(),
+    ).toEqual([3000, 7000]);
+    expect(
+      pages.some(
+        (page) =>
+          page.profile_id === detail.profile_id &&
+          page.expenses.some(
+            (expense) => expense.expense_id === detail.expense.expense_id,
+          ),
+      ),
+    ).toBe(true);
   }
 });
