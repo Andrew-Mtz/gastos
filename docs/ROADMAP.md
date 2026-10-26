@@ -1916,12 +1916,14 @@ User responsibility: 700
 Budget impact: 700
 ```
 
-Implementation prepared under ADR-084: one NEEDS/LEISURE choice, own responsibility
-only, no automatic private setup, explicit incomplete/foreign/legacy facts, immutable
-closed evidence with later sources pending reopen, and owner-only former-member facts.
-Exact-head CI, authentic generated database types and final source review remain
-required completion gates. No native QA, publication, merge,
-cash movement, debt or FX completion is implied.
+Implemented under ADR-084 in draft PR #51: one NEEDS/LEISURE choice, own
+responsibility only, no automatic private setup, explicit incomplete/foreign/legacy
+facts, immutable closed evidence with later sources pending reopen, and owner-only
+former-member facts. CI run 40357715856 passed 4,432 SQL assertions, all concurrency
+scenarios and both authenticated HTTP/parser journeys; its authentic generated types
+were imported unchanged. Final exact-head green CI and independent source approval
+are required before Ready/merge. Native/device QA remains pending. No production
+migration, cash movement, debt or FX completion is implied.
 
 ---
 

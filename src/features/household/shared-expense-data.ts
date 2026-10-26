@@ -160,7 +160,9 @@ export async function createSharedExpense(
     p_amount_minor: request.amountMinor,
     p_currency: request.currency,
     p_transaction_date: request.transactionDate,
-    p_budget_classification: request.budgetClassification,
+    ...(request.budgetClassification === null
+      ? {}
+      : { p_budget_classification: request.budgetClassification }),
     ...(request.description === null
       ? {}
       : { p_description: request.description }),

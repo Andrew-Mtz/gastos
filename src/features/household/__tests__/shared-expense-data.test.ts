@@ -264,3 +264,27 @@ test('changed classification cannot confirm an original receipt', () => {
     }),
   ).toThrow();
 });
+
+test.each([null, 'NEEDS', 'LEISURE'] as const)(
+  'create preserves classification %j and omits legacy null for SQL DEFAULT NULL',
+  async (budgetClassification) => {
+    const receipt = {
+      ...response(),
+      budget_classification: budgetClassification,
+    };
+    jest
+      .mocked(supabase.rpc)
+      .mockResolvedValueOnce({ data: receipt, error: null } as never);
+    await expect(
+      createSharedExpense(id(1), { ...request(), budgetClassification }),
+    ).resolves.toEqual(receipt);
+    const args = jest.mocked(supabase.rpc).mock.calls[0][1];
+    if (budgetClassification === null)
+      expect(args).not.toHaveProperty('p_budget_classification');
+    else
+      expect(args).toHaveProperty(
+        'p_budget_classification',
+        budgetClassification,
+      );
+  },
+);
