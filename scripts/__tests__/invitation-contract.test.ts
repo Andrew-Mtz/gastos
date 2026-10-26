@@ -1,3 +1,5 @@
+import { mapSavingsContext } from '../../src/features/savings/savings-data';
+import { mapSharedResponsibilities } from '../../src/features/budget/shared-responsibility-data';
 import {
   mapSharedExpensePage,
   mapSharedExpenseHistoryDetail,
@@ -25,6 +27,8 @@ const samples = z
   .array(
     z.object({
       kind: z.enum([
+        'get_my_shared_responsibilities',
+        'get_personal_savings_context',
         'get_my_household_invitations',
         'get_my_household_memberships',
         'get_personal_dashboard',
@@ -37,6 +41,7 @@ const samples = z
       ]),
       data: z.unknown(),
       expected_owner: z.uuid().optional(),
+      expected_month: z.iso.date().optional(),
       expected_household: z.uuid().optional(),
       expected_expense: z.uuid().optional(),
       expected_request: z.unknown().optional(),
@@ -223,4 +228,75 @@ test('real HTTP paginated history and same-snapshot detail pass strict productio
       ),
     ).toBe(true);
   }
+});
+
+test('real HTTP personal responsibility sources retain original amount without period, FX mixing or revived shared access', () => {
+  const sourceSamples = samples.filter(
+    (sample) => sample.kind === 'get_my_shared_responsibilities',
+  );
+  expect(sourceSamples.length).toBeGreaterThanOrEqual(6);
+  const values = sourceSamples.map((sample) =>
+    mapSharedResponsibilities(
+      z.uuid().parse(sample.expected_owner),
+      z.iso.date().parse(sample.expected_month),
+      sample.data,
+    ),
+  );
+  expect(
+    values.some(
+      (value) =>
+        value.period === null &&
+        value.entries.some((entry) => entry.responsibility_amount_minor > 0),
+    ),
+  ).toBe(true);
+  expect(
+    values.some((value) =>
+      value.entries.some(
+        (entry) =>
+          entry.application_status === 'OTHER_CURRENCY' &&
+          entry.currency === 'UYU',
+      ),
+    ),
+  ).toBe(true);
+  expect(
+    values.some(
+      (value) =>
+        value.entries.length > 0 &&
+        value.entries.every((entry) => entry.household_name === null),
+    ),
+  ).toBe(true);
+  expect(values.some((value) => value.entries.length === 0)).toBe(true);
+  for (const sample of sourceSamples) {
+    const other = sourceSamples.find(
+      (row) => row.expected_owner !== sample.expected_owner,
+    );
+    expect(() =>
+      mapSharedResponsibilities(
+        z.uuid().parse(other!.expected_owner),
+        z.iso.date().parse(sample.expected_month),
+        sample.data,
+      ),
+    ).toThrow();
+  }
+});
+
+test('real HTTP savings context separates checked reserve from incomplete contribution capacity', () => {
+  const rows = samples
+    .filter((s) => s.kind === 'get_personal_savings_context')
+    .map((s) =>
+      mapSavingsContext(
+        z.uuid().parse(s.expected_owner),
+        z.iso.date().parse(s.expected_month),
+        s.data,
+      ),
+    );
+  expect(rows).toHaveLength(3);
+  expect(rows[0].availability).not.toBeNull();
+  expect(rows[1].period).toBeNull();
+  expect(
+    rows[1].sharedResponsibilities.entries[0].responsibility_amount_minor,
+  ).toBe(500);
+  expect(rows[2].protectedSavings).not.toBeNull();
+  expect(rows[2].availability).toBeNull();
+  expect(rows[2].sharedResponsibilities.entries[0].currency).toBe('UYU');
 });

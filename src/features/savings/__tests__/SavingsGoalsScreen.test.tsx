@@ -62,6 +62,17 @@ const goal = {
   progress: goalProgress(10000, 10000, 'USD'),
 };
 const savings = {
+  protectedSavings: createMoney(40000, 'USD'),
+  sharedResponsibilities: {
+    owner_profile_id: profile.id,
+    month: period.starts_on,
+    period: {
+      id: period.id,
+      status: period.status,
+      base_currency: period.base_currency,
+    },
+    entries: [],
+  },
   period,
   configured: true,
   carry: {
@@ -190,9 +201,16 @@ test('creation cancel writes nothing; saving creates only the goal with optional
   expect(registerSavings).not.toHaveBeenCalled();
 });
 test('creation does not require a month budget; cross-currency and closed-month funding is disabled', async () => {
-  jest
-    .mocked(readSavingsMonth)
-    .mockResolvedValue({ period: null, availability: null, configured: false });
+  jest.mocked(readSavingsMonth).mockResolvedValue({
+    period: null,
+    availability: null,
+    protectedSavings: null,
+    configured: false,
+    sharedResponsibilities: {
+      ...savings.sharedResponsibilities,
+      period: null,
+    },
+  });
   const view = await openScreen();
   expect(screen.getByRole('button', { name: 'Crear meta' })).toBeEnabled();
   expect(

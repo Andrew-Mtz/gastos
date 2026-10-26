@@ -104,6 +104,7 @@ function receiptFor(request: SharedExpenseRequest): SharedExpense {
     currency: request.currency,
     transaction_date: request.transactionDate,
     description: request.description,
+    budget_classification: request.budgetClassification,
     splits: calculateSharedExpenseSplit(
       createMoney(request.amountMinor, request.currency),
       server.template!.shares.map((share) => ({
@@ -126,6 +127,7 @@ async function review(payer = 'Beatriz', amount = '10.01') {
     screen.getByLabelText(`Importe del gasto (${currency})`),
     amount,
   );
+  await user.press(screen.getByRole('radio', { name: 'Necesidades' }));
   await user.press(screen.getByRole('radio', { name: `Pagó ${payer}` }));
   expect(screen.getByText(`Pagó ${payer} (seleccionado)`)).toBeOnTheScreen();
   expect(screen.getByRole('radio', { name: `Pagó ${payer}` })).toBeChecked();

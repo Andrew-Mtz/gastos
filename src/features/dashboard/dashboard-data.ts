@@ -1,3 +1,4 @@
+import { mapSharedResponsibilities } from '../budget/shared-responsibility-data';
 import { z } from 'zod';
 import { calculateBucketConsumption } from '../../domain/budget/bucket-consumption';
 import { createBudgetAllocationPlan } from '../../domain/budget/budget-allocation';
@@ -24,6 +25,7 @@ const envelope = z.object({
   owner_profile_id: z.uuid(),
   month: recurringMonthSchema,
   period: periodSchema.nullable(),
+  shared_responsibilities: z.unknown().optional(),
 });
 const snapshotSchema = envelope.extend({
   period: periodSchema,
@@ -70,7 +72,19 @@ export function mapDashboard(
   const header = envelope.parse(data);
   if (header.owner_profile_id !== owner || header.month !== month)
     throw new Error('Dashboard owner/month mismatch.');
-  if (!header.period) return { period: null } as const;
+  const sharedResponsibilities =
+    header.shared_responsibilities === undefined
+      ? null
+      : mapSharedResponsibilities(owner, month, header.shared_responsibilities);
+  if (
+    sharedResponsibilities &&
+    (sharedResponsibilities.period?.id !== header.period?.id ||
+      sharedResponsibilities.period?.status !== header.period?.status ||
+      sharedResponsibilities.period?.base_currency !==
+        header.period?.base_currency)
+  )
+    throw new Error('Dashboard source context mismatch.');
+  if (!header.period) return { period: null, sharedResponsibilities } as const;
   const row = snapshotSchema.parse(data),
     period = row.period;
   if (
@@ -83,6 +97,31 @@ export function mapDashboard(
     new Set(row.buckets.map((b) => b.id)).size !== row.buckets.length
   )
     throw new Error('Dashboard component mismatch.');
+  if (sharedResponsibilities) {
+    const included = sharedResponsibilities.entries.filter(
+      (e) =>
+        e.responsibility_amount_minor > 0 &&
+        (period.status === 'OPEN' || e.included_in_closed_period),
+    );
+    if (
+      period.status === 'OPEN' &&
+      included.some((e) => e.application_status !== 'APPLIED')
+    )
+      throw new Error('Live dashboard cannot omit shared consumption.');
+    for (const classification of ['NEEDS', 'LEISURE'] as const) {
+      const amount = included
+        .filter((e) => e.budget_classification === classification)
+        .reduce((sum, e) => sum + e.responsibility_amount_minor, 0);
+      if (
+        !Number.isSafeInteger(amount) ||
+        (amount > 0 &&
+          !row.consumption.buckets.some(
+            (b) => b.system_key === classification && b.spent_minor >= amount,
+          ))
+      )
+        throw new Error('Dashboard consumption omits own responsibility.');
+    }
+  }
   const availability = mapSafeToSpend(
     period,
     row.availability,
@@ -181,6 +220,7 @@ export function mapDashboard(
   )
     throw new Error('Dashboard obligation preview mismatch.');
   return {
+    sharedResponsibilities,
     period,
     availability,
     usage,
@@ -212,7 +252,10 @@ export async function readDashboard(
   }
   if (response.error) throw marginRpcError(response.error, response.status);
   try {
-    return mapDashboard(owner, month, response.data);
+    const result = mapDashboard(owner, month, response.data);
+    if (!result.sharedResponsibilities)
+      throw new Error('Live dashboard requires own sources.');
+    return result;
   } catch {
     throw new MarginReadError('INVALID_CONTRACT');
   }

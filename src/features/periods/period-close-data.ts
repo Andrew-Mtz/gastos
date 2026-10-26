@@ -1,3 +1,4 @@
+import { mapSharedResponsibilities } from '../budget/shared-responsibility-data';
 import { z } from 'zod';
 import { supabase } from '../../infrastructure/supabase/client';
 import { periodSchema } from '../budget/budget-setup';
@@ -37,6 +38,7 @@ const header = z.object({
   owner_profile_id: z.uuid(),
   month: monthSchema,
   period: lifecyclePeriod.nullable(),
+  shared_responsibilities: z.unknown(),
   financial_month: monthSchema,
   financial_timezone: z.string().min(1),
 });
@@ -61,7 +63,30 @@ export function mapPeriodClose(owner: string, month: string, value: unknown) {
   const base = header.parse(value);
   if (base.owner_profile_id !== owner || base.month !== month)
     throw new Error('Close owner/month mismatch.');
-  if (!base.period) return { ...base, period: null } as const;
+  const sharedResponsibilities =
+    base.shared_responsibilities === undefined
+      ? null
+      : mapSharedResponsibilities(owner, month, base.shared_responsibilities);
+  if (
+    sharedResponsibilities &&
+    (sharedResponsibilities.period?.id !== base.period?.id ||
+      sharedResponsibilities.period?.status !== base.period?.status ||
+      sharedResponsibilities.period?.base_currency !==
+        base.period?.base_currency)
+  )
+    throw new Error('Close source context mismatch.');
+  if (
+    base.period?.status === 'OPEN' &&
+    sharedResponsibilities?.entries.some(
+      (e) =>
+        e.responsibility_amount_minor > 0 && e.application_status !== 'APPLIED',
+    )
+  )
+    throw new Error('Open close context cannot omit shared consumption.');
+  if (!sharedResponsibilities)
+    throw new Error('Live close context requires own sources.');
+  if (!base.period)
+    return { ...base, period: null, sharedResponsibilities } as const;
   const row = contextSchema.parse(value),
     period = row.period;
   if (period.profile_id !== owner || period.starts_on !== month)
@@ -194,7 +219,14 @@ export function mapPeriodClose(owner: string, month: string, value: unknown) {
     summary.availability.commitments.priorUnresolvedCount === 0;
   if (row.can_close !== eligible)
     throw new Error('Close eligibility mismatch.');
-  return { ...row, summary };
+  if (
+    period.status === 'OPEN' &&
+    sharedResponsibilities &&
+    JSON.stringify(sharedResponsibilities) !==
+      JSON.stringify(summary?.sharedResponsibilities)
+  )
+    throw new Error('Close sources disagree with financial snapshot.');
+  return { ...row, summary, sharedResponsibilities };
 }
 export type PeriodCloseContext = ReturnType<typeof mapPeriodClose>;
 export type CloseRequest = Readonly<{
@@ -236,7 +268,10 @@ export async function readPeriodClose(
   });
   const { data, error } = await (signal ? query.abortSignal(signal) : query);
   if (error) throw error;
-  return mapPeriodClose(owner, month, data);
+  const result = mapPeriodClose(owner, month, data);
+  if (!result.sharedResponsibilities)
+    throw new Error('Live close context requires own sources.');
+  return result;
 }
 export async function closePeriod(request: CloseRequest) {
   const { data, error } = await supabase.rpc('close_personal_budget_period', {

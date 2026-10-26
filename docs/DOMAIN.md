@@ -2035,3 +2035,26 @@ member names are display-only. Where a historical identity is no longer in that
 fresh authorized roster, a neutral label retains the original membership identifier;
 it does not invent an old name or expand former-member access. No personal budget,
 cash, debt, savings, category, FX or financial correction behavior is introduced.
+
+
+## FIN-210 responsibility consumption (ADR-084)
+
+The immutable shared classification is NEEDS or LEISURE, chosen once by the actor.
+Only pre-feature history may be null; no description-based inference or history
+rewrite is permitted. Each saved split is a private owner's consumption source via
+its immutable membership/profile identity, independent of payer and current roster.
+It maps only to that owner's unique canonical SPENDABLE key, never a custom name.
+No personal transaction, category, allocation or period is created by shared entry.
+
+Positive sources lacking classification, canonical mapping or period currency make
+ordinary consumption incomplete. Original currencies/amounts remain individually
+visible. Zero is an exact no-impact fact, not an unresolved amount. Recognized shared
+source IDs belong to closure evidence; later sources stay pending until explicit
+reopening. Historical v1/v2 summaries and legacy CLOSED rows are not retrofitted.
+
+Known protected reserve/prefix and goal solvency remain separate from ordinary
+spending completeness. Income, ordinary expense/correction, solvent withdrawal and
+goal reads still enforce reserve integrity without requiring FX/classification.
+New/restored/increased savings contributions, complete margin, closing/disposition
+and carry reversal continue to require complete current consumption. No cash or
+debt effect is implemented by FIN-210.

@@ -1,3 +1,4 @@
+import { sharedBudgetLabels } from './shared-expense-data';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import {
@@ -134,6 +135,12 @@ function History({
                 <AppText>
                   {expense.description || 'Gasto compartido sin descripción'}
                 </AppText>
+                <AppText>
+                  Clasificación:{' '}
+                  {expense.budget_classification
+                    ? sharedBudgetLabels[expense.budget_classification]
+                    : 'Sin clasificación histórica'}
+                </AppText>
                 <AppText>Pagó: {name(expense.payer_member_id)}</AppText>
                 <Button
                   variant="secondary"
@@ -231,6 +238,12 @@ function ExpenseDetail({
             {formatMoney(createMoney(expense.amount_minor, expense.currency))}
           </AppText>
           <AppText>Fecha: {expense.transaction_date}</AppText>
+          <AppText>
+            Clasificación:{' '}
+            {expense.budget_classification
+              ? sharedBudgetLabels[expense.budget_classification]
+              : 'Sin clasificación histórica'}
+          </AppText>
           <AppText>Pagó: {name(expense.payer_member_id)}</AppText>
           {!!expense.description && <AppText>{expense.description}</AppText>}
           <AppText>

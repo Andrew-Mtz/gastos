@@ -1,3 +1,4 @@
+import { MonthlyBudgetImpact } from './MonthlyBudgetImpact';
 import { useCallback, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
@@ -41,8 +42,6 @@ import {
 import { spacing } from '../../theme/tokens';
 import { ReceivedBudgetAvailability } from './ReceivedBudgetAvailability';
 import { incomeOwnerKey } from '../income/income-data';
-import { BucketConsumption } from './BucketConsumption';
-import { SafeToSpend } from './SafeToSpend';
 import { consumptionOwnerKey } from './consumption-data';
 
 export function BudgetScreen() {
@@ -200,6 +199,11 @@ function PersonalBudget({ profile }: { profile: Profile }) {
           ahorro.
         </AppText>
       )}
+      <MonthlyBudgetImpact
+        owner={profile.id}
+        month={month}
+        refreshingPlan={query.isFetching}
+      />
       {allocationPlan && (
         <ReceivedBudgetAvailability
           profileId={profile.id}
@@ -207,17 +211,6 @@ function PersonalBudget({ profile }: { profile: Profile }) {
           buckets={savedBuckets}
           refreshingPlan={query.isFetching}
         />
-      )}
-      {period && (
-        <BucketConsumption
-          profileId={profile.id}
-          periodId={period.id}
-          currency={period.base_currency}
-          refreshingPlan={query.isFetching}
-        />
-      )}
-      {period && (
-        <SafeToSpend period={period} refreshingPlan={query.isFetching} />
       )}
       {period?.status === 'CLOSED' ? (
         <AppText>Este período está cerrado.</AppText>

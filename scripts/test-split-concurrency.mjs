@@ -141,6 +141,7 @@ async function fixtures(name, action) {
   );
   c.applicationName = `fin205-${randomUUID()}`;
   c.sessions = [];
+  c.cleanupHouseholds = [c.household];
   c.start = (sql, options) => {
     const process = session(sql, options);
     c.sessions.push(process);
@@ -178,22 +179,31 @@ async function fixtures(name, action) {
   } finally {
     for (const process of c.sessions) process.finish();
     await Promise.allSettled(c.sessions.map((process) => process.result));
+    const householdIds = c.cleanupHouseholds.map((id) => `'${id}'`).join(',');
     await run(`begin;
-      delete from public.shared_expense_splits where household_id='${c.household}';
-      delete from public.shared_expenses where household_id='${c.household}';
-      delete from public.transactions where household_id='${c.household}' or owner_profile_id in ('${c.actor}','${c.partner}');
+      delete from public.shared_expense_splits where household_id in (${householdIds});
+      delete from public.shared_expenses where household_id in (${householdIds});
+      delete from public.budget_period_carry_reversals where owner_profile_id in ('${c.actor}','${c.partner}');
+      delete from public.budget_period_dispositions where owner_profile_id in ('${c.actor}','${c.partner}');
+      delete from public.budget_period_reopenings where owner_profile_id in ('${c.actor}','${c.partner}');
+      delete from public.budget_period_closures where owner_profile_id in ('${c.actor}','${c.partner}');
+      delete from public.transaction_revisions where owner_profile_id in ('${c.actor}','${c.partner}');
+      delete from public.transactions where household_id in (${householdIds}) or owner_profile_id in ('${c.actor}','${c.partner}');
+      delete from public.budget_allocations where budget_period_id in (select id from public.budget_periods where profile_id in ('${c.actor}','${c.partner}'));
       delete from public.budget_periods where profile_id in ('${c.actor}','${c.partner}');
-      delete from public.household_split_shares where household_id='${c.household}';
-      delete from public.household_split_revisions where household_id='${c.household}';
-      delete from public.household_invitations where household_id='${c.household}';
-      delete from public.household_members where household_id='${c.household}';
-      delete from public.households where id='${c.household}' and created_by='${c.actor}';
+      delete from public.categories where profile_id in ('${c.actor}','${c.partner}');
+      delete from public.budget_buckets where profile_id in ('${c.actor}','${c.partner}');
+      delete from public.household_split_shares where household_id in (${householdIds});
+      delete from public.household_split_revisions where household_id in (${householdIds});
+      delete from public.household_invitations where household_id in (${householdIds});
+      delete from public.household_members where household_id in (${householdIds});
+      delete from public.households where id in (${householdIds}) and created_by='${c.actor}';
       delete from public.household_recipient_codes where profile_id='${c.entrant}';
       delete from public.profiles where id in ('${c.actor}','${c.partner}','${c.entrant}','${c.former}');
       delete from auth.users where id in ('${c.actor}','${c.partner}','${c.entrant}','${c.former}');commit;`);
     assert.equal(
       await run(
-        `select (select count(*) from public.household_split_revisions where household_id='${c.household}')+(select count(*) from public.household_members where household_id='${c.household}')+(select count(*) from auth.users where id in ('${c.actor}','${c.partner}','${c.entrant}','${c.former}'))`,
+        `select (select count(*) from public.household_split_revisions where household_id in (${householdIds}))+(select count(*) from public.household_members where household_id in (${householdIds}))+(select count(*) from auth.users where id in ('${c.actor}','${c.partner}','${c.entrant}','${c.former}'))`,
       ),
       '0',
       'Exact synthetic fixtures removed',
@@ -350,7 +360,7 @@ async function sharedFixtures(name, action) {
       amount = 101,
     ) => `${auth(c.actor)}select 'EXPENSE:'||public.create_shared_expense(
       '${id}','${c.household}','${c.partnerMember}','${c.request}',1,
-      array['${c.ownerMember}'::uuid,'${c.partnerMember}'::uuid],${amount},'USD','2025-01-02')::text;`;
+      array['${c.ownerMember}'::uuid,'${c.partnerMember}'::uuid],${amount},'USD','2025-01-02',null,'NEEDS')::text;`;
     c.sharedState = async () =>
       JSON.parse(
         await run(`select jsonb_build_object(
@@ -590,5 +600,210 @@ for (const isolation of ['repeatable read', 'serializable'])
         assert.notEqual(denied.code, 0);
         assert.match(denied.error, /ERROR:\s+25001:/);
       }
+    },
+  );
+
+// FIN-210 participant locks, closure, protected-funding and pending application.
+async function budgetFor(c, actor, month, periodId, income = 0) {
+  const end = month === '2025-01-01' ? '2025-01-31' : '2025-02-28';
+  await run(`begin;${auth(actor)}
+    select public.prepare_initial_budget_buckets();
+    insert into public.budget_periods(id,profile_id,starts_on,ends_on,base_currency)
+      values('${periodId}','${actor}','${month}','${end}','USD');
+    select public.save_budget_allocations('${periodId}',(select jsonb_agg(jsonb_build_object('budget_bucket_id',id,'percentage_basis_points',case system_key when 'NEEDS' then 5000 when 'LEISURE' then 3000 else 2000 end)) from public.budget_buckets where profile_id=auth.uid() and system_key is not null));
+    ${income ? `select public.register_income('${randomUUID()}','${periodId}',${income},'USD','${month}');` : ''}
+    commit;`);
+}
+async function privateSnapshot(c, owner = c.partner, month = '2025-01-01') {
+  return taggedJSON(
+    await run(
+      `begin;${auth(owner)}select 'PRIVATE:'||public.get_personal_dashboard('${month}')::text;commit;`,
+    ),
+    'PRIVATE',
+  );
+}
+for (const separateHouseholds of [false, true])
+  await sharedFixtures(
+    `FIN-210 opposing creators acquire one global participant order${separateHouseholds ? ' across overlapping homes' : ''}`,
+    async (c) => {
+      let other = c
+        .expense(c.otherExpenseId)
+        .replace(auth(c.actor), auth(c.partner));
+      if (separateHouseholds) {
+        const home = randomUUID(),
+          memberA = randomUUID(),
+          memberB = randomUUID(),
+          template = randomUUID();
+        c.cleanupHouseholds.push(home);
+        await run(`begin;
+        insert into public.households(id,name,default_currency,created_by) values('${home}','Second overlapping home','USD','${c.actor}');
+        insert into public.household_members(id,household_id,profile_id,role) values('${memberA}','${home}','${c.actor}','OWNER'),('${memberB}','${home}','${c.partner}','MEMBER');
+        ${auth(c.actor)}select public.save_household_default_split('${template}','${home}',0,array['${memberA}'::uuid,'${memberB}'::uuid],jsonb_build_array(jsonb_build_object('member_id','${memberA}','basis_points',5000),jsonb_build_object('member_id','${memberB}','basis_points',5000)));commit;`);
+        other = `${auth(c.partner)}select 'EXPENSE:'||public.create_shared_expense('${c.otherExpenseId}','${home}','${memberB}','${template}',1,array['${memberA}'::uuid,'${memberB}'::uuid],101,'USD','2025-01-02',null,'LEISURE')::text;`;
+      }
+      const [lower, upper] = [c.actor, c.partner].sort();
+      const blocker = c.start(
+        `begin;select pg_advisory_xact_lock(hashtextextended('${lower}',115));select 'FIN210_HELD';`,
+        { marker: 'FIN210_HELD', hold: true },
+      );
+      await blocker.ready;
+      const oneName = `${c.applicationName}-a`,
+        twoName = `${c.applicationName}-b`;
+      const one = c.start(
+        `set application_name='${oneName}';begin;${c.expense()}commit;`,
+      );
+      const two = c.start(
+        `set application_name='${twoName}';begin;${other}commit;`,
+      );
+      await Promise.all([
+        waitForLock(oneName, 'advisory'),
+        waitForLock(twoName, 'advisory'),
+      ]);
+      assert.equal(
+        await run(
+          `select pg_try_advisory_xact_lock(hashtextextended('${upper}',115));`,
+        ),
+        't',
+        'Neither opposing actor may hold the later participant while waiting on the first',
+      );
+      blocker.finish('commit;');
+      const results = await Promise.all([
+        blocker.result,
+        one.result,
+        two.result,
+      ]);
+      for (const result of results) assert.equal(result.code, 0, result.error);
+      assert.equal(
+        taggedJSON(results[1].output, 'EXPENSE').expense_id,
+        c.expenseId,
+      );
+      assert.equal(
+        taggedJSON(results[2].output, 'EXPENSE').expense_id,
+        c.otherExpenseId,
+      );
+    },
+  );
+await sharedFixtures(
+  'FIN-210 outsider fails before holding participant finance locks',
+  async (c) => {
+    const blocker = c.start(
+      `begin;select pg_advisory_xact_lock(hashtextextended('household-invitations:${c.household}',0));select 'FIN210_HELD';`,
+      { marker: 'FIN210_HELD', hold: true },
+    );
+    await blocker.ready;
+    const outsider = c.start(
+      `begin;${c.expense().replace(auth(c.actor), auth(c.entrant))}commit;`,
+    );
+    const result = await Promise.race([
+      outsider.result,
+      new Promise((_, reject) =>
+        setTimeout(
+          () =>
+            reject(new Error('Unauthorized actor waited on or retained locks')),
+          3000,
+        ),
+      ),
+    ]);
+    assert.notEqual(result.code, 0);
+    assert.match(result.error, /ERROR:\s+42501:/);
+    for (const owner of [c.actor, c.partner])
+      assert.equal(
+        await run(
+          `select pg_try_advisory_xact_lock(hashtextextended('${owner}',115));`,
+        ),
+        't',
+      );
+    blocker.finish('commit;');
+    assert.equal((await blocker.result).code, 0);
+  },
+);
+for (const closeFirst of [true, false])
+  await sharedFixtures(
+    `FIN-210 ${closeFirst ? 'close before shared keeps pending' : 'shared before close invalidates preview'}`,
+    async (c) => {
+      await budgetFor(c, c.partner, '2025-01-01', c.periodId, 10000);
+      const context = taggedJSON(
+        await run(
+          `begin;${auth(c.partner)}select 'CONTEXT:'||public.get_personal_period_close_context('2025-01-01')::text;commit;`,
+        ),
+        'CONTEXT',
+      );
+      const close = `${auth(c.partner)}select public.close_personal_budget_period('${randomUUID()}','${c.periodId}',0,'${context.snapshot_hash}',true);`;
+      await race(
+        c,
+        closeFirst ? close : c.expense(),
+        closeFirst ? c.expense() : close,
+        closeFirst ? {} : { code: '40001' },
+      );
+      const after = await privateSnapshot(c);
+      assert.equal(after.availability.savings.spent_minor, closeFirst ? 0 : 30);
+      assert.equal(after.period.status, closeFirst ? 'CLOSED' : 'OPEN');
+      const source = taggedJSON(
+        await run(
+          `begin;${auth(c.partner)}select 'SOURCE:'||public.get_my_shared_responsibilities('2025-01-01')::text;commit;`,
+        ),
+        'SOURCE',
+      );
+      assert.equal(
+        source.entries[0].application_status,
+        closeFirst ? 'CLOSED_PENDING' : 'APPLIED',
+      );
+    },
+  );
+for (const contributionFirst of [true, false])
+  await sharedFixtures(
+    `FIN-210 ${contributionFirst ? 'contribution before shared preserves reserve' : 'shared before contribution reduces funding cap'}`,
+    async (c) => {
+      await budgetFor(c, c.partner, '2025-01-01', c.periodId, 10000);
+      const contribution = `${auth(c.partner)}select public.register_savings_movement('${randomUUID()}','${c.periodId}','SAVINGS_CONTRIBUTION',8000,'USD','2025-01-02');`;
+      await race(
+        c,
+        contributionFirst ? contribution : c.expense(),
+        contributionFirst ? c.expense() : contribution,
+        contributionFirst ? {} : { code: '23514' },
+      );
+      const after = await privateSnapshot(c);
+      assert.equal(after.availability.savings.spent_minor, 30);
+      assert.equal(
+        after.availability.savings.contributions_minor,
+        contributionFirst ? 8000 : 0,
+      );
+      assert.equal(
+        after.availability.savings.allocated_savings_minor,
+        2000,
+        'Shared responsibility never consumes or changes protected allocation',
+      );
+    },
+  );
+for (const dispositionFirst of [true, false])
+  await sharedFixtures(
+    `FIN-210 ${dispositionFirst ? 'disposition before shared keeps original closed carry' : 'shared before disposition invalidates remainder preview'}`,
+    async (c) => {
+      await budgetFor(c, c.partner, '2025-01-01', c.periodId, 10000);
+      const destination = randomUUID();
+      await budgetFor(c, c.partner, '2025-02-01', destination);
+      const context = taggedJSON(
+        await run(
+          `begin;${auth(c.partner)}select 'CONTEXT:'||public.get_personal_remainder_context('2025-01-01')::text;commit;`,
+        ),
+        'CONTEXT',
+      );
+      const dispose = `${auth(c.partner)}select public.close_and_dispose_personal_remainder('${randomUUID()}','${c.periodId}',0,'${context.preview_hash}','CARRY_UNALLOCATED',8000,'${destination}',null,true);`;
+      await race(
+        c,
+        dispositionFirst ? dispose : c.expense(),
+        dispositionFirst ? c.expense() : dispose,
+        dispositionFirst ? {} : { code: '40001' },
+      );
+      const source = await privateSnapshot(c),
+        target = await privateSnapshot(c, c.partner, '2025-02-01');
+      assert.equal(
+        source.availability.savings.spent_minor,
+        dispositionFirst ? 0 : 30,
+      );
+      assert.equal(
+        target.availability.savings.carry.incoming_minor,
+        dispositionFirst ? 8000 : 0,
+      );
     },
   );

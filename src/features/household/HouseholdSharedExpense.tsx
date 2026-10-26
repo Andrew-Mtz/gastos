@@ -1,3 +1,6 @@
+import { recurringOwnerKey } from '../recurring/recurring-data';
+import { savingsOwnerKey } from '../savings/savings-data';
+import { consumptionOwnerKey } from '../budget/consumption-data';
 import { sharedExpenseHistoryKey } from './shared-expense-history-data';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
@@ -16,6 +19,8 @@ import { financialDate } from '../income/income-form';
 import { readDefaultSplit } from './split-data';
 import {
   createSharedExpense,
+  sharedBudgetLabels,
+  type SharedExpenseRequest,
   mapSharedExpenseReceipt,
   readSharedExpense,
 } from './shared-expense-data';
@@ -121,10 +126,15 @@ function SharedExpenseEntry({
       : null;
   const confirmedId = confirmed?.expense_id;
   useEffect(() => {
-    if (confirmedId)
-      void client.invalidateQueries({
-        queryKey: sharedExpenseHistoryKey(profileId, householdId),
-      });
+    if (confirmedId) {
+      for (const queryKey of [
+        sharedExpenseHistoryKey(profileId, householdId),
+        recurringOwnerKey(profileId),
+        savingsOwnerKey(profileId),
+        consumptionOwnerKey(profileId),
+      ])
+        void client.invalidateQueries({ queryKey });
+    }
   }, [client, confirmedId, profileId, householdId]);
   const [editing, setEditing] = useState(false);
   const [review, setReview] = useState<SharedExpenseReview | null>(null);
@@ -137,6 +147,7 @@ function SharedExpenseEntry({
   } = useForm<SharedExpenseForm>({
     resolver: zodResolver(sharedExpenseFormSchema(currency)),
     defaultValues: {
+      budgetClassification: undefined,
       amount: '',
       date: financialDate(timezone),
       payerMemberId: '',
@@ -147,6 +158,7 @@ function SharedExpenseEntry({
     setEditing(false);
     setReview(null);
     reset({
+      budgetClassification: undefined,
       amount: '',
       date: financialDate(timezone),
       payerMemberId: '',
@@ -192,7 +204,7 @@ function SharedExpenseEntry({
       );
     }
   };
-  const submit = async (request: SharedExpenseReview['request']) => {
+  const submit = async (request: SharedExpenseRequest) => {
     const previous = client.getQueryData<PendingSharedExpense | null>(
       pendingKey,
     );
@@ -340,6 +352,12 @@ function SharedExpenseEntry({
                 )}
               </AppText>
               <AppText>Fecha: {confirmed.transaction_date}</AppText>
+              <AppText>
+                Clasificación:{' '}
+                {confirmed.budget_classification
+                  ? sharedBudgetLabels[confirmed.budget_classification]
+                  : 'Sin clasificación histórica'}
+              </AppText>
               <AppText>Pagó: {name(confirmed.payer_member_id)}</AppText>
               {!!confirmed.description && (
                 <AppText>{confirmed.description}</AppText>
@@ -416,6 +434,10 @@ function SharedExpenseEntry({
             )}
           </AppText>
           <AppText>Fecha: {review.request.transactionDate}</AppText>
+          <AppText>
+            Clasificación para todos:{' '}
+            {sharedBudgetLabels[review.request.budgetClassification]}
+          </AppText>
           <AppText>Pagó: {name(review.request.payerMemberId)}</AppText>
           {!!review.request.description && (
             <AppText>{review.request.description}</AppText>
@@ -430,8 +452,9 @@ function SharedExpenseEntry({
             </AppText>
           ))}
           <AppText>
-            Se guardará este gasto y su reparto. Esta etapa todavía no calcula
-            saldos ni afecta presupuestos personales.
+            Cada miembro consume su responsabilidad en esta clasificación, no el
+            importe que pagó. No representa una deuda ni un pago pendiente. Un
+            mes cerrado no se modifica sin reabrirlo.
           </AppText>
           <Button
             onPress={() => {
@@ -481,6 +504,38 @@ function SharedExpenseEntry({
               />
             )}
           />
+          <AppText>¿De qué apartado sale para todos?</AppText>
+          <Controller
+            control={control}
+            name="budgetClassification"
+            render={({ field }) => (
+              <>
+                {(['NEEDS', 'LEISURE'] as const).map((classification) => (
+                  <Button
+                    key={classification}
+                    accessibilityRole="radio"
+                    accessibilityLabel={sharedBudgetLabels[classification]}
+                    accessibilityState={{
+                      checked: field.value === classification,
+                    }}
+                    variant="secondary"
+                    disabled={isSubmitting}
+                    onPress={() => {
+                      field.onChange(classification);
+                      field.onBlur();
+                    }}
+                  >
+                    {sharedBudgetLabels[classification]}
+                  </Button>
+                ))}
+              </>
+            )}
+          />
+          {errors.budgetClassification && (
+            <AppText role="alert" tone="danger">
+              Selecciona Necesidades u Ocio para todos.
+            </AppText>
+          )}
           <AppText>¿Quién pagó?</AppText>
           <Controller
             control={control}

@@ -16,6 +16,7 @@ const input = {
   date: '2026-10-23',
   payerMemberId: id(41),
   description: '',
+  budgetClassification: 'NEEDS' as const,
 };
 const prepare = (
   form = input,
@@ -49,6 +50,7 @@ test.each(['OWNER', 'MEMBER'])(
       currency: 'UYU',
       transactionDate: '2026-10-23',
       description: null,
+      budgetClassification: 'NEEDS',
     });
   },
 );
@@ -210,3 +212,30 @@ test('unknown failures stay uncertain and do not expose provider text', () => {
     /solicitud original/,
   );
 });
+
+test('actor explicitly classifies once for every responsibility, independently of payer', () => {
+  const first = prepareSharedExpense(
+    id(1),
+    id(20),
+    'UYU',
+    splitSnapshot('READY'),
+    id(60),
+    { ...input, budgetClassification: 'LEISURE' },
+  );
+  expect(first.request.budgetClassification).toBe('LEISURE');
+  expect(first.responsibilities).toEqual(prepare().responsibilities);
+  expect(sameSharedExpenseRequest(first.request, prepare().request)).toBe(
+    false,
+  );
+});
+test.each([undefined, null, '', 'SAVINGS', 'needs'])(
+  'entry requires explicit supported classification %j',
+  (budgetClassification) => {
+    expect(
+      sharedExpenseFormSchema('UYU').safeParse({
+        ...input,
+        budgetClassification,
+      }).success,
+    ).toBe(false);
+  },
+);

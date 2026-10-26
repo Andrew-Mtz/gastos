@@ -12,7 +12,7 @@ create function pg_temp.history(cursor_id integer default null,page_size integer
 $$;
 create function pg_temp.create_expense(n integer,day date default '2025-01-02',money text default 'USD',revision integer default 30,version integer default 1) returns jsonb language sql as $$
  select public.create_shared_expense(pg_temp.id(n),pg_temp.id(20),pg_temp.id(41),pg_temp.id(revision),version,
- array[pg_temp.id(40),pg_temp.id(41),pg_temp.id(42)],101,money,day,'Shared history '||n);
+ array[pg_temp.id(40),pg_temp.id(41),pg_temp.id(42)],101,money,day,'Shared history '||n,'NEEDS');
 $$;
 insert into auth.users(id,email) select pg_temp.id(n),'fin209-'||n||'@example.invalid' from generate_series(1,5)n;
 insert into public.profiles(id,display_name,base_currency,timezone) select pg_temp.id(n),'History member '||n,'UYU','UTC' from generate_series(1,5)n;
@@ -82,7 +82,7 @@ select throws_ok('select public.list_shared_expenses(null)','42501',null,'Missin
 select is((select array_agg(k order by k) from jsonb_object_keys(pg_temp.history())k),
  array['expenses','household_id','members','next_cursor','profile_id'],'Exact page projection contains no aggregates or private fields');
 select is((select array_agg(k order by k) from jsonb_object_keys(pg_temp.history()#>'{expenses,0}')k),
- array['amount_minor','created_by','currency','description','expense_id','household_id','payer_member_id','profile_id','splits','template_id','template_version','transaction_date','transaction_id'],'Exact receipt projection excludes private budget, category, salary, owner and preferences');
+ array['amount_minor','budget_classification','created_by','currency','description','expense_id','household_id','payer_member_id','profile_id','splits','template_id','template_version','transaction_date','transaction_id'],'Exact receipt projection excludes private budget, category, salary, owner and preferences');
 select is(pg_temp.history()#>'{expenses,0}',public.get_shared_expense(pg_temp.id(20),pg_temp.id(99)),'List reuses point-read source exactly');
 select is(pg_temp.history()#>>'{expenses,0,splits,0,responsibility_amount_minor}','71','History shows stored rounded responsibility');
 select is(pg_temp.history()#>>'{expenses,0,payer_member_id}',pg_temp.id(41)::text,'Payer stays independent of 70-percent member');
@@ -99,7 +99,7 @@ select is(jsonb_array_length(pg_temp.history()->'expenses'),20,'B can read A hou
 select is((select description from public.transactions),'PRIVATE SALARY 2','B personal API cannot expose A salary');
 select public.save_household_default_split(pg_temp.id(31),pg_temp.id(21),0,array[pg_temp.id(43),pg_temp.id(44)],
  jsonb_build_array(jsonb_build_object('member_id',pg_temp.id(43),'basis_points',5000),jsonb_build_object('member_id',pg_temp.id(44),'basis_points',5000)));
-select public.create_shared_expense(pg_temp.id(150),pg_temp.id(21),pg_temp.id(44),pg_temp.id(31),1,array[pg_temp.id(43),pg_temp.id(44)],200,'USD','2025-01-03');
+select public.create_shared_expense(pg_temp.id(150),pg_temp.id(21),pg_temp.id(44),pg_temp.id(31),1,array[pg_temp.id(43),pg_temp.id(44)],200,'USD','2025-01-03',null,'NEEDS');
 select throws_ok('select pg_temp.history(150)','22023','Invalid household history cursor','Foreign cursor matches nonexistent/private error without enumeration');
 select is(jsonb_array_length(public.list_shared_expenses(pg_temp.id(21))->'expenses'),1,'Overlapping B reads second home separately');
 select pg_temp.set_jwt_subject(pg_temp.id(3));select is(auth.uid(),pg_temp.id(3),'C outsider to first, active in second');

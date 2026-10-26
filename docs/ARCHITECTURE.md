@@ -2515,3 +2515,22 @@ Hogar focus/background revalidation unmounts the history; cleanup aborts/removes
 queries and auth clearing prevents late-response resurrection. Only a verified FIN-208
 receipt invalidates history; history cannot settle or discard an uncertain entry.
 No new dependencies, realtime, persistent cache, generic repository or native redesign.
+
+
+## FIN-210 derived own consumption
+
+Reuse immutable shared splits and membership identity instead of creating a second
+expense ledger. A narrow private projection supplies independently visible own facts,
+including no-period/incomplete/closed-pending cases. Consumption joins only canonical
+owned keys; all existing downstream margin, savings-funding, close, disposition and
+reversal calculations inherit that complete consumption or fail closed. The unchanged
+reserve-prefix algorithm is extracted for reserve-only guards so incomplete shared
+spending cannot block valid unrelated personal facts or solvent withdrawals.
+
+Dashboard and savings context return sources with financial components in one STABLE
+statement. Close context carries current sources outside immutable v1/v2 summaries;
+new summaries additionally record recognized shared IDs. Budget consumes the dashboard
+snapshot, not independent consumption/margin/source queries. Remainder/reversal reviews
+show only their own snapshot while the parent financial summary is hidden. A separate
+owner/month source read remains available when an aggregate fails, with no dependent
+numbers alongside it. No realtime, persistent cache, framework or dependency is added.

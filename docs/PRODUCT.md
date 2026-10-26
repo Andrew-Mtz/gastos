@@ -566,6 +566,26 @@ Receivable:    UYU 300
 
 This distinction must be preserved throughout the product.
 
+FIN-210 clarification (2026-10-23, ADR-084): the member recording a shared expense
+chooses **Necesidades (NEEDS)** or **Ocio (LEISURE)** once for everyone's saved
+responsibility. This never chooses another person's private bucket/category or
+reveals their budget. Responsibility is consumption, not proof of payment or a debt.
+
+Each person sees their original amount, classification, household origin and month
+even without a period, plan or income. Explicit later setup connects that source
+without creating a duplicate personal expense. Missing canonical setup and positive
+unclassified legacy amounts remain visible, but no complete availability is invented.
+Foreign-currency responsibility remains separately visible in its original currency;
+there is no conversion or cross-currency total until FX is implemented.
+
+A closed month retains its recognized consumption and immutable closure evidence.
+New/backdated responsibility stays visible separately, pending explicit reopening,
+never automatic reopening or movement to another month. Reopening alone does not
+resolve missing classification or FX. Exact zero responsibility does not consume or
+block availability. Existing protected savings are not spent implicitly, and valid
+personal facts/solvent explicit withdrawals do not require complete spending figures.
+
+
 ---
 
 # 16. Cash Impact vs Budget Impact

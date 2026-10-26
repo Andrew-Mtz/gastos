@@ -17,6 +17,10 @@ import { formatMoney } from '../../budget/budget-setup';
 import { MarginReadError } from '../../budget/margin-read-error';
 import { createMoney } from '../../../domain/money/money';
 import { period, profile, snapshot } from './fixtures';
+jest.mock('../../budget/SharedResponsibilities', () => ({
+  ...jest.requireActual('../../budget/SharedResponsibilities'),
+  SharedResponsibilities: () => null,
+}));
 jest.mock('../dashboard-data', () => ({
   ...jest.requireActual('../dashboard-data'),
   readDashboard: jest.fn(),
@@ -139,7 +143,9 @@ test('Inicio shows a consistent actionable current month with honest labels and 
   );
 });
 test('missing period asks for setup without an invented balance', async () => {
-  jest.mocked(readDashboard).mockResolvedValue({ period: null });
+  jest
+    .mocked(readDashboard)
+    .mockResolvedValue({ period: null, sharedResponsibilities: null });
   await open();
   expect(
     await screen.findByText(/Aún no tienes un presupuesto/),
@@ -406,7 +412,9 @@ test('active month rollover cancels old request and does not display previous mo
   });
   await open();
   await screen.findByRole('progressbar');
-  jest.mocked(readDashboard).mockResolvedValue({ period: null });
+  jest
+    .mocked(readDashboard)
+    .mockResolvedValue({ period: null, sharedResponsibilities: null });
   await act(async () => {
     jest.setSystemTime(new Date('2026-11-01T00:01:00Z'));
     jest.advanceTimersByTime(60000);
@@ -460,7 +468,9 @@ test('logout and account switch cancel private reads and isolate the cache key',
   state = { status: 'UNAUTHENTICATED' };
   await view.rerender(view.tree());
   expect(signal?.aborted).toBe(true);
-  jest.mocked(readDashboard).mockResolvedValue({ period: null });
+  jest
+    .mocked(readDashboard)
+    .mockResolvedValue({ period: null, sharedResponsibilities: null });
   state = {
     status: 'AUTHENTICATED_READY',
     userId: period.id,
@@ -477,4 +487,26 @@ test('logout and account switch cancel private reads and isolate the cache key',
   expect(
     await screen.findByText(/Aún no tienes un presupuesto/),
   ).toBeOnTheScreen();
+});
+
+test('refresh from household sources hides the entire old dashboard until its same-snapshot response arrives', async () => {
+  await open();
+  await screen.findByText(/Ingresos recibidos:/);
+  let resolve!: (value: ReturnType<typeof result>) => void;
+  jest.mocked(readDashboard).mockImplementationOnce(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      }),
+  );
+  await userEvent
+    .setup()
+    .press(
+      screen.getByRole('button', { name: 'Actualizar consumo del hogar' }),
+    );
+  expect(screen.queryByText(/Ingresos recibidos:/)).not.toBeOnTheScreen();
+  expect(screen.queryByText(/Tu consumo del hogar/)).not.toBeOnTheScreen();
+  await act(async () => resolve(result()));
+  expect(await screen.findByText(/Ingresos recibidos:/)).toBeOnTheScreen();
+  expect(screen.getByText(/Tu consumo del hogar/)).toBeOnTheScreen();
 });

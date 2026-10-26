@@ -1,3 +1,5 @@
+import { SharedResponsibilitiesSummary } from '../budget/SharedResponsibilities';
+import { AppState } from 'react-native';
 import { useCallback, useRef, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { randomUUID } from 'expo-crypto';
@@ -59,21 +61,37 @@ function PersonalSavings({ profile }: { profile: Profile }) {
     period: BudgetPeriod;
   } | null>(null);
   const active = useRef(false);
+  const [visible, setVisible] = useState(false);
   const activeEditor = useRef<string | null>(null);
   useFocusEffect(
     useCallback(() => {
-      active.current = true;
-
-      const nextMonth = currentMonth(profile.timezone);
-      setMonth(nextMonth);
-      void client.invalidateQueries({
-        queryKey: savingsKey(profile.id, nextMonth),
-      });
-      return () => {
+      const resume = () => {
+        active.current = true;
+        const nextMonth = currentMonth(profile.timezone);
+        setMonth(nextMonth);
+        void client.invalidateQueries({
+          queryKey: savingsKey(profile.id, nextMonth),
+        });
+        setVisible(true);
+      };
+      const hide = () => {
         active.current = false;
-
+        setVisible(false);
         setEditing(null);
         activeEditor.current = null;
+        void client.cancelQueries({ queryKey: savingsOwnerKey(profile.id) });
+      };
+      if (
+        AppState.currentState !== 'background' &&
+        AppState.currentState !== 'inactive'
+      )
+        resume();
+      const listener = AppState.addEventListener('change', (state) =>
+        state === 'active' ? resume() : hide(),
+      );
+      return () => {
+        listener.remove();
+        hide();
       };
     }, [client, profile.id, profile.timezone]),
   );
@@ -81,7 +99,9 @@ function PersonalSavings({ profile }: { profile: Profile }) {
   const query = useQuery({
     queryKey: key,
     queryFn: ({ signal }) => readSavingsMonth(profile.id, month, signal),
+    enabled: visible,
   });
+  if (!visible) return null;
   if (query.isPending) return <LoadingState label="Cargando ahorro…" />;
   if (query.isError)
     return (
@@ -92,8 +112,15 @@ function PersonalSavings({ profile }: { profile: Profile }) {
         }}
       />
     );
-  const { period, availability, configured, goalReserved, unassignedSavings } =
-    query.data;
+  const {
+    period,
+    availability,
+    protectedSavings,
+    sharedResponsibilities,
+    configured,
+    goalReserved,
+    unassignedSavings,
+  } = query.data;
   const targetPeriod = pending?.period ?? period;
   if (editing && targetPeriod)
     return (
@@ -151,13 +178,21 @@ function PersonalSavings({ profile }: { profile: Profile }) {
     <Screen scroll>
       <AppText variant="title">Ahorro personal</AppText>
       <AppText variant="section">Ahorro · {month.slice(0, 7)}</AppText>
+      {!query.isFetching && sharedResponsibilities && (
+        <SharedResponsibilitiesSummary
+          data={sharedResponsibilities}
+          onRefresh={() => {
+            void query.refetch();
+          }}
+        />
+      )}
       {query.isFetching ? (
         <LoadingState label="Actualizando ahorro…" />
-      ) : period && availability ? (
+      ) : period && protectedSavings ? (
         <>
           <AppText>
             Ahorro protegido acumulado hasta este mes:{' '}
-            {formatMoney(availability.protectedSavings)}
+            {formatMoney(protectedSavings)}
           </AppText>
           {goalReserved && unassignedSavings && (
             <>
@@ -171,10 +206,18 @@ function PersonalSavings({ profile }: { profile: Profile }) {
               </AppText>
             </>
           )}
-          <AppText>
-            Resto ordinario del mes antes de compromisos:{' '}
-            {formatMoney(availability.ordinaryRemainderBeforeCommitments)}
-          </AppText>
+          {availability ? (
+            <AppText>
+              Resto ordinario del mes antes de compromisos:{' '}
+              {formatMoney(availability.ordinaryRemainderBeforeCommitments)}
+            </AppText>
+          ) : (
+            <AppText role="alert" tone="warning">
+              Saldo y cupo para aportes incompletos por responsabilidad del
+              hogar pendiente de aplicar. La reserva protegida sigue visible; un
+              retiro explícito solvente no supone un margen disponible.
+            </AppText>
+          )}
           <AppText>
             El resto incluye arrastres explícitos recibidos menos enviados, sin
             convertirlos en ingresos ni ahorrar su porcentaje otra vez. Los
@@ -210,7 +253,7 @@ function PersonalSavings({ profile }: { profile: Profile }) {
         !query.isFetching && (
           <>
             <Button
-              disabled={!configured}
+              disabled={!configured || !availability}
               onPress={() => {
                 const id = randomUUID();
                 setMovementType('SAVINGS_CONTRIBUTION');

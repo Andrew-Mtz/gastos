@@ -8,6 +8,7 @@ export function closeContext() {
   summary.upcoming = [];
   const p = { ...summary.period, lifecycle_version: 0 };
   return {
+    shared_responsibilities: summary.shared_responsibilities,
     owner_profile_id: profile.id,
     month: period.starts_on,
     period: p,
@@ -47,6 +48,13 @@ export function closedContext() {
   return {
     ...row,
     period: { ...row.period, status: 'CLOSED', lifecycle_version: 1 },
+    shared_responsibilities: {
+      ...row.shared_responsibilities,
+      period: {
+        ...row.shared_responsibilities.period,
+        status: 'CLOSED' as const,
+      },
+    },
     closure: saved,
     can_close: false,
     reopen_hash: 'b'.repeat(32),

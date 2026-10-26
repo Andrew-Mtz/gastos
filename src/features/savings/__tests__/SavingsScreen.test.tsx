@@ -40,6 +40,17 @@ let focus: (() => void | (() => void)) | undefined;
 let blur: void | (() => void);
 const isCurrentUser = jest.fn(() => true);
 const data = {
+  sharedResponsibilities: {
+    owner_profile_id: profile.id,
+    month: period.starts_on,
+    period: {
+      id: period.id,
+      status: period.status,
+      base_currency: period.base_currency,
+    },
+    entries: [],
+  },
+  protectedSavings: createMoney(40000, 'USD'),
   period,
   configured: true,
   carry: {
@@ -343,4 +354,28 @@ test('an older replay completion cannot dismiss a newly opened draft', async () 
   expect(
     screen.getByRole('button', { name: 'Revisar retiro' }),
   ).toBeOnTheScreen();
+});
+
+test('incomplete spending does not hide protected saving or solvent withdrawal and never offers contribution capacity', async () => {
+  jest
+    .mocked(readSavingsMonth)
+    .mockResolvedValue({ ...data, availability: null });
+  await openScreen();
+  expect(screen.getByText(/Ahorro protegido acumulado/)).toHaveTextContent(
+    /400,00/,
+  );
+  expect(
+    screen.getByText(/Saldo y cupo para aportes incompletos/),
+  ).toBeOnTheScreen();
+  expect(
+    screen.queryByText(/Resto ordinario del mes antes/),
+  ).not.toBeOnTheScreen();
+  expect(
+    screen.getByRole('button', { name: 'Aportar a ahorro' }),
+  ).toBeDisabled();
+  expect(
+    screen.getByRole('button', { name: 'Retirar de ahorro' }),
+  ).toBeEnabled();
+  await begin(true);
+  expect(screen.getByLabelText('Importe (USD)')).toBeOnTheScreen();
 });

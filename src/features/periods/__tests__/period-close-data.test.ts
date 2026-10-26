@@ -134,6 +134,10 @@ test('legacy closed evidence is absent rather than invented from current recompu
 test('missing period is explicit and cannot close', () => {
   const result = mapPeriodClose(profile.id, period.starts_on, {
     ...closeContext(),
+    shared_responsibilities: {
+      ...closeContext().shared_responsibilities,
+      period: null,
+    },
     period: null,
   });
   expect(result.period).toBeNull();
@@ -296,4 +300,39 @@ test('history rejects foreign owner, duplicate lifecycle and inconsistent origin
 test('reopen rejection and uncertain messages distinguish fresh review from same-request recovery', () => {
   expect(reopenErrorMessage({ code: '40001' })).toContain('vuelve a revisar');
   expect(reopenErrorMessage(new Error('Offline'))).toContain('misma solicitud');
+});
+
+test('OPEN preview rejects a newer or incomplete source envelope next to older financial summary', () => {
+  const row = closeContext();
+  const entry = {
+    expense_id: 'f2100000-0000-4000-8000-000000000050',
+    household_id: 'f2100000-0000-4000-8000-000000000020',
+    household_name: 'Casa',
+    transaction_date: '2026-10-02',
+    description: null,
+    budget_classification: 'NEEDS',
+    responsibility_amount_minor: 100,
+    currency: 'USD',
+    application_status: 'APPLIED',
+    included_in_closed_period: null,
+  };
+  for (const source of [
+    entry,
+    { ...entry, currency: 'UYU', application_status: 'OTHER_CURRENCY' },
+  ])
+    expect(() =>
+      mapPeriodClose(profile.id, period.starts_on, {
+        ...row,
+        shared_responsibilities: {
+          ...row.shared_responsibilities,
+          entries: [source],
+        },
+      }),
+    ).toThrow();
+  expect(() =>
+    mapPeriodClose(profile.id, period.starts_on, {
+      ...row,
+      shared_responsibilities: undefined,
+    }),
+  ).toThrow();
 });

@@ -251,7 +251,8 @@ function PersonalGoals({ profile }: { profile: Profile }) {
                 !pending &&
                 query.data.period?.status === 'OPEN' &&
                 query.data.period.base_currency === goal.currency &&
-                query.data.configured
+                query.data.configured &&
+                !!query.data.availability
               }
               canWithdraw={
                 !pending &&

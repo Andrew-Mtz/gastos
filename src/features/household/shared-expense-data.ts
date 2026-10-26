@@ -12,9 +12,15 @@ const description = z
   .string()
   .refine((value) => Array.from(value).length <= 500)
   .nullable();
+export const sharedBudgetClassificationSchema = z.enum(['NEEDS', 'LEISURE']);
+export const sharedBudgetLabels = {
+  NEEDS: 'Necesidades',
+  LEISURE: 'Ocio',
+} as const;
+
 const version = z.number().int().min(1).max(2147483647);
 
-// Persistence input: FIN-208 restricts new entry to household currency, no category.
+// Shared classification is public; personal buckets and categories never enter this DTO.
 // Caller supplies template identity, never authoritative responsibility amounts.
 export const sharedExpenseRequestSchema = z
   .strictObject({
@@ -28,6 +34,10 @@ export const sharedExpenseRequestSchema = z
     currency,
     transactionDate: date,
     description,
+    // Missing/null is only for authorized pre-FIN-210 exact replay; SQL rejects new inserts.
+    budgetClassification: sharedBudgetClassificationSchema
+      .nullable()
+      .default(null),
   })
   .superRefine((value, ctx) => {
     if (
@@ -53,6 +63,7 @@ const expenseSchema = z.strictObject({
   currency,
   transaction_date: date,
   description,
+  budget_classification: sharedBudgetClassificationSchema.nullable(),
   splits: z
     .array(
       z.strictObject({
@@ -122,6 +133,7 @@ export function mapSharedExpenseReceipt(
     result.currency !== request.currency ||
     result.transaction_date !== request.transactionDate ||
     result.description !== request.description ||
+    result.budget_classification !== request.budgetClassification ||
     !sameHouseholdRoster(
       request.roster,
       result.splits.map((share) => share.member_id),
@@ -148,6 +160,7 @@ export async function createSharedExpense(
     p_amount_minor: request.amountMinor,
     p_currency: request.currency,
     p_transaction_date: request.transactionDate,
+    p_budget_classification: request.budgetClassification,
     ...(request.description === null
       ? {}
       : { p_description: request.description }),

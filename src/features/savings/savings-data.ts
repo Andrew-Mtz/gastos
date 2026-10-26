@@ -3,7 +3,9 @@ import { createMoney } from '../../domain/money/money';
 import { supabase } from '../../infrastructure/supabase/client';
 import { calculateSavingsAvailability } from '../../domain/savings/savings-availability';
 import { createTransaction } from '../../domain/transaction/transaction';
-import { readBudget } from '../budget/budget-data';
+import { periodSchema } from '../budget/budget-setup';
+import { mapSharedResponsibilities } from '../budget/shared-responsibility-data';
+import { recurringMonthSchema } from '../recurring/recurring-form';
 import {
   currencyDigits,
   parseDecimal,
@@ -71,20 +73,51 @@ export function parseSavingsSummary(data: unknown, snapshotVersion: 1 | 2 = 2) {
     },
   };
 }
-export async function readSavingsMonth(
+const reserveSchema = legacySavingsSummarySchema.omit({ spent_minor: true });
+export function mapSavingsContext(
   profileId: string,
   month: string,
-  signal?: AbortSignal,
+  value: unknown,
 ) {
-  const { period } = await readBudget(profileId, month, signal);
-  if (!period) return { period: null, availability: null, configured: false };
-  const query = supabase.rpc('get_savings_availability', {
-    p_budget_period_id: period.id,
-  });
-  const { data, error } = await (signal ? query.abortSignal(signal) : query);
-  if (error) throw error;
-  const row = parseSavingsSummary(data);
+  const data = z
+    .object({
+      owner_profile_id: z.uuid(),
+      month: recurringMonthSchema,
+      period: periodSchema.nullable(),
+      reserve: reserveSchema.nullable(),
+      availability: z.unknown(),
+      shared_responsibilities: z.unknown(),
+    })
+    .parse(value);
+  if (data.owner_profile_id !== profileId || data.month !== month)
+    throw new Error('Savings context identity mismatch.');
+  const sharedResponsibilities = mapSharedResponsibilities(
+    profileId,
+    month,
+    data.shared_responsibilities,
+  );
+  const period = data.period;
   if (
+    sharedResponsibilities.period?.id !== period?.id ||
+    sharedResponsibilities.period?.status !== period?.status ||
+    sharedResponsibilities.period?.base_currency !== period?.base_currency
+  )
+    throw new Error('Savings source context mismatch.');
+  if (!period) {
+    if (data.reserve !== null || data.availability !== null)
+      throw new Error('Missing period cannot have savings.');
+    return {
+      period: null,
+      availability: null,
+      protectedSavings: null,
+      configured: false,
+      sharedResponsibilities,
+    } as const;
+  }
+  const row = reserveSchema.parse(data.reserve);
+  if (
+    period.profile_id !== profileId ||
+    period.starts_on !== month ||
     row.budget_period_id !== period.id ||
     row.base_currency !== period.base_currency
   )
@@ -95,22 +128,29 @@ export async function readSavingsMonth(
     row.contributions_minor -
     row.withdrawals_minor;
   if (
+    !Number.isSafeInteger(protectedMinor) ||
+    protectedMinor < 0 ||
     !Number.isSafeInteger(
       row.goal_reserved_minor + row.unassigned_savings_minor,
     ) ||
     row.goal_reserved_minor + row.unassigned_savings_minor !== protectedMinor
   )
     throw new Error('Goal reserves must partition protected savings.');
-  return {
-    goalReserved: createMoney(row.goal_reserved_minor, row.base_currency),
-    unassignedSavings: createMoney(
-      row.unassigned_savings_minor,
-      row.base_currency,
-    ),
-    period,
-    configured: row.configured,
-    carry: row.carry,
-    availability: calculateSavingsAvailability(
+  const incomplete =
+    period.status === 'OPEN' &&
+    sharedResponsibilities.entries.some(
+      (e) =>
+        e.responsibility_amount_minor > 0 && e.application_status !== 'APPLIED',
+    );
+  if ((data.availability === null) !== incomplete)
+    throw new Error('Savings completeness mismatch.');
+  let availability = null;
+  if (data.availability !== null) {
+    const full = parseSavingsSummary(data.availability);
+    for (const key of Object.keys(row) as (keyof typeof row)[])
+      if (full[key] !== row[key])
+        throw new Error('Savings reserve disagrees with availability.');
+    availability = calculateSavingsAvailability(
       row.base_currency,
       {
         openingProtectedMinor: row.opening_protected_minor,
@@ -118,14 +158,39 @@ export async function readSavingsMonth(
         contributionsMinor: row.contributions_minor,
         withdrawalsMinor: row.withdrawals_minor,
         spendableAllocatedMinor: row.spendable_allocated_minor,
-        spentMinor: row.spent_minor,
+        spentMinor: full.spent_minor,
       },
       {
-        incomingMinor: row.carry.incoming_minor,
-        outgoingMinor: row.carry.outgoing_minor,
+        incomingMinor: full.carry.incoming_minor,
+        outgoingMinor: full.carry.outgoing_minor,
       },
+    );
+  }
+  return {
+    period,
+    sharedResponsibilities,
+    configured: row.configured,
+    availability,
+    protectedSavings: createMoney(protectedMinor, row.base_currency),
+    goalReserved: createMoney(row.goal_reserved_minor, row.base_currency),
+    unassignedSavings: createMoney(
+      row.unassigned_savings_minor,
+      row.base_currency,
     ),
   };
+}
+export async function readSavingsMonth(
+  profileId: string,
+  month: string,
+  signal?: AbortSignal,
+) {
+  z.uuid().parse(profileId);
+  const query = supabase.rpc('get_personal_savings_context', {
+    p_month: recurringMonthSchema.parse(month),
+  });
+  const { data, error } = await (signal ? query.abortSignal(signal) : query);
+  if (error) throw error;
+  return mapSavingsContext(profileId, month, data);
 }
 export async function registerSavings(
   period: BudgetPeriod,

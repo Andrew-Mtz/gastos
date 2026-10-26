@@ -70,9 +70,9 @@ export function BucketConsumption({
         <AppText>Aún no hay fondos con gastos en este período.</AppText>
       )}
       <AppText>
-        Solo gastos personales registrados, sin movimientos de ahorro ni
-        registros eliminados. No es un saldo restante ni dinero seguro para
-        gastar.
+        Incluye gastos personales y tu responsabilidad del hogar, sin duplicarla
+        ni incluir movimientos de ahorro o registros eliminados. No es un saldo
+        restante ni dinero seguro para gastar.
       </AppText>
     </View>
   );

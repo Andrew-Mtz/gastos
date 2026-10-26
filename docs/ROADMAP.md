@@ -1916,6 +1916,13 @@ User responsibility: 700
 Budget impact: 700
 ```
 
+Implementation prepared under ADR-084: one NEEDS/LEISURE choice, own responsibility
+only, no automatic private setup, explicit incomplete/foreign/legacy facts, immutable
+closed evidence with later sources pending reopen, and owner-only former-member facts.
+Exact-head CI, authentic generated database types and final source review remain
+required completion gates. No native QA, publication, merge,
+cash movement, debt or FX completion is implied.
+
 ---
 
 ## FIN-211 — Cash Impact From Shared Expenses
