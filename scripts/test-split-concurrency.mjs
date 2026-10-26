@@ -628,7 +628,12 @@ for (const separateHouseholds of [false, true])
     async (c) => {
       let other = c
         .expense(c.otherExpenseId)
-        .replace(auth(c.actor), auth(c.partner));
+        // A callback preserves SQL dollar quoting instead of expanding JS replacement tokens.
+        .replace(auth(c.actor), () => auth(c.partner));
+      assert.ok(
+        other.includes(auth(c.partner)),
+        'Preserve the full actor authorization block',
+      );
       if (separateHouseholds) {
         const home = randomUUID(),
           memberA = randomUUID(),
@@ -691,9 +696,14 @@ await sharedFixtures(
       { marker: 'FIN210_HELD', hold: true },
     );
     await blocker.ready;
-    const outsider = c.start(
-      `begin;${c.expense().replace(auth(c.actor), auth(c.entrant))}commit;`,
+    const outsiderSql = c
+      .expense()
+      .replace(auth(c.actor), () => auth(c.entrant));
+    assert.ok(
+      outsiderSql.includes(auth(c.entrant)),
+      'Preserve the full outsider authorization block',
     );
+    const outsider = c.start(`begin;${outsiderSql}commit;`);
     const result = await Promise.race([
       outsider.result,
       new Promise((_, reject) =>
