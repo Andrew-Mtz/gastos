@@ -1,3 +1,4 @@
+import { MonthlyBudgetImpact } from '../MonthlyBudgetImpact';
 import {
   act,
   render,
@@ -21,6 +22,9 @@ import {
   consumptionOwnerKey,
 } from '../consumption-data';
 import { createMoney } from '../../../domain/money/money';
+jest.mock('../MonthlyBudgetImpact', () => ({
+  MonthlyBudgetImpact: jest.fn(() => null),
+}));
 jest.mock('../consumption-data', () => ({
   ...jest.requireActual('../consumption-data'),
   readBucketConsumption: jest.fn(),
@@ -552,7 +556,11 @@ test('a period without active allocations still shows spending and manual refres
       <BudgetScreen />
     </QueryClientProvider>,
   );
-  expect(await screen.findByText(/Total gastado:/)).toBeOnTheScreen();
+  await screen.findByRole('button', { name: 'Configurar presupuesto' });
+  expect(MonthlyBudgetImpact).toHaveBeenCalledWith(
+    expect.objectContaining({ owner: profile.id, refreshingPlan: false }),
+    undefined,
+  );
   await userEvent
     .setup()
     .press(screen.getByRole('button', { name: 'Actualizar' }));
@@ -564,7 +572,7 @@ test('a period without active allocations still shows spending and manual refres
   ).not.toBeOnTheScreen();
 });
 
-test('overspending stays visible without taking from the protected allocation, and logout hides it', async () => {
+test('snapshot-based impact is mounted beside protected received allocation, and logout hides both', async () => {
   jest.mocked(readBudget).mockResolvedValue({
     period: {
       id: 'f1140000-0000-4000-8000-000000000001',
@@ -596,8 +604,10 @@ test('overspending stays visible without taking from the protected allocation, a
     </QueryClientProvider>
   );
   const view = await render(tree());
-  expect(await screen.findByText(/Total gastado:/)).toHaveTextContent(
-    /1.600,00/,
+  await screen.findByText(/Presupuesto guardado/);
+  expect(MonthlyBudgetImpact).toHaveBeenCalledWith(
+    expect.objectContaining({ owner: profile.id, refreshingPlan: false }),
+    undefined,
   );
   expect(
     await screen.findByText(/Ahorro protegido asignado:/),

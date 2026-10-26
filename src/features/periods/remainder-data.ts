@@ -234,6 +234,7 @@ export function mapReversal(
       (saved) => JSON.stringify(saved) === JSON.stringify(d),
     ) ||
     !destination.period ||
+    !destination.sharedResponsibilities ||
     d.destination_period_id !== destination.period.id
   )
     throw new Error('Reversal references mismatch.');

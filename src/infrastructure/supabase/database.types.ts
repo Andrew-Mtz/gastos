@@ -858,6 +858,7 @@ export type Database = {
       };
       shared_expenses: {
         Row: {
+          budget_classification: string | null;
           household_id: string;
           id: string;
           payer_member_id: string;
@@ -867,6 +868,7 @@ export type Database = {
           transaction_id: string;
         };
         Insert: {
+          budget_classification?: string | null;
           household_id: string;
           id: string;
           payer_member_id: string;
@@ -876,6 +878,7 @@ export type Database = {
           transaction_id: string;
         };
         Update: {
+          budget_classification?: string | null;
           household_id?: string;
           id?: string;
           payer_member_id?: string;
@@ -1215,6 +1218,7 @@ export type Database = {
       create_shared_expense: {
         Args: {
           p_amount_minor: number;
+          p_budget_classification?: string;
           p_currency: string;
           p_description?: string;
           p_household_id: string;
@@ -1237,6 +1241,10 @@ export type Database = {
       };
       get_my_household_invitations: { Args: never; Returns: Json };
       get_my_household_memberships: { Args: never; Returns: Json };
+      get_my_shared_responsibilities: {
+        Args: { p_month: string };
+        Returns: Json;
+      };
       get_personal_carry: {
         Args: { p_budget_period_id: string };
         Returns: Json;
@@ -1254,6 +1262,10 @@ export type Database = {
         Args: { p_month: string };
         Returns: Json;
       };
+      get_personal_protected_reserve: {
+        Args: { p_budget_period_id: string };
+        Returns: Json;
+      };
       get_personal_recurring_month: {
         Args: { p_month: string };
         Returns: Json;
@@ -1264,6 +1276,10 @@ export type Database = {
       };
       get_personal_safe_to_spend: {
         Args: { p_budget_period_id: string };
+        Returns: Json;
+      };
+      get_personal_savings_context: {
+        Args: { p_month: string };
         Returns: Json;
       };
       get_personal_savings_goals: {

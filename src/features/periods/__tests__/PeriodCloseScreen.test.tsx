@@ -43,6 +43,10 @@ import {
   reversalContext,
   reversalResult,
 } from './remainder-fixtures';
+jest.mock('../../budget/SharedResponsibilities', () => ({
+  ...jest.requireActual('../../budget/SharedResponsibilities'),
+  SharedResponsibilities: () => null,
+}));
 jest.mock('../remainder-data', () => ({
   ...jest.requireActual('../remainder-data'),
   readRemainder: jest.fn(),
@@ -644,6 +648,7 @@ test('reversal blocked by destination state never offers confirmation', async ()
   const raw = reversalContext();
   raw.can_reverse = false;
   raw.destination.period.status = 'CLOSED';
+  raw.destination.shared_responsibilities.period.status = 'CLOSED';
   jest
     .mocked(readPeriodClose)
     .mockResolvedValue(
@@ -711,4 +716,30 @@ test('uncertain combined reversal survives real remount without a new source reo
   expect(reverseCarry).toHaveBeenLastCalledWith(request);
   expect(reverseCarry).toHaveBeenCalledTimes(2);
   expect(reopenPeriod).not.toHaveBeenCalled();
+});
+
+test('refresh from household sources hides closure capacity and sources together', async () => {
+  await open();
+  await screen.findByRole('button', { name: 'Revisar cierre' });
+  let resolve!: (value: ReturnType<typeof mapped>) => void;
+  jest.mocked(readPeriodClose).mockImplementationOnce(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      }),
+  );
+  await userEvent
+    .setup()
+    .press(
+      screen.getByRole('button', { name: 'Actualizar consumo del hogar' }),
+    );
+  expect(
+    screen.queryByRole('button', { name: 'Revisar cierre' }),
+  ).not.toBeOnTheScreen();
+  expect(screen.queryByText(/Tu consumo del hogar/)).not.toBeOnTheScreen();
+  await act(async () => resolve(mapped()));
+  expect(
+    await screen.findByRole('button', { name: 'Revisar cierre' }),
+  ).toBeOnTheScreen();
+  expect(screen.getByText(/Tu consumo del hogar/)).toBeOnTheScreen();
 });

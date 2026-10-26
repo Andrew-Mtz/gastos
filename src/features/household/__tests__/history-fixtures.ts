@@ -18,6 +18,7 @@ export const historyExpense = (
   currency: 'USD',
   transaction_date: date,
   description: `Gasto ${n}`,
+  budget_classification: 'NEEDS',
   splits: [
     {
       member_id: historyId(40),

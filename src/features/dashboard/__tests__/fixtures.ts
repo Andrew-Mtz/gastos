@@ -4,6 +4,16 @@ export function snapshot() {
   const spendable = 'f1040000-0000-4000-8000-000000000001';
   const savings = 'f1040000-0000-4000-8000-000000000002';
   return {
+    shared_responsibilities: {
+      owner_profile_id: profile.id,
+      month: period.starts_on,
+      period: {
+        id: period.id,
+        status: period.status,
+        base_currency: period.base_currency,
+      },
+      entries: [],
+    },
     snapshot_version: 2 as const,
     owner_profile_id: profile.id,
     month: period.starts_on,

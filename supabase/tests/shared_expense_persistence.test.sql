@@ -16,19 +16,19 @@ create function pg_temp.shares(a integer default 7000,b integer default 3000,c i
 $$;
 create function pg_temp.create_expense(n integer,amount bigint default 101,payer integer default 41,template integer default 30,version integer default 1)
 returns jsonb language sql as $$ select public.create_shared_expense(pg_temp.id(n),pg_temp.id(20),pg_temp.id(payer),
-  pg_temp.id(template),version,pg_temp.roster(),amount,'USD','2025-01-02',null); $$;
+  pg_temp.id(template),version,pg_temp.roster(),amount,'USD','2025-01-02',null,'NEEDS'); $$;
 create function pg_temp.personal_snapshot(n integer) returns jsonb language sql as $$
  select jsonb_build_object(
  'income',public.get_received_income(pg_temp.id(100+n)),
  'consumption',public.get_bucket_consumption(pg_temp.id(100+n)),
  'savings',public.get_savings_availability(pg_temp.id(100+n)),
- 'goals',public.get_personal_savings_goals('2025-01-01'),
- 'recurring',public.get_personal_recurring_month('2025-01-01'),
+ 'goals',public.get_personal_savings_goals('2024-12-01'),
+ 'recurring',public.get_personal_recurring_month('2024-12-01'),
  'commitments',public.get_personal_committed_money(pg_temp.id(100+n)),
  'availability',public.get_personal_safe_to_spend(pg_temp.id(100+n)),
- 'dashboard',public.get_personal_dashboard('2025-01-01'),
- 'close',public.get_personal_period_close_context('2025-01-01'),
- 'remainder',public.get_personal_remainder_context('2025-01-01'),
+ 'dashboard',public.get_personal_dashboard('2024-12-01'),
+ 'close',public.get_personal_period_close_context('2024-12-01'),
+ 'remainder',public.get_personal_remainder_context('2024-12-01'),
  'carry',public.get_personal_carry(pg_temp.id(100+n)));
 $$;
 create temp table before_personal(profile_id uuid primary key,value jsonb);
@@ -40,16 +40,16 @@ insert into public.households(id,name,default_currency,created_by) values
  (pg_temp.id(20),'Shared first','USD',pg_temp.id(5)),(pg_temp.id(21),'Separate second','UYU',pg_temp.id(2)),
  (pg_temp.id(22),'Unconfigured home','USD',pg_temp.id(1));
 insert into public.household_members(id,household_id,profile_id,role,joined_at,left_at) values
- (pg_temp.id(40),pg_temp.id(20),pg_temp.id(1),'OWNER','2025-01-01',null),
- (pg_temp.id(41),pg_temp.id(20),pg_temp.id(2),'MEMBER','2025-01-01',null),
- (pg_temp.id(42),pg_temp.id(20),pg_temp.id(7),'MEMBER','2025-01-01',null),
- (pg_temp.id(43),pg_temp.id(20),pg_temp.id(4),'MEMBER','2025-01-01','2025-02-01'),
- (pg_temp.id(44),pg_temp.id(21),pg_temp.id(2),'OWNER','2025-01-01',null),
- (pg_temp.id(45),pg_temp.id(21),pg_temp.id(3),'MEMBER','2025-01-01',null),
- (pg_temp.id(46),pg_temp.id(22),pg_temp.id(1),'OWNER','2025-01-01',null);
+ (pg_temp.id(40),pg_temp.id(20),pg_temp.id(1),'OWNER','2024-12-01',null),
+ (pg_temp.id(41),pg_temp.id(20),pg_temp.id(2),'MEMBER','2024-12-01',null),
+ (pg_temp.id(42),pg_temp.id(20),pg_temp.id(7),'MEMBER','2024-12-01',null),
+ (pg_temp.id(43),pg_temp.id(20),pg_temp.id(4),'MEMBER','2024-12-01','2025-02-01'),
+ (pg_temp.id(44),pg_temp.id(21),pg_temp.id(2),'OWNER','2024-12-01',null),
+ (pg_temp.id(45),pg_temp.id(21),pg_temp.id(3),'MEMBER','2024-12-01',null),
+ (pg_temp.id(46),pg_temp.id(22),pg_temp.id(1),'OWNER','2024-12-01',null);
 -- Nonempty, distinguishable personal sources for actor A and payer/actor B.
 insert into public.budget_periods(id,profile_id,starts_on,ends_on,base_currency)
- select pg_temp.id(100+n),pg_temp.id(n),'2025-01-01','2025-01-31','USD' from generate_series(1,2)n;
+ select pg_temp.id(100+n),pg_temp.id(n),'2024-12-01','2024-12-31','USD' from generate_series(1,2)n;
 insert into public.budget_buckets(id,profile_id,name,type)
  select pg_temp.id(110+n),pg_temp.id(n),'Private bucket','SPENDABLE' from generate_series(1,2)n;
 insert into public.categories(id,profile_id,name,budget_bucket_id)
@@ -57,9 +57,9 @@ insert into public.categories(id,profile_id,name,budget_bucket_id)
 insert into public.budget_allocations(budget_period_id,budget_bucket_id,percentage_basis_points)
  select pg_temp.id(100+n),pg_temp.id(110+n),10000 from generate_series(1,2)n;
 insert into public.transactions(id,owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date)
- select pg_temp.id(130+n),pg_temp.id(n),pg_temp.id(100+n),'INCOME',10000*n,'USD','2025-01-01' from generate_series(1,2)n;
+ select pg_temp.id(130+n),pg_temp.id(n),pg_temp.id(100+n),'INCOME',10000*n,'USD','2024-12-01' from generate_series(1,2)n;
 insert into public.transactions(id,owner_profile_id,budget_period_id,type,amount_minor,currency,transaction_date,category_id)
- select pg_temp.id(140+n),pg_temp.id(n),pg_temp.id(100+n),'EXPENSE',100*n,'USD','2025-01-02',pg_temp.id(120+n) from generate_series(1,2)n;
+ select pg_temp.id(140+n),pg_temp.id(n),pg_temp.id(100+n),'EXPENSE',100*n,'USD','2024-12-02',pg_temp.id(120+n) from generate_series(1,2)n;
 set constraints all immediate;
 set constraints all deferred;
 
@@ -88,7 +88,7 @@ insert into before_personal values(auth.uid(),pg_temp.personal_snapshot(1));
 select throws_ok('select pg_temp.create_expense(50)','40001',null,'Unconfigured never invents a default');
 select public.save_household_default_split(pg_temp.id(30),pg_temp.id(20),0,pg_temp.roster(),pg_temp.shares());
 -- FIN-208 adds a new-entry currency constraint without broadening any capability.
-select throws_ok($$select public.create_shared_expense(pg_temp.id(60),pg_temp.id(20),pg_temp.id(41),pg_temp.id(30),1,pg_temp.roster(),101,'UYU','2025-01-02')$$,'23514',null,'New entry rejects currency different from household');
+select throws_ok($$select public.create_shared_expense(pg_temp.id(60),pg_temp.id(20),pg_temp.id(41),pg_temp.id(30),1,pg_temp.roster(),101,'UYU','2025-01-02',null,'NEEDS')$$,'23514',null,'New entry rejects currency different from household');
 reset role;
 select is((select count(*) from public.transactions where id=pg_temp.id(60)),0::bigint,'Currency rejection leaves no transaction');
 select is((select count(*) from public.shared_expenses where id=pg_temp.id(60)),0::bigint,'Currency rejection leaves no header');
@@ -104,23 +104,23 @@ select is(pg_temp.create_expense(50)#>>'{splits,0,responsibility_amount_minor}',
 select is(pg_temp.create_expense(50)#>>'{splits,1,responsibility_amount_minor}','30','Payer responsibility is not total paid');
 select is(pg_temp.create_expense(50)#>>'{splits,2,responsibility_amount_minor}','0','Zero responsibility remains explicit');
 select is((select array_agg(k order by k) from jsonb_object_keys(pg_temp.create_expense(50))k),
- array['amount_minor','created_by','currency','description','expense_id','household_id','payer_member_id','profile_id','splits','template_id','template_version','transaction_date','transaction_id'],'Exact minimized projection: no private periods, preferences or categories');
+ array['amount_minor','budget_classification','created_by','currency','description','expense_id','household_id','payer_member_id','profile_id','splits','template_id','template_version','transaction_date','transaction_id'],'Exact minimized projection: no private periods, preferences or categories');
 select is((select count(*) from public.transactions where id=pg_temp.id(50)),0::bigint,'Even author cannot expose shared through personal transaction API');
-select is(pg_temp.personal_snapshot(1),(select value from before_personal where profile_id=auth.uid()),'All personal reads unchanged by shared creation');
+select is(pg_temp.personal_snapshot(1),(select value from before_personal where profile_id=auth.uid()),'Earlier personal month unchanged by shared creation');
 select throws_ok('select pg_temp.create_expense(50,102)','23505',null,'Changed amount cannot reuse identity');
 select throws_ok('select pg_temp.create_expense(50,101,40)','23505',null,'Changed payer cannot reuse identity');
 select throws_ok('select pg_temp.create_expense(50,101,41,31,2)','23505',null,'Changed template cannot reuse identity');
-select throws_ok($$select public.create_shared_expense(pg_temp.id(50),pg_temp.id(20),pg_temp.id(41),pg_temp.id(30),1,pg_temp.roster(),101,'UYU','2025-01-02')$$,'23505',null,'Currency replay mismatch');
-select throws_ok($$select public.create_shared_expense(pg_temp.id(50),pg_temp.id(20),pg_temp.id(41),pg_temp.id(30),1,pg_temp.roster(),101,'USD','2025-01-03')$$,'23505',null,'Date replay mismatch');
-select throws_ok($$select public.create_shared_expense(pg_temp.id(50),pg_temp.id(20),pg_temp.id(41),pg_temp.id(30),1,pg_temp.roster(),101,'USD','2025-01-02','')$$,'23505',null,'Null and empty original description differ');
+select throws_ok($$select public.create_shared_expense(pg_temp.id(50),pg_temp.id(20),pg_temp.id(41),pg_temp.id(30),1,pg_temp.roster(),101,'UYU','2025-01-02',null,'NEEDS')$$,'23505',null,'Currency replay mismatch');
+select throws_ok($$select public.create_shared_expense(pg_temp.id(50),pg_temp.id(20),pg_temp.id(41),pg_temp.id(30),1,pg_temp.roster(),101,'USD','2025-01-03',null,'NEEDS')$$,'23505',null,'Date replay mismatch');
+select throws_ok($$select public.create_shared_expense(pg_temp.id(50),pg_temp.id(20),pg_temp.id(41),pg_temp.id(30),1,pg_temp.roster(),101,'USD','2025-01-02','','NEEDS')$$,'23505',null,'Null and empty original description differ');
 select throws_ok('select pg_temp.create_expense(60,0)','22023',null,'Zero total denied');
 select throws_ok('select pg_temp.create_expense(60,-1)','22023',null,'Negative total denied');
 select throws_ok('select pg_temp.create_expense(60,9007199254740992)','22023',null,'Unsafe total denied');
 select throws_ok('select pg_temp.create_expense(60,1,45)','42501',null,'Foreign household payer denied');
 select throws_ok('select pg_temp.create_expense(60,1,43)','42501',null,'Inactive same-household payer denied');
-select throws_ok($$select public.create_shared_expense(pg_temp.id(60),pg_temp.id(20),pg_temp.id(41),pg_temp.id(30),1,array[pg_temp.id(40),pg_temp.id(41)],101,'USD','2025-01-02')$$,'40001',null,'Zero share cannot be omitted from request roster');
-select throws_ok($$select public.create_shared_expense(pg_temp.id(60),pg_temp.id(20),pg_temp.id(41),pg_temp.id(30),1,array[pg_temp.id(40),pg_temp.id(41),pg_temp.id(41)],101,'USD','2025-01-02')$$,'22023',null,'Duplicate roster denied');
-select throws_ok($$select public.create_shared_expense(pg_temp.id(60),pg_temp.id(20),pg_temp.id(41),pg_temp.id(30),1,array[pg_temp.id(40),pg_temp.id(41),pg_temp.id(45)],101,'USD','2025-01-02')$$,'40001',null,'Overlapping homes never authorize foreign responsibility');
+select throws_ok($$select public.create_shared_expense(pg_temp.id(60),pg_temp.id(20),pg_temp.id(41),pg_temp.id(30),1,array[pg_temp.id(40),pg_temp.id(41)],101,'USD','2025-01-02',null,'NEEDS')$$,'40001',null,'Zero share cannot be omitted from request roster');
+select throws_ok($$select public.create_shared_expense(pg_temp.id(60),pg_temp.id(20),pg_temp.id(41),pg_temp.id(30),1,array[pg_temp.id(40),pg_temp.id(41),pg_temp.id(41)],101,'USD','2025-01-02',null,'NEEDS')$$,'22023',null,'Duplicate roster denied');
+select throws_ok($$select public.create_shared_expense(pg_temp.id(60),pg_temp.id(20),pg_temp.id(41),pg_temp.id(30),1,array[pg_temp.id(40),pg_temp.id(41),pg_temp.id(45)],101,'USD','2025-01-02',null,'NEEDS')$$,'40001',null,'Overlapping homes never authorize foreign responsibility');
 select throws_ok($$select public.correct_personal_transaction(pg_temp.id(60),pg_temp.id(50),0,'DELETE','{}',true)$$,'42501',null,'Personal correction path cannot mutate shared');
 select is(pg_temp.create_expense(51,9007199254740991)->>'amount_minor','9007199254740991','MAX_SAFE_INTEGER supported without overflow');
 select is(pg_temp.create_expense(52,1)->'splits'->0->>'responsibility_amount_minor','1','Sub-cent responsibility uses exact deterministic unit');
@@ -137,32 +137,32 @@ select is(current_user::text,'authenticated','Changed household currency role');
 select throws_ok('select pg_temp.create_expense(60,101,40,32,2)','23514',null,'Old currency cannot create after configuration change');
 select is(pg_temp.create_expense(50)->>'currency','USD','Old exact USD replay remains valid under new UYU configuration');
 select is(public.create_shared_expense(pg_temp.id(54),pg_temp.id(20),pg_temp.id(40),pg_temp.id(32),2,
- array[pg_temp.id(42),pg_temp.id(41),pg_temp.id(40)],1,'UYU','2025-01-02','Original amount'),
+ array[pg_temp.id(42),pg_temp.id(41),pg_temp.id(40)],1,'UYU','2025-01-02','Original amount','NEEDS'),
  public.create_shared_expense(pg_temp.id(54),pg_temp.id(20),pg_temp.id(40),pg_temp.id(32),2,
- pg_temp.roster(),1,'UYU','2025-01-02','Original amount'),'Original currency preserved without conversion; canonical roster retry');
+ pg_temp.roster(),1,'UYU','2025-01-02','Original amount','NEEDS'),'Original currency preserved without conversion; canonical roster retry');
 reset role;
 update public.households set default_currency='USD' where id=pg_temp.id(20);
 set local role authenticated;select pg_temp.set_jwt_subject(pg_temp.id(1));
 select is(current_user::text,'authenticated','Historical currency replay role');select is(auth.uid(),pg_temp.id(1),'Historical currency replay subject');
 select is(public.create_shared_expense(pg_temp.id(54),pg_temp.id(20),pg_temp.id(40),pg_temp.id(32),2,
- pg_temp.roster(),1,'UYU','2025-01-02','Original amount')->>'currency','UYU','Historical UYU exact replay survives later USD configuration');
+ pg_temp.roster(),1,'UYU','2025-01-02','Original amount','NEEDS')->>'currency','UYU','Historical UYU exact replay survives later USD configuration');
 select is(public.get_shared_expense(pg_temp.id(20),pg_temp.id(54))->>'currency','UYU','Point read never relabels historical currency');
 select throws_ok($$select public.create_shared_expense(pg_temp.id(54),pg_temp.id(20),pg_temp.id(40),pg_temp.id(32),2,
- pg_temp.roster(),1,'USD','2025-01-02','Original amount')$$,'23505',null,'Current currency cannot overwrite historical replay payload');
-select is(pg_temp.personal_snapshot(1),(select value from before_personal where profile_id=auth.uid()),'Even different original shared currency never changes personal USD numbers');
+ pg_temp.roster(),1,'USD','2025-01-02','Original amount','NEEDS')$$,'23505',null,'Current currency cannot overwrite historical replay payload');
+select is(pg_temp.personal_snapshot(1),(select value from before_personal where profile_id=auth.uid()),'Later shared currencies do not rewrite the earlier personal month');
 select pg_temp.set_jwt_subject(pg_temp.id(2));select is(auth.uid(),pg_temp.id(2),'Active MEMBER B in both households');
 insert into before_personal values(auth.uid(),pg_temp.personal_snapshot(2));
 select is(public.get_shared_expense(pg_temp.id(20),pg_temp.id(50))->>'profile_id',pg_temp.id(2)::text,'MEMBER can read authorized expense');
 select throws_ok('select pg_temp.create_expense(50)','23505',null,'Different actor cannot claim original request');
 select lives_ok('select pg_temp.create_expense(55,1000,40,32,2)','MEMBER may create, independently of OWNER template permission');
-select is(pg_temp.personal_snapshot(2),(select value from before_personal where profile_id=auth.uid()),'Payer and second creator personal reads remain unchanged');
+select is(pg_temp.personal_snapshot(2),(select value from before_personal where profile_id=auth.uid()),'Payer and second creator earlier-month reads remain unchanged');
 select is((select count(*) from public.transactions),2::bigint,'Personal API contains only own personal nonempty fixture');
 select is((select count(*) from public.profiles),1::bigint,'No partner private Profile exposure');
 select throws_ok('select public.get_shared_expense(pg_temp.id(21),pg_temp.id(50))','42501',null,'Second home authorization does not relabel first-home expense');
 select public.save_household_default_split(pg_temp.id(31),pg_temp.id(21),0,array[pg_temp.id(44),pg_temp.id(45)],
  jsonb_build_array(jsonb_build_object('member_id',pg_temp.id(44),'basis_points',10000),jsonb_build_object('member_id',pg_temp.id(45),'basis_points',0)));
-select lives_ok($$select public.create_shared_expense(pg_temp.id(56),pg_temp.id(21),pg_temp.id(44),pg_temp.id(31),1,array[pg_temp.id(44),pg_temp.id(45)],10,'UYU','2025-01-02')$$,'Overlapping member creates separately scoped second-home expense');
-select throws_ok($$select public.create_shared_expense(pg_temp.id(50),pg_temp.id(21),pg_temp.id(44),pg_temp.id(31),1,array[pg_temp.id(44),pg_temp.id(45)],10,'UYU','2025-01-02')$$,'23505',null,'Request identity cannot cross households');
+select lives_ok($$select public.create_shared_expense(pg_temp.id(56),pg_temp.id(21),pg_temp.id(44),pg_temp.id(31),1,array[pg_temp.id(44),pg_temp.id(45)],10,'UYU','2025-01-02',null,'NEEDS')$$,'Overlapping member creates separately scoped second-home expense');
+select throws_ok($$select public.create_shared_expense(pg_temp.id(50),pg_temp.id(21),pg_temp.id(44),pg_temp.id(31),1,array[pg_temp.id(44),pg_temp.id(45)],10,'UYU','2025-01-02',null,'NEEDS')$$,'23505',null,'Request identity cannot cross households');
 select pg_temp.set_jwt_subject(pg_temp.id(3));select is(auth.uid(),pg_temp.id(3),'C is outsider to first, member of second');
 select throws_ok('select public.get_shared_expense(pg_temp.id(20),pg_temp.id(50))','42501',null,'C cannot read via overlapping B');
 select throws_ok('select pg_temp.create_expense(60,1,41,32,2)','42501',null,'C cannot create via overlapping B');

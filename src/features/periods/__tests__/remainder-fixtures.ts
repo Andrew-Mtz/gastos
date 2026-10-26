@@ -73,6 +73,11 @@ export function reversalContext() {
   const destination = snapshot(),
     p = remainderContext().destination;
   const data = { ...destination, month: p.starts_on, period: p };
+  data.shared_responsibilities = {
+    ...data.shared_responsibilities,
+    month: p.starts_on,
+    period: { id: p.id, status: p.status, base_currency: p.base_currency },
+  };
   data.received_income_minor = 0;
   data.allocations.forEach((a) => {
     a.budget_period_id = p.id;

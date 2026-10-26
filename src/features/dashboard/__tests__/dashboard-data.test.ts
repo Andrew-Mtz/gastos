@@ -46,7 +46,7 @@ test('missing period is not a zero availability and does not require secondary r
       month: period.starts_on,
       period: null,
     }),
-  ).toEqual({ period: null });
+  ).toEqual({ period: null, sharedResponsibilities: null });
 });
 test.each([
   [
@@ -260,4 +260,62 @@ test('infrastructure errors and bad requests never become an empty dashboard', a
   ).rejects.toMatchObject({
     reason: 'INCOMPATIBLE_DATA',
   });
+});
+
+test.each(['OTHER_CURRENCY', 'UNCLASSIFIED', 'NO_BUCKET'] as const)(
+  'live complete dashboard rejects contradictory positive source %s',
+  (status) => {
+    const s = snapshot();
+    expect(() =>
+      map({
+        ...s,
+        shared_responsibilities: {
+          ...s.shared_responsibilities,
+          entries: [
+            {
+              expense_id: 'f2100000-0000-4000-8000-000000000050',
+              household_id: 'f2100000-0000-4000-8000-000000000020',
+              household_name: 'Casa',
+              transaction_date: '2026-10-02',
+              description: null,
+              budget_classification: status === 'UNCLASSIFIED' ? null : 'NEEDS',
+              responsibility_amount_minor: 100,
+              currency: status === 'OTHER_CURRENCY' ? 'UYU' : 'USD',
+              application_status: status,
+              included_in_closed_period: null,
+            },
+          ],
+        },
+      }),
+    ).toThrow();
+  },
+);
+test('closed dashboard may show new foreign facts outside unchanged recognized consumption', () => {
+  const s = snapshot();
+  const result = map({
+    ...s,
+    period: { ...s.period, status: 'CLOSED' },
+    shared_responsibilities: {
+      ...s.shared_responsibilities,
+      period: { ...s.shared_responsibilities.period, status: 'CLOSED' },
+      entries: [
+        {
+          expense_id: 'f2100000-0000-4000-8000-000000000050',
+          household_id: 'f2100000-0000-4000-8000-000000000020',
+          household_name: 'Casa',
+          transaction_date: '2026-10-02',
+          description: null,
+          budget_classification: 'NEEDS',
+          responsibility_amount_minor: 250,
+          currency: 'UYU',
+          application_status: 'CLOSED_PENDING',
+          included_in_closed_period: false,
+        },
+      ],
+    },
+  });
+  expect(result.availability?.components.spent_minor).toBe(150);
+  expect(
+    result.sharedResponsibilities?.entries[0].responsibility_amount_minor,
+  ).toBe(250);
 });

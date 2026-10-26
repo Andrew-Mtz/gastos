@@ -1,4 +1,8 @@
 import {
+  SharedResponsibilities,
+  SharedResponsibilitiesSummary,
+} from '../budget/SharedResponsibilities';
+import {
   Fragment as ReactFragment,
   useCallback,
   useEffect,
@@ -229,6 +233,7 @@ function PersonalPeriodClose({
   return (
     <Screen scroll>
       <AppText variant="title">Cierre e historial de meses</AppText>
+
       <AppText variant="section">{month.slice(0, 7)}</AppText>
       {notice && <AppText role="status">{notice}</AppText>}
       {pending && (
@@ -275,6 +280,22 @@ function PersonalPeriodClose({
       >
         Mes siguiente
       </Button>
+      {!remainderReview &&
+        visible &&
+        !query.isPending &&
+        !query.isFetching &&
+        (query.isError ? (
+          <SharedResponsibilities owner={profile.id} month={month} />
+        ) : (
+          data?.sharedResponsibilities && (
+            <SharedResponsibilitiesSummary
+              data={data.sharedResponsibilities}
+              onRefresh={() => {
+                void query.refetch();
+              }}
+            />
+          )
+        ))}
       {!visible || query.isPending || query.isFetching ? (
         <LoadingState label="Actualizando estado del mes…" />
       ) : query.isError ? (
@@ -293,7 +314,7 @@ function PersonalPeriodClose({
               ? 'Período cerrado · solo lectura'
               : 'Período abierto'}
           </AppText>
-          <CloseSummary context={data} />
+          {!remainderReview && <CloseSummary context={data} />}
           {data.period.status === 'OPEN' && !data.can_close && (
             <AppText role="alert">
               {month >= data.financial_month
@@ -402,7 +423,10 @@ function PersonalPeriodClose({
               onSubmit={(operation) => {
                 void submit(operation);
               }}
-              onCancel={() => setRemainderReview(null)}
+              onCancel={() => {
+                setRemainderReview(null);
+                void query.refetch();
+              }}
             />
           )}
           {remainderReview && typeof remainderReview === 'object' && (
@@ -413,7 +437,10 @@ function PersonalPeriodClose({
               onSubmit={(operation) => {
                 void submit(operation);
               }}
-              onCancel={() => setRemainderReview(null)}
+              onCancel={() => {
+                setRemainderReview(null);
+                void query.refetch();
+              }}
             />
           )}
           {data.history.dispositions.map((d) => {

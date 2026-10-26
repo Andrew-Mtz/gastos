@@ -1910,3 +1910,31 @@ Every new RPC is catalogued in FIN-204. Negative SQL/RLS, actual-grant/write den
 overlapping households, foreign/private cursors, revocation, immutable history and
 same-snapshot names are required gates. Client caches are scoped, cancelled and hidden
 during fresh reads; they never authorize access or reconcile an unverified write.
+
+
+## FIN-210 own responsibility boundary (ADR-084)
+
+Public household rows/DTOs add only the shared enum, never private bucket IDs,
+names, settings, allocations, categories or period state. Existing table grants,
+default-deny shared RLS and current-member shared read authorization stay intact.
+
+`get_my_shared_responsibilities(date)` is a narrow authenticated-only definer with
+empty search_path and mandatory READ COMMITTED. It derives its sole subject from
+auth.uid(), projects only that subject's immutable historical share and source facts,
+and never accepts a target owner. A departed member gets neutral household provenance,
+not current names/rosters/payer/other shares, and gains no shared history access.
+`get_personal_protected_reserve(uuid)` and `get_personal_savings_context(date)` retain
+invoker/RLS ownership, expose only the caller's own private state, and are explicitly
+inventoried. There is no client bypass flag for contributions or reserve checks.
+
+Shared creation first rejects an inactive/unrelated actor before locking any other
+profile. It then locks all requested same-household participant profiles plus actor
+in global UUID order before the household advisory/row/membership locks. Fresh
+statements revalidate actor, complete roster and template after waits. This supersedes
+the actor-first portion of FIN-207's protocol and serializes shared creation against
+close/contribution/disposition without opposite-actor or overlapping-household cycles.
+
+Aggregate UI snapshots include their own source projection. Independent source reads
+are shown only with dependent financial values hidden. Refresh, background, focus and
+account/month changes cannot splice newer source facts into older available figures.
+An exact legacy-null replay remains an authorized read, not a backfill or new write.

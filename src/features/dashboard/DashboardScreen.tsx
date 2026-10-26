@@ -1,3 +1,7 @@
+import {
+  SharedResponsibilities,
+  SharedResponsibilitiesSummary,
+} from '../budget/SharedResponsibilities';
 import { useCallback, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
@@ -84,12 +88,15 @@ function CurrentDashboard({ profile }: { profile: Profile }) {
     return <LoadingState label="Actualizando tu resumen mensual…" />;
   if (query.isError)
     return (
-      <ErrorState
-        message={safeToSpendErrorMessage(query.error)}
-        onRetry={() => {
-          void query.refetch();
-        }}
-      />
+      <Screen scroll>
+        <ErrorState
+          message={safeToSpendErrorMessage(query.error)}
+          onRetry={() => {
+            void query.refetch();
+          }}
+        />
+        <SharedResponsibilities owner={profile.id} month={month} />
+      </Screen>
     );
   const data = query.data;
   const heading = (
@@ -99,6 +106,14 @@ function CurrentDashboard({ profile }: { profile: Profile }) {
     return (
       <Screen scroll>
         {heading}
+        {data.sharedResponsibilities && (
+          <SharedResponsibilitiesSummary
+            data={data.sharedResponsibilities}
+            onRefresh={() => {
+              void query.refetch();
+            }}
+          />
+        )}
         <AppText>
           Aún no tienes un presupuesto para este mes. Configúralo para ver un
           resumen fiable, no un saldo supuesto de cero.
@@ -122,6 +137,14 @@ function CurrentDashboard({ profile }: { profile: Profile }) {
   return (
     <Screen scroll>
       {heading}
+      {data.sharedResponsibilities && (
+        <SharedResponsibilitiesSummary
+          data={data.sharedResponsibilities}
+          onRefresh={() => {
+            void query.refetch();
+          }}
+        />
+      )}
       <AppText variant="caption" tone="secondary">
         {period.base_currency} ·{' '}
         {period.status === 'CLOSED' ? 'Período cerrado' : 'Período abierto'}

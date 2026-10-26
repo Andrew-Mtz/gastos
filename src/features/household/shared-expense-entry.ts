@@ -6,6 +6,7 @@ import { currencyDigits, parseDecimal } from '../budget/budget-setup';
 import { mapSplitSnapshot, type SplitSnapshot } from './split-data';
 import {
   sharedExpenseRequestSchema,
+  sharedBudgetClassificationSchema,
   type SharedExpenseRequest,
 } from './shared-expense-data';
 
@@ -30,6 +31,7 @@ export type PendingSharedExpense = {
 export function sharedExpenseFormSchema(currency: string) {
   createMoney(1, currency);
   return z.strictObject({
+    budgetClassification: sharedBudgetClassificationSchema,
     amount: z.string().refine((value) => {
       const amount = parseDecimal(value, currencyDigits(currency));
       return amount !== null && amount > 0;
@@ -78,6 +80,7 @@ export function prepareSharedExpense(
     amountMinor: parseDecimal(form.amount, currencyDigits(currency)),
     currency,
     transactionDate: form.date,
+    budgetClassification: form.budgetClassification,
     description: form.description === '' ? null : form.description,
   });
   const responsibilities = calculateSharedExpenseSplit(
@@ -87,7 +90,10 @@ export function prepareSharedExpense(
       basisPoints: share.basis_points,
     })),
   );
-  return { request, responsibilities };
+  return {
+    request: { ...request, budgetClassification: form.budgetClassification },
+    responsibilities,
+  };
 }
 export type SharedExpenseReview = ReturnType<typeof prepareSharedExpense>;
 export function templateConfirmsSharedExpense(
@@ -117,7 +123,8 @@ export function sameSharedExpenseRequest(
     a.amountMinor === b.amountMinor &&
     a.currency === b.currency &&
     a.transactionDate === b.transactionDate &&
-    a.description === b.description
+    a.description === b.description &&
+    a.budgetClassification === b.budgetClassification
   );
 }
 function errorCode(error: unknown) {

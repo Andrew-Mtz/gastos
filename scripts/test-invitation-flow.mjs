@@ -198,6 +198,8 @@ try {
     b = await identity('Synthetic invitation B'),
     c = await identity('Synthetic invitation C');
   async function privateIncome(actor, amount) {
+    // Explicit synthetic setup, never automatic shared-entry provisioning.
+    success(await actor.client.rpc('prepare_initial_budget_buckets'));
     const period = success(
       await actor.client
         .from('budget_periods')
@@ -429,6 +431,7 @@ try {
     p_currency: 'USD',
     p_transaction_date: '2025-01-02',
     p_description: 'Synthetic shared expense',
+    p_budget_classification: 'LEISURE',
   };
   const appSharedRequest = {
     id: sharedRequest.p_request_id,
@@ -441,6 +444,7 @@ try {
     currency: 'USD',
     transactionDate: '2025-01-02',
     description: sharedRequest.p_description,
+    budgetClassification: sharedRequest.p_budget_classification,
   };
   const beforeShared = await Promise.all(
     [a, b].map(async (actor) =>
@@ -667,16 +671,38 @@ try {
     }),
     '40001',
   );
-  for (const [index, actor] of [a, b].entries())
-    assert.deepEqual(
-      success(
-        await actor.client.rpc('get_personal_dashboard', {
-          p_month: '2025-01-01',
-        }),
-      ),
-      beforeShared[index],
-      'Shared actor/payer never alter current personal read models',
+  for (const [index, actor] of [a, b].entries()) {
+    const after = success(
+      await actor.client.rpc('get_personal_dashboard', {
+        p_month: '2025-01-01',
+      }),
     );
+    const own = sharedCreated.splits.find(
+      (share) =>
+        sharedRoster.find((member) => member.id === share.member_id)
+          ?.profile_id === actor.id,
+    ).responsibility_amount_minor;
+    assert.equal(
+      after.received_income_minor,
+      beforeShared[index].received_income_minor,
+      'Responsibility never changes personal income',
+    );
+    assert.equal(
+      after.availability.savings.spent_minor,
+      own * 2,
+      'Exactly own responsibility, not payer total, enters personal consumption',
+    );
+    assert.equal(
+      after.availability.savings.configured,
+      false,
+      'Shared entries do not configure a private plan',
+    );
+    assert.equal(
+      after.shared_expense_ids.length,
+      2,
+      'Distinct immutable sources retained once',
+    );
+  }
   const afterTemplate = await history(a, first, secondSharedId);
   assert.deepEqual(
     afterTemplate.expenses[0].splits,
@@ -684,8 +710,101 @@ try {
     'History never recalculates old responsibility from a new template',
   );
   passed(
-    'FIN-207 authenticated create/read/replay, template conflict, private isolation and unchanged personal dashboards',
+    'FIN-207 authenticated create/read/replay, template conflict, private isolation and exact own responsibility consumption',
   );
+
+  async function responsibilitySnapshot(actor, month) {
+    const data = success(
+      await actor.client.rpc('get_my_shared_responsibilities', {
+        p_month: month,
+      }),
+    );
+    snapshots.push({
+      kind: 'get_my_shared_responsibilities',
+      expected_owner: actor.id,
+      expected_month: month,
+      data,
+    });
+    return data;
+  }
+  for (const actor of [a, b]) {
+    const own = await responsibilitySnapshot(actor, '2025-01-01');
+    assert.equal(own.entries.length, 2);
+    assert(
+      own.entries.every(
+        (entry) =>
+          entry.application_status === 'APPLIED' &&
+          entry.budget_classification === 'LEISURE',
+      ),
+    );
+  }
+  assert.deepEqual((await responsibilitySnapshot(c, '2025-01-01')).entries, []);
+  const latestTemplate = success(
+    await a.client.rpc('get_household_default_split', {
+      p_household_id: first,
+    }),
+  ).template;
+  success(
+    await a.client.rpc('create_shared_expense', {
+      ...sharedRequest,
+      p_request_id: randomUUID(),
+      p_template_id: latestTemplate.id,
+      p_template_version: latestTemplate.version,
+      p_amount_minor: 1000,
+      p_transaction_date: '2025-02-02',
+    }),
+  );
+  const unconfigured = await responsibilitySnapshot(b, '2025-02-01');
+  assert.equal(unconfigured.period, null);
+  assert.equal(unconfigured.entries[0].responsibility_amount_minor, 500);
+  assert.equal(unconfigured.entries[0].application_status, 'NO_PERIOD');
+  success(
+    await b.client.from('budget_periods').insert({
+      profile_id: b.id,
+      starts_on: '2025-03-01',
+      ends_on: '2025-03-31',
+      base_currency: 'USD',
+    }),
+  );
+  sql(
+    `update public.households set default_currency='UYU' where id='${uuid(first)}';`,
+  );
+  success(
+    await a.client.rpc('create_shared_expense', {
+      ...sharedRequest,
+      p_request_id: randomUUID(),
+      p_template_id: latestTemplate.id,
+      p_template_version: latestTemplate.version,
+      p_amount_minor: 1000,
+      p_currency: 'UYU',
+      p_transaction_date: '2025-03-02',
+    }),
+  );
+  const separateCurrency = await responsibilitySnapshot(b, '2025-03-01');
+  assert.equal(separateCurrency.entries[0].currency, 'UYU');
+  assert.equal(
+    separateCurrency.entries[0].application_status,
+    'OTHER_CURRENCY',
+  );
+  denied(
+    await b.client.rpc('get_personal_dashboard', { p_month: '2025-03-01' }),
+    '23514',
+  );
+  for (const month of ['2025-01-01', '2025-02-01', '2025-03-01']) {
+    const data = success(
+      await b.client.rpc('get_personal_savings_context', { p_month: month }),
+    );
+    snapshots.push({
+      kind: 'get_personal_savings_context',
+      expected_owner: b.id,
+      expected_month: month,
+      data,
+    });
+    if (month === '2025-03-01') {
+      assert.equal(data.availability, null);
+      assert(data.reserve);
+    }
+  }
 
   assert.deepEqual(
     success(await b.client.from('profiles').select('id').eq('id', a.id)),
@@ -829,6 +948,30 @@ try {
   passed(
     'directed invitation, replay, multi-household MEMBER acceptance, cancellation and private Profile isolation over HTTP',
   );
+  // Revoked requester keeps only their own original facts, never changed current names.
+  sql(
+    `update public.household_members set left_at=clock_timestamp() where household_id='${uuid(first)}' and profile_id='${uuid(b.id)}';update public.households set name='Name after departure' where id='${uuid(first)}';`,
+  );
+  assert.deepEqual(
+    success(await b.client.from('households').select('id').order('id')).map(
+      (row) => row.id,
+    ),
+    [second],
+    'A former member no longer sees the departed household',
+  );
+  const former = await responsibilitySnapshot(b, '2025-01-01');
+  assert(former.entries.every((entry) => entry.household_name === null));
+  denied(
+    await b.client.rpc('get_shared_expense', {
+      p_household_id: first,
+      p_expense_id: sharedRequest.p_request_id,
+    }),
+    '42501',
+  );
+  passed(
+    'FIN-210 original responsibility, no-period visibility, FX-pending separation and former-member own projection over real HTTP',
+  );
+
   success(await b.client.auth.signOut({ scope: 'local' }));
   denied(await b.client.rpc('get_my_household_invitations'), '42501');
   denied(
@@ -889,6 +1032,7 @@ try {
         delete from public.transaction_revisions where owner_profile_id in (${ids});
         delete from public.transactions where owner_profile_id in (${ids});
         delete from public.budget_periods where profile_id in (${ids});
+        delete from public.budget_buckets where profile_id in (${ids});
         delete from public.household_split_shares where household_id in (select id from public.households where created_by in (${ids}));
         delete from public.household_split_revisions where created_by in (${ids});
         delete from public.household_invitations where issuer_profile_id in (${ids});

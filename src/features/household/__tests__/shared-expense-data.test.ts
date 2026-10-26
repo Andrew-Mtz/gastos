@@ -24,6 +24,7 @@ const request = () => ({
   currency: 'USD',
   transactionDate: '2026-10-01',
   description: null,
+  budgetClassification: 'NEEDS' as const,
 });
 const response = (amountMinor = 101, points = [7000, 3000, 0]) => ({
   profile_id: id(1),
@@ -38,6 +39,7 @@ const response = (amountMinor = 101, points = [7000, 3000, 0]) => ({
   currency: 'USD',
   transaction_date: '2026-10-01',
   description: null,
+  budget_classification: 'NEEDS' as const,
   splits: calculateSharedExpenseSplit(
     createMoney(amountMinor, 'USD'),
     points.map((basisPoints, index) => ({
@@ -188,6 +190,7 @@ test.each([null, '', '  Original description  '])(
       p_amount_minor: 101,
       p_currency: 'USD',
       p_transaction_date: '2026-10-01',
+      p_budget_classification: 'NEEDS',
       ...(description === null ? {} : { p_description: description }),
     });
     const args = jest.mocked(supabase.rpc).mock.calls[0][1];
@@ -211,3 +214,77 @@ test('read is cancellable, scopes response to current reader, and propagates unk
     .mockResolvedValueOnce({ data: null, error: failure } as never);
   await expect(createSharedExpense(id(1), request())).rejects.toBe(failure);
 });
+
+test('legacy reads and exact receipts retain explicit null without guessing classification', () => {
+  const legacy = { ...response(), budget_classification: null };
+  expect(
+    mapSharedExpense(id(1), id(20), id(50), legacy).budget_classification,
+  ).toBeNull();
+  expect(
+    mapSharedExpenseReceipt(
+      id(1),
+      { ...request(), budgetClassification: null },
+      legacy,
+    ),
+  ).toEqual(legacy);
+  expect(() => mapSharedExpenseReceipt(id(1), request(), legacy)).toThrow();
+});
+test.each(['SAVINGS', '', 'needs', id(30)])(
+  'rejects invalid shared classification %s',
+  (classification) => {
+    expect(() =>
+      sharedExpenseRequestSchema.parse({
+        ...request(),
+        budgetClassification: classification,
+      }),
+    ).toThrow();
+    expect(() =>
+      mapSharedExpense(id(1), id(20), id(50), {
+        ...response(),
+        budget_classification: classification,
+      }),
+    ).toThrow();
+  },
+);
+test.each([
+  'budget_bucket_id',
+  'budget_bucket_name',
+  'budget_settings',
+  'category_id',
+])('rejects private metadata %s in household responses', (field) => {
+  expect(() =>
+    mapSharedExpense(id(1), id(20), id(50), { ...response(), [field]: id(99) }),
+  ).toThrow();
+});
+test('changed classification cannot confirm an original receipt', () => {
+  expect(() =>
+    mapSharedExpenseReceipt(id(1), request(), {
+      ...response(),
+      budget_classification: 'LEISURE',
+    }),
+  ).toThrow();
+});
+
+test.each([null, 'NEEDS', 'LEISURE'] as const)(
+  'create preserves classification %j and omits legacy null for SQL DEFAULT NULL',
+  async (budgetClassification) => {
+    const receipt = {
+      ...response(),
+      budget_classification: budgetClassification,
+    };
+    jest
+      .mocked(supabase.rpc)
+      .mockResolvedValueOnce({ data: receipt, error: null } as never);
+    await expect(
+      createSharedExpense(id(1), { ...request(), budgetClassification }),
+    ).resolves.toEqual(receipt);
+    const args = jest.mocked(supabase.rpc).mock.calls[0][1];
+    if (budgetClassification === null)
+      expect(args).not.toHaveProperty('p_budget_classification');
+    else
+      expect(args).toHaveProperty(
+        'p_budget_classification',
+        budgetClassification,
+      );
+  },
+);

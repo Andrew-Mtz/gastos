@@ -1,15 +1,18 @@
 import { supabase } from '../../../infrastructure/supabase/client';
-import { readBudget } from '../../budget/budget-data';
 import {
   period,
   request as incomeRequest,
 } from '../../income/__tests__/fixtures';
-import { readSavingsMonth, registerSavings, savingsKey } from '../savings-data';
+import {
+  readSavingsMonth,
+  registerSavings,
+  savingsKey,
+  mapSavingsContext,
+} from '../savings-data';
 import { type SavingsRequest } from '../savings-form';
 jest.mock('../../../infrastructure/supabase/client', () => ({
   supabase: { rpc: jest.fn() },
 }));
-jest.mock('../../budget/budget-data', () => ({ readBudget: jest.fn() }));
 const request: SavingsRequest = {
   ...incomeRequest,
   type: 'SAVINGS_WITHDRAWAL',
@@ -51,11 +54,33 @@ const summary = {
   goal_reserved_minor: 0,
   unassigned_savings_minor: 235000,
 };
+function context(availability = summary) {
+  const {
+    spent_minor: _spent,
+    snapshot_version: _version,
+    carry: _carry,
+    ...reserve
+  } = availability;
+  return {
+    owner_profile_id: period.profile_id,
+    month: period.starts_on,
+    period,
+    reserve,
+    availability,
+    shared_responsibilities: {
+      owner_profile_id: period.profile_id,
+      month: period.starts_on,
+      period: {
+        id: period.id,
+        status: period.status,
+        base_currency: period.base_currency,
+      },
+      entries: [],
+    },
+  };
+}
 beforeEach(() => {
   jest.clearAllMocks();
-  jest
-    .mocked(readBudget)
-    .mockResolvedValue({ period, buckets: [], allocations: [] });
 });
 test('same id, exact decimal, period currency and explicit confirmation reach RPC', async () => {
   jest
@@ -96,9 +121,12 @@ test.each([
   await expect(registerSavings(period, request)).rejects.toThrow();
 });
 test('summary validates identity, consumes cancellation and never uses expected income', async () => {
-  const query = Object.assign(Promise.resolve({ data: summary, error: null }), {
-    abortSignal: jest.fn().mockReturnThis(),
-  });
+  const query = Object.assign(
+    Promise.resolve({ data: context(), error: null }),
+    {
+      abortSignal: jest.fn().mockReturnThis(),
+    },
+  );
   jest.mocked(supabase.rpc).mockReturnValue(query as never);
   const signal = new AbortController().signal;
   const result = await readSavingsMonth(
@@ -108,11 +136,9 @@ test('summary validates identity, consumes cancellation and never uses expected 
   );
   expect(result.availability?.protectedSavings.amountMinor).toBe(235000);
   expect(query.abortSignal).toHaveBeenCalledWith(signal);
-  expect(readBudget).toHaveBeenCalledWith(
-    period.profile_id,
-    period.starts_on,
-    signal,
-  );
+  expect(supabase.rpc).toHaveBeenCalledWith('get_personal_savings_context', {
+    p_month: period.starts_on,
+  });
   expect(savingsKey('a', '2026-10-01')).not.toEqual(
     savingsKey('b', '2026-10-01'),
   );
@@ -124,7 +150,7 @@ test.each([
   { withdrawals_minor: 999999 },
 ])('rejects invalid summary %s', async (patch) => {
   jest.mocked(supabase.rpc).mockResolvedValue({
-    data: { ...summary, ...patch },
+    data: context({ ...summary, ...patch }),
     error: null,
   } as never);
   await expect(
@@ -132,11 +158,65 @@ test.each([
   ).rejects.toThrow();
 });
 test('missing period and infrastructure errors cannot fabricate balances', async () => {
-  jest
-    .mocked(readBudget)
-    .mockResolvedValue({ period: null, buckets: [], allocations: [] });
+  jest.mocked(supabase.rpc).mockResolvedValue({
+    data: {
+      ...context(),
+      period: null,
+      reserve: null,
+      availability: null,
+      shared_responsibilities: {
+        ...context().shared_responsibilities,
+        period: null,
+      },
+    },
+    error: null,
+  } as never);
   expect(
     (await readSavingsMonth(period.profile_id, period.starts_on)).availability,
   ).toBeNull();
-  expect(supabase.rpc).not.toHaveBeenCalled();
+});
+
+test('foreign or unclassified responsibility hides only contribution capacity, retaining checked protected reserve', () => {
+  const base = context();
+  const foreign = {
+    expense_id: 'f2100000-0000-4000-8000-000000000050',
+    household_id: 'f2100000-0000-4000-8000-000000000020',
+    household_name: 'Casa',
+    transaction_date: '2026-10-02',
+    description: null,
+    budget_classification: 'LEISURE',
+    responsibility_amount_minor: 250,
+    currency: 'UYU',
+    application_status: 'OTHER_CURRENCY',
+    included_in_closed_period: null,
+  };
+  const value = {
+    ...base,
+    availability: null,
+    shared_responsibilities: {
+      ...base.shared_responsibilities,
+      entries: [foreign],
+    },
+  };
+  const mapped = mapSavingsContext(period.profile_id, period.starts_on, value);
+  expect(mapped.protectedSavings?.amountMinor).toBe(235000);
+  expect(mapped.availability).toBeNull();
+  expect(() =>
+    mapSavingsContext(period.profile_id, period.starts_on, {
+      ...value,
+      availability: summary,
+    }),
+  ).toThrow();
+  expect(() =>
+    mapSavingsContext(period.profile_id, period.starts_on, {
+      ...value,
+      reserve: { ...base.reserve, unassigned_savings_minor: 0 },
+    }),
+  ).toThrow();
+  expect(() =>
+    mapSavingsContext(period.profile_id, period.starts_on, {
+      ...base,
+      availability: null,
+    }),
+  ).toThrow();
 });

@@ -1,3 +1,7 @@
+import {
+  SharedResponsibilities,
+  SharedResponsibilitiesSummary,
+} from '../budget/SharedResponsibilities';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Controller, useForm, useWatch } from 'react-hook-form';
@@ -83,6 +87,21 @@ export function RemainderReview({
   return (
     <>
       <AppText variant="section">Disponer del remanente y cerrar</AppText>
+      {!query.isPending &&
+        !query.isFetching &&
+        (query.isError ? (
+          <SharedResponsibilities owner={owner} month={month} />
+        ) : (
+          row?.close.sharedResponsibilities && (
+            <SharedResponsibilitiesSummary
+              data={row.close.sharedResponsibilities}
+              onRefresh={() => {
+                setReview(null);
+                void query.refetch();
+              }}
+            />
+          )
+        ))}
       {query.isPending || query.isFetching ? (
         <LoadingState label="Revisando remanente actual…" />
       ) : query.isError || !row ? (
@@ -246,6 +265,26 @@ export function ReversalReview({
   return (
     <>
       <AppText variant="section">Revertir arrastre y reabrir origen</AppText>
+      {!query.isPending && !query.isFetching && !query.isError && row && (
+        <>
+          {row.source.sharedResponsibilities && (
+            <SharedResponsibilitiesSummary
+              data={row.source.sharedResponsibilities}
+              onRefresh={() => {
+                void query.refetch();
+              }}
+            />
+          )}
+          {row.destination.sharedResponsibilities && (
+            <SharedResponsibilitiesSummary
+              data={row.destination.sharedResponsibilities}
+              onRefresh={() => {
+                void query.refetch();
+              }}
+            />
+          )}
+        </>
+      )}
       {query.isPending || query.isFetching ? (
         <LoadingState label="Revisando ambos períodos…" />
       ) : query.isError || !row ? (

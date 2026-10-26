@@ -2885,3 +2885,39 @@ No visible multi-currency selector, personal-budget dependency, or conversion is
 Future FX must preserve original amount/currency, the applied rate/date/source and
 immutable converted amount at entry. Later rates must not change old expenses.
 Provider selection, conversion and FIN-209/210/211 remain deferred.
+
+
+---
+
+# ADR-084 — Classified Shared Responsibility in the Personal Budget
+
+**Status:** Explicit user decisions, 2026-10-23. FIN-210 implementation prepared;
+execution/review gates remain required before completion, not a deployment
+or native-acceptance claim. FIN-211/212 and FX remain outside scope.
+
+The actor classifies once as NEEDS/LEISURE for all stored responsibilities. Active
+members may enter; OWNER alone manages the general split. Private canonical keys map
+the user's own original responsibility, never payer total, custom names or another
+member's private setup. No duplicate personal expense or automatic budget setup.
+
+Own classified amount and household/month origin remain visible with no configuration.
+Foreign currency stays separately in original units, without conversion/mixed sums.
+Positive legacy-null/missing-key/foreign responsibility prevents a complete ordinary
+availability/cap/close/disposition/reversal; zero is nonblocking. Legacy exact replay
+with null is authorized readback, while new null is rejected. Retroactive classification
+editing is not introduced or guessed.
+
+CLOSED recognizes only its saved source set and consumption. Existing v1/v2 evidence
+is byte-stable and legacy evidence is not invented. New/backdated facts remain visible
+pending explicit reopen, which does not itself solve missing classification or FX.
+Only shared consumption recognition is frozen; prior reserve-prefix behavior is not
+redefined. Protected reserve and goal solvency stay enforced separately so valid
+personal facts/corrections and solvent explicit withdrawals remain possible.
+
+Derive sources from existing immutable splits, with auth.uid()-only definer projection.
+Former members retain only their own saved original facts and neutral provenance,
+without gaining current shared access. No household DTO contains private mappings.
+All participant finance locks are taken in global order before household locks, with
+cheap authorization first and mandatory post-wait revalidation. Aggregate UI and
+preview source facts are one server snapshot; fallback sources never sit beside stale
+financial amounts. These changes extend FIN-207/209, not cash or settlement semantics.
