@@ -97,7 +97,7 @@ select is((select count(*) from public.transactions where type='EXPENSE'),0::big
 select public.register_income(pg_temp.id(100),pg_temp.period('2025-01-01'),2000,'USD','2025-01-03');
 select public.register_savings_movement(pg_temp.id(101),pg_temp.period('2025-01-01'),'SAVINGS_CONTRIBUTION',100,'USD','2025-01-03');
 select is(public.get_personal_protected_reserve(pg_temp.period('2025-01-01'))->>'unassigned_savings_minor','500','Shared spend does not consume protected 400 plus explicit 100');
--- Categories have no authenticated INSERT capability; seed this fixture as test admin.
+-- Authenticated INSERT cannot choose category IDs; seed the deterministic fixture as test admin.
 reset role;
 insert into public.categories(id,profile_id,name,budget_bucket_id) select pg_temp.id(102),pg_temp.id(2),'Personal',id from public.budget_buckets where profile_id=pg_temp.id(2) and system_key='NEEDS';
 set local role authenticated;select pg_temp.set_jwt_subject(pg_temp.id(2));
@@ -167,9 +167,12 @@ select is(pg_temp.spent('2025-02-01'),0::numeric,'Exact zero needs no conversion
 select lives_ok($$select pg_temp.close('2025-02-01',130)$$,'Zero foreign responsibility does not block close');
 -- Simulate a genuine pre-210 null row using trusted fixture-only mutation.
 reset role;
+-- Validate queued constraints before fixture DDL and avoid new deferred trigger events.
+set constraints all immediate;
 alter table public.shared_expenses disable trigger shared_expenses_immutable;
 update public.shared_expenses set budget_classification=null where id=pg_temp.id(60);
 alter table public.shared_expenses enable trigger shared_expenses_immutable;
+set constraints all deferred;
 set local role authenticated;select pg_temp.set_jwt_subject(pg_temp.id(1));select is(current_user::text,'authenticated','Real role after legacy fixture');select is(auth.uid(),pg_temp.id(1),'Original actor legacy replay');
 select lives_ok($$select pg_temp.expense(60,1000,null,'2025-02-03','UYU')$$,'Exact legacy null replay remains a read');
 select throws_ok($$select pg_temp.expense(60,1000,'NEEDS','2025-02-03','UYU')$$,'23505',null,'Legacy replay cannot rewrite classification');
