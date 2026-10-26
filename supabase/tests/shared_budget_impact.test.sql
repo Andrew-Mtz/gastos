@@ -97,7 +97,11 @@ select is((select count(*) from public.transactions where type='EXPENSE'),0::big
 select public.register_income(pg_temp.id(100),pg_temp.period('2025-01-01'),2000,'USD','2025-01-03');
 select public.register_savings_movement(pg_temp.id(101),pg_temp.period('2025-01-01'),'SAVINGS_CONTRIBUTION',100,'USD','2025-01-03');
 select is(public.get_personal_protected_reserve(pg_temp.period('2025-01-01'))->>'unassigned_savings_minor','500','Shared spend does not consume protected 400 plus explicit 100');
-insert into public.categories(id,profile_id,name,budget_bucket_id) select pg_temp.id(102),auth.uid(),'Personal',id from public.budget_buckets where profile_id=auth.uid() and system_key='NEEDS';
+-- Categories have no authenticated INSERT capability; seed this fixture as test admin.
+reset role;
+insert into public.categories(id,profile_id,name,budget_bucket_id) select pg_temp.id(102),pg_temp.id(2),'Personal',id from public.budget_buckets where profile_id=pg_temp.id(2) and system_key='NEEDS';
+set local role authenticated;select pg_temp.set_jwt_subject(pg_temp.id(2));
+select is(current_user::text,'authenticated','Real role after trusted category fixture');select is(auth.uid(),pg_temp.id(2),'B owns the personal expense category');
 select public.register_personal_expense(pg_temp.id(103),pg_temp.period('2025-01-01'),50,'USD','2025-01-03',pg_temp.id(102));
 select is(pg_temp.spent('2025-01-01'),300::numeric,'Personal and responsibility consumption combine once');
 select is(public.get_personal_safe_to_spend(pg_temp.period('2025-01-01'))#>>'{savings,spent_minor}','300','Safe-to-spend uses full 300');
