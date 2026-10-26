@@ -805,23 +805,6 @@ try {
       assert(data.reserve);
     }
   }
-  // Revoked requester keeps only their own original facts, never changed current names.
-  sql(
-    `update public.household_members set left_at=clock_timestamp() where household_id='${uuid(first)}' and profile_id='${uuid(b.id)}';update public.households set name='Name after departure' where id='${uuid(first)}';`,
-  );
-  const former = await responsibilitySnapshot(b, '2025-01-01');
-  assert(former.entries.every((entry) => entry.household_name === null));
-  denied(
-    await b.client.rpc('get_shared_expense', {
-      p_household_id: first,
-      p_expense_id: sharedRequest.p_request_id,
-    }),
-    '42501',
-  );
-  // No later test depends on B membership in the first home.
-  passed(
-    'FIN-210 original responsibility, no-period visibility, FX-pending separation and former-member own projection over real HTTP',
-  );
 
   assert.deepEqual(
     success(await b.client.from('profiles').select('id').eq('id', a.id)),
@@ -965,6 +948,30 @@ try {
   passed(
     'directed invitation, replay, multi-household MEMBER acceptance, cancellation and private Profile isolation over HTTP',
   );
+  // Revoked requester keeps only their own original facts, never changed current names.
+  sql(
+    `update public.household_members set left_at=clock_timestamp() where household_id='${uuid(first)}' and profile_id='${uuid(b.id)}';update public.households set name='Name after departure' where id='${uuid(first)}';`,
+  );
+  assert.deepEqual(
+    success(await b.client.from('households').select('id').order('id')).map(
+      (row) => row.id,
+    ),
+    [second],
+    'A former member no longer sees the departed household',
+  );
+  const former = await responsibilitySnapshot(b, '2025-01-01');
+  assert(former.entries.every((entry) => entry.household_name === null));
+  denied(
+    await b.client.rpc('get_shared_expense', {
+      p_household_id: first,
+      p_expense_id: sharedRequest.p_request_id,
+    }),
+    '42501',
+  );
+  passed(
+    'FIN-210 original responsibility, no-period visibility, FX-pending separation and former-member own projection over real HTTP',
+  );
+
   success(await b.client.auth.signOut({ scope: 'local' }));
   denied(await b.client.rpc('get_my_household_invitations'), '42501');
   denied(

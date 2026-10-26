@@ -606,10 +606,12 @@ for (const isolation of ['repeatable read', 'serializable'])
 // FIN-210 participant locks, closure, protected-funding and pending application.
 async function budgetFor(c, actor, month, periodId, income = 0) {
   const end = month === '2025-01-01' ? '2025-01-31' : '2025-02-28';
-  await run(`begin;${auth(actor)}
-    select public.prepare_initial_budget_buckets();
+  // Deterministic period IDs are privileged synthetic setup, never an authenticated API.
+  await run(`begin;
     insert into public.budget_periods(id,profile_id,starts_on,ends_on,base_currency)
       values('${periodId}','${actor}','${month}','${end}','USD');
+    ${auth(actor)}
+    select public.prepare_initial_budget_buckets();
     select public.save_budget_allocations('${periodId}',(select jsonb_agg(jsonb_build_object('budget_bucket_id',id,'percentage_basis_points',case system_key when 'NEEDS' then 5000 when 'LEISURE' then 3000 else 2000 end)) from public.budget_buckets where profile_id=auth.uid() and system_key is not null));
     ${income ? `select public.register_income('${randomUUID()}','${periodId}',${income},'USD','${month}');` : ''}
     commit;`);
